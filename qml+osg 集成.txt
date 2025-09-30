@@ -1,0 +1,440 @@
+# QML + OSG  集成
+
+## QML 引擎
+
+### QQuickView特性详解
+
+#### 1. 设计理念
+
+- **窗口中心化**：继承自QQuickWindow，本质是一个窗口
+- **单一视图**：专注于管理单个QML视图
+- **轻量级**：代码量小，启动快
+
+#### 2. 核心优势
+
+```cpp
+QQuickView view;
+view.setSource(QUrl("qrc:/main.qml"));
+view.show();
+```
+
+- **简单直接**：三行代码即可启动应用
+- **性能优化**：针对单一窗口场景优化
+- **窗口控制**：直接访问窗口属性（标题、大小等）
+
+#### 3. 适用场景
+
+- 简单的单窗口应用
+- 嵌入式设备UI
+- 原型开发
+- 性能敏感型应用
+
+### QQmlApplicationEngine特性详解
+
+#### 1. 设计理念
+
+- **引擎中心化**：管理QML引擎和组件
+- **多窗口支持**：可创建多个独立窗口
+- **灵活扩展**：支持复杂应用架构
+
+#### 2. 核心优势
+
+```cpp
+QQmlApplicationEngine engine;
+engine.load(QUrl("qrc:/main.qml"));
+```
+
+- **上下文管理**：通过QQmlContext管理多个上下文
+- **组件复用**：高效管理多个QML组件
+- **生命周期控制**：精细控制对象创建和销毁
+
+#### 3. 适用场景
+
+- 多窗口复杂应用
+- 需要深度C++/QML集成的应用
+- 动态加载QML组件的场景
+- 大型企业级应用
+
+## 技术对比表
+
+| 特性         | QQuickView             | QQmlApplicationEngine  |
+| :----------- | :--------------------- | :--------------------- |
+| **继承关系** | QQuickWindow → QWindow | QObject                |
+| **窗口管理** | 单一窗口               | 支持多窗口             |
+| **启动速度** | 快                     | 稍慢（初始化更复杂）   |
+| **内存占用** | 低                     | 中等                   |
+| **C++交互**  | 有限（通过rootObject） | 强大（多上下文支持）   |
+| **动态加载** | 有限                   | 优秀（Loader组件友好） |
+| **错误处理** | 简单                   | 详细（对象创建信号）   |
+| **适用规模** | 小型应用               | 中大型应用             |
+
+**QQuickView不支持将窗口用作根项**
+
+### 模块导入
+
+![image-20250929093923780](C:\Users\th\AppData\Roaming\Typora\typora-user-images\image-20250929093923780.png)
+
+```cpp
+QQmlApplicationEngine engine;
+engine.addImportPath("D:/Qt6/6.9.2/msvc2022_64/qml");
+```
+
+
+
+## Renderer
+
+### **QQuickWindow::setGraphicsApi与 QGuiApplication::setAttribute的区别与正确使用**
+
+Qt6中Qt Quick默认使用QSGRendererInterface::Direct3D11，因此之前Qt5的项目中使用FBO的例子在Qt6上无法正确渲染，因为框架不会主动调用createRenderer()方法！
+
+QQuickFramebufferObject::Renderer *QQuickFramebufferObject::createRenderer() const
+
+可以使用setGraphicsApi进行设置，使用OpenGL接口进行渲染：
+
+**QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);**
+
+重新编译工程，就可以看到createRenderer()被框架调用了！
+
+`Qt::AA_UseDesktopOpenGL`属性只在桌面平台有效，在移动平台（如Android、iOS）上，OpenGL ES是唯一选择，因此设置`Qt::AA_UseDesktopOpenGL`无效。
+
+#### 1 关于渲染
+
+如果一个含有QWebengine的程序认为是两个程序，qt程序默认是使用AA_UseDesktopOpenGL的，经测试，如果主动设置为AA_UseSoftwareOpenGL，在视频页面，本来gpu仅需要10%左右，那么cpu模拟则会多出20~50%的cpu，而且还是但视频页面的。所以，qt主程序一般情况下不要使用这个。需要软件渲染目前已知是在vmware虚拟机上。
+
+setAttribute除了Qt::AA_ShareOpenGLContexts，其他都是对主程序有作用。对于webengine则是通过参数列表来实现。
+
+- AA_UseSoftwareOpenGL会极大的加深cpu使用率，所以对于图形图像要谨慎使用此操作。
+
+#### AA_ShareOpenGLContexts + AA_UseOpenGLES
+
+webengineview 全部cpu，未启用
+qml 视频使用gpu
+
+#### AA_ShareOpenGLContexts + AA_UseDesktopOpenGL
+
+webengineview 大部分gpu，Rasterization disable
+qml 视频使用gpu
+cpu和gpu比AA_UseOpenGLES使用率略低。
+
+#### AA_ShareOpenGLContexts + AA_UseSoftwareOpenGL
+
+webengineeview全部cpu，未启用
+qml使用cpu
+
+#### 性能排名
+
+DesktopOpenGL > OpenGLES > Soft
+RX580支持开启web 使用gpu，即context共享，但是不可主动开启gpu光栅化
+RX580开启GLES，qml的视频区域渲染是gpu，但是web里面，画笔及其卡顿，都是cpu运算的。但是web的chrome://gpu页面却显示软件模拟，能否说明es的设置是无效的？但是为何gpu也的确会占用呢？opengles 和台式机显卡有什么关系？不可用吗？
+
+### 两种设置方式的本质区别
+
+#### 1. **作用范围和层级不同**
+
+**`QGuiApplication::setAttribute(Qt::AA_UseDesktopOpenGL)`**：
+
+- 作用于整个应用程序级别
+- 影响所有Qt GUI组件的OpenGL上下文创建
+- 是一个全局属性设置
+
+**`QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL)`**：
+
+- 专门针对Qt Quick Scene Graph (QSG)
+- 只影响QML渲染后端的选择
+- 是特定于QML渲染的设置
+
+#### 为什么`QGuiApplication::setAttribute`在您的场景中效果不好：
+
+1. **过于宽泛**：它影响整个应用程序的所有GUI组件，而不仅仅是QML渲染
+2. **可能与其他组件冲突**：某些Qt Widgets或其他GUI组件可能不兼容这种设置
+3. **初始化顺序问题**：如果设置时机不对，可能不会生效
+
+#### 为什么`QQuickWindow::setGraphicsApi`更适合：
+
+1. **精确控制**：只影响QML渲染后端的选择
+2. **与QSG紧密集成**：直接告诉Qt Quick Scene Graph使用OpenGL
+3. **更好的兼容性**：专门针对QML场景优化
+
+**当您设置 `QGuiApplication::setAttribute(Qt::AA_UseDesktopOpenGL)`时**：
+
+- 确保应用程序使用桌面版 OpenGL
+- 但**不指定** Qt Quick 使用的渲染后端
+
+**默认行为**：
+
+- Qt Quick 会根据平台自动选择渲染后端：Windows：可能选择 Direct3D 或 ANGLEmacOS：可能选择 MetalLinux：可能选择 OpenGL 或 Vulkan
+
+
+
+ //配置环境变量
+    qputenv("QT_SCALE_FACTOR",QByteArray("1.0"));//设置全局缩放
+    qputenv("QT_ENABLE_HIGHDPI_SCALING","0");//取消操作系统DPI缩放
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);//强制使用OpenGL渲染
+
+方法一：写两个新类，分别继承自`QQuickFramebufferObject`和`QQuickFramebufferObject::Renderer`，然后在`Renderer`的`render`函数里加入OpenGL命令
+
+<img src="C:\Users\th\AppData\Roaming\Typora\typora-user-images\image-20250929134725829.png" alt="image-20250929134725829" style="zoom:33%;" />
+
+## **渲染**
+
+主要的OSG对象、代码都放在`QuickOSGRenderer`里。在构造函数中，我们建立OSG的基本对象，包括`Viewer`、`Camera`等。在`QuickOSGRenderer`的`render`函数中，我们调用`Viewer`的最核心函数`frame`：
+
+```cpp
+m_osgViewer->frame();
+```
+
+这个`render`函数谁来驱动？前面说了，`QuickOSGViewer`调用`update`之后，`QuickOSGRenderer`会执行一次`render`，所以我们在`QuickOSGViewer`设置一个定时器，来驱动`update`：
+
+```cpp
+m_updateTimer.setInterval(1000/m_framerate);
+connect(&m_updateTimer, &QTimer::timeout, this, [this]() {
+   update();
+});
+m_updateTimer.start();
+```
+
+这段代码可以放在`QuickOSGViewer`的构造函数里。`m_framerate`对外表现为帧率，我们可以在`QuickOSGViewer`中作为属性导出去。
+
+
+
+## **交互事件传递**
+
+集成OSG到一个界面框架中，最重要的问题之一是如何传递用户交互事件，比如鼠标点击、键盘等，这样才能够做一些交互渲染。
+
+我们看到，`QQuickFramebufferObject`派生自`QQuickItem`，所以本身具有接收鼠标键盘事件的能力。在我们的`QQuickFramebufferObject`派生类中，首先设置它能接收鼠标事件：
+
+```cpp
+setAcceptedMouseButtons(Qt::AllButtons);
+```
+
+然后改写各种鼠标键盘事件：
+
+```cpp
+void mousePressEvent(QMouseEvent* event) override;
+void mouseDoubleClickEvent(QMouseEvent* event) override;
+void mouseMoveEvent(QMouseEvent* event) override;
+void hoverMoveEvent(QHoverEvent* event) override;
+void mouseReleaseEvent(QMouseEvent* event) override;
+void geometryChanged(constQRectF& newGeometry, constQRectF& oldGeometry) override;
+void wheelEvent(QWheelEvent* event) override;
+void keyPressEvent(QKeyEvent* event) override;
+void keyReleaseEvent(QKeyEvent* event) override;
+```
+
+在这些处理函数中，我们通过向OSG的`EventQueue`投递相应的事件，就达到了传递Qt事件到OSG的目的。一般的OSG移植、集成都是这么干的。
+
+
+
+### 初始化数据流
+
+```
+QML (osg_main.qml)     ↓ (调用initializeOSG) OSGViewport::initializeOSG()     ↓ (创建OSG对象) OSG核心库 (osgViewer, osg)
+```
+
+### 渲染数据流
+
+```
+QML渲染循环     ↓ (调用render) OSGRenderer::render()     ↓ (调用frame) osgViewer::frame()     ↓ (OSG内部渲染) 图形驱动/OpenGL     ↓ (返回渲染结果) QML显示
+```
+
+```c++
+#ifndef OSGVIEWPORT_H
+#define OSGVIEWPORT_H
+
+#include <QQuickFramebufferObject>
+
+// 前向声明
+class OSGRenderer;
+
+/**
+ * @brief OSGViewport 类
+ * 
+ * 这个类继承自 QQuickFramebufferObject，用于在 QML 中集成 OpenSceneGraph (OSG) 渲染窗口。
+ * 它允许在 QML 界面中显示 3D 内容，并与 Qt Quick 的渲染循环集成。
+ */
+class OSGViewport : public QQuickFramebufferObject
+{
+    Q_OBJECT
+
+public:
+    /**
+     * @brief 构造函数
+     * @param parent 父对象
+     */
+    explicit OSGViewport(QQuickItem *parent = nullptr);
+    
+    /**
+     * @brief 创建渲染器
+     * @return 返回一个 Renderer 对象，用于执行实际的渲染操作
+     */
+    Renderer *createRenderer() const override;
+    
+};
+
+#endif // OSGVIEWPORT_H
+
+#include "OSGViewport.h"
+#include "OSGRenderer.h"
+#include <QQuickWindow>
+#include <QTimer>
+#include <QDebug>
+
+OSGViewport::OSGViewport(QQuickItem *parent)
+    : QQuickFramebufferObject(parent)
+{
+    QTimer * timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &OSGViewport::update);
+    timer->start(16); 
+    qDebug() << "OSGViewport created";
+}
+
+
+
+QQuickFramebufferObject::Renderer *OSGViewport::createRenderer() const
+{
+    return new OSGRenderer();
+}
+```
+
+```c++
+#ifndef OSGRENDERER_H
+#define OSGRENDERER_H
+
+#include <QQuickFramebufferObject>
+#include <osg/ref_ptr>
+#include <QOpenGLFramebufferObject>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
+#include <osgViewer/Viewer>
+#include <osgViewer/GraphicsWindow>
+#include <osg/Camera>
+#include <osg/Group>
+#include <osg/Geode>
+#include <osg/Geometry>
+#include <osg/ShapeDrawable>
+#include <osg/StateSet>
+#include <osg/Vec3>
+#include <osg/Vec4>
+#include <QDebug>
+#include <QQuickFramebufferObject>
+#include <QOpenGLFunctions>
+#include <osg/ref_ptr>
+#include <osgViewer/Viewer>
+#include <osg/Camera>
+#include <osg/Group>
+class OSGViewport;
+
+class OSGRenderer : public QQuickFramebufferObject::Renderer
+{
+public:
+    OSGRenderer();
+    ~OSGRenderer();
+
+    void render() override;
+    QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override;
+
+private:
+    void createScene();
+    void initializeOSG(int width, int height);
+
+    osg::ref_ptr<osgViewer::Viewer> m_viewer;
+    osg::ref_ptr<osg::Group> m_root;
+};
+
+#endif // OSGRENDERER_H
+
+OSGRenderer::OSGRenderer()
+{
+
+}
+
+OSGRenderer::~OSGRenderer()
+{
+    // 清理资源
+}
+
+void OSGRenderer::initializeOSG(int width, int height){
+    if (!QOpenGLContext::currentContext()) {
+        qCritical() << "No OpenGL context available!";
+        return;
+    }
+    
+
+    m_viewer = new osgViewer::Viewer();
+
+     osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> graphicsWindow = 
+        new osgViewer::GraphicsWindowEmbedded(0, 0, width, height);
+    
+    // 获取相机并设置渲染目标
+    osg::Camera* camera = m_viewer->getCamera();
+    camera->setGraphicsContext(graphicsWindow.get());
+    camera->setViewport(new osg::Viewport(0, 0, width, height));
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width)/static_cast<double>(height), 1.0, 10000.0);
+    camera->setClearColor(osg::Vec4(0.2f, 0.3f, 0.8f, 1.0f));
+    // 创建场景根节点
+    m_root = new osg::Group();
+    
+    // 创建一个简单的场景
+    createScene();
+    
+    // 设置场景数据
+    m_viewer->setSceneData(m_root.get());
+    
+    qDebug() << "OSGRenderer initialized with scene";
+}
+
+void OSGRenderer::render()
+{
+    if (!QOpenGLContext::currentContext()) {
+        qWarning() << "No OpenGL context, skipping render";
+        return;
+    }
+    //获取窗口的大小
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    int width = viewport[2];
+    int height = viewport[3];
+
+    if (!m_viewer) {
+        qDebug() << "Initializing OSG...";
+        initializeOSG(width, height);
+    }
+
+    if (m_viewer && m_viewer->isRealized()) {
+        qDebug() << "Viewer is realized, rendering frame";
+        //设置窗口的大小，获取OpenGL上下文
+        m_viewer->getCamera()->setViewport(new osg::Viewport(0, 0, width, height));
+        m_viewer->getCamera()->setProjectionMatrixAsPerspective(30.0f, 
+            static_cast<double>(width)/static_cast<double>(height), 1.0, 10000.0);
+             if (QOpenGLContext::currentContext()) {
+            GLuint fboId = QOpenGLContext::currentContext()->defaultFramebufferObject();
+            if (m_viewer->getCamera()->getGraphicsContext()) {
+                m_viewer->getCamera()->getGraphicsContext()->setDefaultFboId(fboId);
+            }
+        }
+        //渲染
+        m_viewer->frame();
+        //恢复状态
+        glPopClientAttrib();
+        glPopAttrib();
+        } else {
+        qDebug() << "Viewer not realized, showing blue background";
+        // 如果OSG未正确初始化，则显示蓝色背景
+        glViewport(0, 0, width, height);
+        glClearColor(0.2f, 0.3f, 0.8f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
+    
+}
+
+QOpenGLFramebufferObject *OSGRenderer::createFramebufferObject(const QSize &size)
+{
+    QOpenGLFramebufferObjectFormat format;
+    format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+    format.setSamples(4); // 抗锯齿
+    return new QOpenGLFramebufferObject(size, format);
+}
+
+void OSGRenderer::createScene(){}
+```
+
