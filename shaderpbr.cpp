@@ -80,8 +80,8 @@ osg::Node* ShaderPBR::createPBRSphere(float radius)
             osg::ref_ptr<osg::Program> program = ShaderPBR::createPBRShaderSimpleIBL();
             stateset->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
             
-            // 添加天空盒纹理采样器uniform（纹理单元1）
-            stateset->addUniform(new osg::Uniform("skybox", 1));
+            // 添加天空盒纹理采样器uniform（纹理单元0）
+            stateset->addUniform(new osg::Uniform("skybox", 0));
             
             // 设置球体位置
             osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform;
@@ -97,32 +97,127 @@ osg::Node* ShaderPBR::createPBRSphere(float radius)
     return root.release();
 }
 
-// 创建带天空盒的PBR场景
+// 创建带天空盒的PBR场景（修复版）
 osg::Node* ShaderPBR::createPBRSceneWithSkybox(float sphereRadius)
 {
     // 创建场景根节点
     osg::ref_ptr<osg::Group> root = new osg::Group;
     
-    // 添加PBR球体阵列
-    osg::ref_ptr<osg::Node> pbrSpheres = ShaderPBR::createPBRSphere(sphereRadius);
-    root->addChild(pbrSpheres);
+    // ⚠️ 步骤1: 先创建天空盒，提取CubeMap纹理
+    osg::ref_ptr<osg::Node> skyboxNode = ShaderPBR::createSkybox("E:/qt test/qml+osg/resource");
     
-    // 添加天空盒（使用ShaderCube实现）
-    // 注意：您需要提供正确的资源路径
-    osg::ref_ptr<osg::Node> skybox = ShaderPBR::createSkybox("E:/qt test/qml+osg/resource");  // 使用相对路径
-    root->addChild(skybox);
+    // ⚠️ 步骤2: 从天空盒中提取TextureCubeMap
+    osg::TextureCubeMap* skyboxTexture = nullptr;
     
-    // 获取天空盒的立方体贴图纹理并传递给PBR球体
-    osg::StateSet* skyboxStateSet = skybox->getOrCreateStateSet();
-    osg::TextureCubeMap* skyboxTexture = dynamic_cast<osg::TextureCubeMap*>(
-        skyboxStateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+    // 天空盒现在包裹在Transform里，需要深入查找
+    if (skyboxNode.valid()) {
+        // 遍历天空盒节点树，找到Geode
+        class FindGeodeVisitor : public osg::NodeVisitor {
+        public:
+            osg::Geode* foundGeode;
+            
+            FindGeodeVisitor() : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), foundGeode(nullptr) {}
+            
+            virtual void apply(osg::Geode& geode) {
+                if (!foundGeode) {
+                    foundGeode = &geode;
+                }
+                traverse(geode);
+            }
+        };
+        
+        FindGeodeVisitor visitor;
+        skyboxNode->accept(visitor);
+        
+        if (visitor.foundGeode) {
+            osg::StateSet* skyboxStateSet = visitor.foundGeode->getStateSet();
+            if (skyboxStateSet) {
+                skyboxTexture = dynamic_cast<osg::TextureCubeMap*>(
+                    skyboxStateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+            }
+        }
+    }
     
-    if (skyboxTexture) {
-        // 将天空盒纹理传递给PBR球体的每个子节点
-        for (unsigned int i = 0; i < pbrSpheres->asGroup()->getNumChildren(); ++i) {
-            osg::Node* child = pbrSpheres->asGroup()->getChild(i);
-            osg::StateSet* childStateSet = child->getOrCreateStateSet();
-            childStateSet->setTextureAttributeAndModes(1, skyboxTexture, osg::StateAttribute::ON);
+    if (!skyboxTexture) {
+        std::cout << "Error: Failed to extract skybox texture!" << std::endl;
+        return root.release();
+    }
+    
+    // ⚠️ 步骤3: 创建PBR球体并传递天空盒纹理
+    osg::ref_ptr<osg::Node> pbrSpheres = ShaderPBR::createPBRSphereWithSkyboxTexture(
+        sphereRadius, skyboxTexture);
+    
+    // ⚠️ 步骤4: 添加到场景（顺序很重要！）
+    root->addChild(skyboxNode);      // 先添加天空盒（背景）
+    root->addChild(pbrSpheres);      // 再添加球体（前景）
+    
+    return root.release();
+}
+
+// 新函数：创建带天空盒纹理的PBR球体
+osg::Node* ShaderPBR::createPBRSphereWithSkyboxTexture(float radius, osg::TextureCubeMap* skyboxTexture)
+{
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    int rows = 5;
+    int cols = 5;
+    
+    for (int row = 0; row < rows; ++row) {
+        for (int col = 0; col < cols; ++col) {
+            float metallic = (float)row / (float)(rows - 1);
+            float roughness = (float)col / (float)(cols - 1);
+            
+            // 使用对比色
+            osg::Vec3 baseColor;
+            if (metallic < 0.5f) {
+                baseColor = osg::Vec3(0.8f, 0.2f, 0.2f); // 红色非金属
+            } else {
+                baseColor = osg::Vec3(1.0f, 0.86f, 0.57f); // 金色金属
+            }
+            
+            osg::ref_ptr<osg::Node> sphere = ShaderPBR::createSingleSphere(radius);
+            osg::StateSet* stateset = sphere->getOrCreateStateSet();
+            
+            // 材质参数
+            stateset->addUniform(new osg::Uniform("albedo", baseColor));
+            stateset->addUniform(new osg::Uniform("metallic", metallic));
+            stateset->addUniform(new osg::Uniform("roughness", roughness));
+            stateset->addUniform(new osg::Uniform("ao", 1.0f));
+            
+            // 点光源
+            osg::ref_ptr<osg::Uniform> lightPositions = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightPositions", 4);
+            lightPositions->setElement(0, osg::Vec3(10.0f, 10.0f, 10.0f));
+            lightPositions->setElement(1, osg::Vec3(-10.0f, 10.0f, 10.0f));
+            lightPositions->setElement(2, osg::Vec3(10.0f, -10.0f, 10.0f));
+            lightPositions->setElement(3, osg::Vec3(-10.0f, -10.0f, 10.0f));
+            stateset->addUniform(lightPositions);
+            
+            osg::ref_ptr<osg::Uniform> lightColors = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightColors", 4);
+            for(int i = 0; i < 4; i++) {
+                lightColors->setElement(i, osg::Vec3(300.0f, 300.0f, 300.0f));
+            }
+            stateset->addUniform(lightColors);
+            
+            stateset->addUniform(new osg::Uniform("camPos", osg::Vec3(0.0f, 0.0f, 20.0f)));
+            
+            // ⚠️ 关键：设置天空盒纹理到纹理单元1
+            if (skyboxTexture) {
+                stateset->setTextureAttributeAndModes(1, skyboxTexture, osg::StateAttribute::ON);
+                stateset->addUniform(new osg::Uniform("skybox", 1));
+            }
+            
+            // 应用PBR着色器
+            osg::ref_ptr<osg::Program> program = ShaderPBR::createPBRShaderSimpleIBL();
+            stateset->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            
+            // 设置位置
+            osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform;
+            float x = (col - (cols - 1) / 2.0f) * 3.0f;
+            float y = ((rows - 1) / 2.0f - row) * 3.0f;
+            transform->setMatrix(osg::Matrix::translate(x, y, 0.0f));
+            transform->addChild(sphere);
+            
+            root->addChild(transform);
         }
     }
     

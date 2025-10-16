@@ -34,6 +34,9 @@ public:
     // 创建带天空盒的PBR场景
     static osg::Node* createPBRSceneWithSkybox(float sphereRadius = 1.0f);
     
+    // 新增：创建带天空盒纹理的PBR球体
+    static osg::Node* createPBRSphereWithSkyboxTexture(float radius, osg::TextureCubeMap* skyboxTexture);
+    
     // 创建天空盒（使用ShaderCube实现）
     static osg::Node* createSkybox(const std::string& resourcePath);
 };

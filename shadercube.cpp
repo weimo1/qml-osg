@@ -40,6 +40,23 @@
 #include<osgUtil/Optimizer>
 #include<osgUtil/CullVisitor>
 #include <osgViewer/Viewer>
+#include <osgGA/TrackballManipulator>
+
+// 天空盒回调：使天空盒始终跟随摄像机位置但不旋转
+class SkyboxTransformCallback : public osg::NodeCallback
+{
+public:
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        osg::MatrixTransform* transform = dynamic_cast<osg::MatrixTransform*>(node);
+        if (transform)
+        {
+            // 使用单位矩阵，确保天空盒不会旋转
+            transform->setMatrix(osg::Matrix::identity());
+        }
+        traverse(node, nv);
+    }
+};
 
 // 实现创建Shader程序的方法
 osg::Program* ShaderCube::createShaderProgram()
@@ -252,7 +269,7 @@ osg::Node* ShaderCube::createCube(float size)
     
     float s = size;
     
-    // 定义立方体的顶点（24个顶点，每个面4个独立顶点）
+    // 重新定义立方体的顶点，确保正确的顺序和方向
     // 前面 (Z轴正方向)
     vertices->push_back(osg::Vec3(-s, -s,  s)); // 0
     vertices->push_back(osg::Vec3( s, -s,  s)); // 1
@@ -260,16 +277,16 @@ osg::Node* ShaderCube::createCube(float size)
     vertices->push_back(osg::Vec3(-s,  s,  s)); // 3
     
     // 后面 (Z轴负方向)
-    vertices->push_back(osg::Vec3(-s, -s, -s)); // 4
-    vertices->push_back(osg::Vec3( s, -s, -s)); // 5
-    vertices->push_back(osg::Vec3( s,  s, -s)); // 6
-    vertices->push_back(osg::Vec3(-s,  s, -s)); // 7
+    vertices->push_back(osg::Vec3( s, -s, -s)); // 4
+    vertices->push_back(osg::Vec3(-s, -s, -s)); // 5
+    vertices->push_back(osg::Vec3(-s,  s, -s)); // 6
+    vertices->push_back(osg::Vec3( s,  s, -s)); // 7
     
     // 上面 (Y轴正方向)
     vertices->push_back(osg::Vec3(-s,  s, -s)); // 8
-    vertices->push_back(osg::Vec3( s,  s, -s)); // 9
+    vertices->push_back(osg::Vec3(-s,  s,  s)); // 9
     vertices->push_back(osg::Vec3( s,  s,  s)); // 10
-    vertices->push_back(osg::Vec3(-s,  s,  s)); // 11
+    vertices->push_back(osg::Vec3( s,  s, -s)); // 11
     
     // 下面 (Y轴负方向)
     vertices->push_back(osg::Vec3(-s, -s, -s)); // 12
@@ -279,9 +296,9 @@ osg::Node* ShaderCube::createCube(float size)
     
     // 右面 (X轴正方向)
     vertices->push_back(osg::Vec3( s, -s, -s)); // 16
-    vertices->push_back(osg::Vec3( s,  s, -s)); // 17
+    vertices->push_back(osg::Vec3( s, -s,  s)); // 17
     vertices->push_back(osg::Vec3( s,  s,  s)); // 18
-    vertices->push_back(osg::Vec3( s, -s,  s)); // 19
+    vertices->push_back(osg::Vec3( s,  s, -s)); // 19
     
     // 左面 (X轴负方向)
     vertices->push_back(osg::Vec3(-s, -s, -s)); // 20
@@ -327,13 +344,41 @@ osg::Node* ShaderCube::createCube(float size)
     normals->push_back(osg::Vec3(-1.0f, 0.0f, 0.0f)); // 23
     
     // 定义纹理坐标（24个纹理坐标，与顶点一一对应）
-    // 所有面都使用相同的纹理坐标
-    for (int i = 0; i < 6; i++) {
-        texcoords->push_back(osg::Vec2(0.0f, 0.0f));
-        texcoords->push_back(osg::Vec2(1.0f, 0.0f));
-        texcoords->push_back(osg::Vec2(1.0f, 1.0f));
-        texcoords->push_back(osg::Vec2(0.0f, 1.0f));
-    }
+    // 前面
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f));
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f));
+    
+    // 后面
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f));
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f));
+    
+    // 上面
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f));
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f));
+    
+    // 下面
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f));
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f));
+    
+    // 右面
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f));
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f));
+    
+    // 左面
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f));
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f));
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f));
     
     // 创建索引数组（使用三角形绘制立方体的6个面，共36个索引）
     osg::ref_ptr<osg::DrawElementsUInt> indices = new osg::DrawElementsUInt(GL_TRIANGLES);
@@ -360,8 +405,7 @@ osg::Node* ShaderCube::createCube(float size)
     
     // 左面 (20,21,22,23)
     indices->push_back(20); indices->push_back(21); indices->push_back(22);
-    indices->push_back(22); indices->push_back(23); indices->push_back(20
-    );
+    indices->push_back(22); indices->push_back(23); indices->push_back(20);
     
     // 创建几何体
     osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
@@ -519,27 +563,16 @@ osg::Node* ShaderCube::createSkyBox(const std::string& resourcePath)
     // 创建状态集
     osg::ref_ptr<osg::StateSet> stateset = new osg::StateSet();
 
-    // 设置纹理映射方式，指定为替代方式，即纹理中的颜色代替原来的颜色
-    osg::ref_ptr<osg::TexEnv> te = new osg::TexEnv;
-    te->setMode(osg::TexEnv::REPLACE);
-    stateset->setTextureAttributeAndModes(0, te.get(), osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-    // 自动生成纹理坐标，反射方式(NORMAL_MAP)
-    osg::ref_ptr<osg::TexGen> tg = new osg::TexGen;
-    tg->setMode(osg::TexGen::NORMAL_MAP);  // 使用NORMAL_MAP模式
-    stateset->setTextureAttributeAndModes(0, tg.get(), osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
     // 加载立方体贴图
     osg::ref_ptr<osg::TextureCubeMap> cubemap = new osg::TextureCubeMap;
 
-    // 加载6个面的纹理
     std::string faces[6] = {
-        resourcePath + "/px.png", // 右 POSITIVE_X
-        resourcePath + "/nx.png", // 左 NEGATIVE_X
-        resourcePath + "/py.png", // 上 POSITIVE_Y
-        resourcePath + "/ny.png", // 下 NEGATIVE_Y
-        resourcePath + "/pz.png", // 前 POSITIVE_Z
-        resourcePath + "/nz.png"  // 后 NEGATIVE_Z
+        resourcePath + "/px.png",
+        resourcePath + "/nx.png",
+        resourcePath + "/py.png",
+        resourcePath + "/ny.png",
+        resourcePath + "/pz.png",
+        resourcePath + "/nz.png"
     };
 
     osg::ref_ptr<osg::Image> imagePosX = osgDB::readImageFile(faces[0]);
@@ -553,157 +586,109 @@ osg::Node* ShaderCube::createSkyBox(const std::string& resourcePath)
                           imagePosY.valid() && imageNegY.valid() && 
                           imagePosZ.valid() && imageNegZ.valid();
 
-    if (allImagesLoaded) {
-        // 设置立方图的六个面的贴图
-        cubemap->setImage(osg::TextureCubeMap::POSITIVE_X, imagePosX);
-        cubemap->setImage(osg::TextureCubeMap::NEGATIVE_X, imageNegX);
-        cubemap->setImage(osg::TextureCubeMap::POSITIVE_Y, imagePosY);
-        cubemap->setImage(osg::TextureCubeMap::NEGATIVE_Y, imageNegY);
-        cubemap->setImage(osg::TextureCubeMap::POSITIVE_Z, imagePosZ);
-        cubemap->setImage(osg::TextureCubeMap::NEGATIVE_Z, imageNegZ);
-
-        // 设置纹理环绕模式
-        cubemap->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-        cubemap->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-        cubemap->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
-
-        // 设置滤波：线形
-        cubemap->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
-        cubemap->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    } else {
-        std::cout << "Failed to load one or more skybox textures" << std::endl;
+    if (!allImagesLoaded) {
+        std::cout << "Failed to load skybox textures" << std::endl;
         return new osg::Group;
     }
 
-    // 应用立方体贴图
-    stateset->setTextureAttributeAndModes(0, cubemap, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    cubemap->setImage(osg::TextureCubeMap::POSITIVE_X, imagePosX);
+    cubemap->setImage(osg::TextureCubeMap::NEGATIVE_X, imageNegX);
+    cubemap->setImage(osg::TextureCubeMap::POSITIVE_Y, imagePosY);
+    cubemap->setImage(osg::TextureCubeMap::NEGATIVE_Y, imageNegY);
+    cubemap->setImage(osg::TextureCubeMap::POSITIVE_Z, imagePosZ);
+    cubemap->setImage(osg::TextureCubeMap::NEGATIVE_Z, imageNegZ);
 
-    // 关闭光照
+    cubemap->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    cubemap->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    cubemap->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
+    cubemap->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+    cubemap->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+
+    // ⚠️ 确保纹理设置在Geode的StateSet上（纹理单元0）
+    stateset->setTextureAttributeAndModes(0, cubemap, osg::StateAttribute::ON);
+
+    // 使用REFLECTION_MAP
+    osg::ref_ptr<osg::TexGen> tg = new osg::TexGen;
+    tg->setMode(osg::TexGen::REFLECTION_MAP);
+    stateset->setTextureAttributeAndModes(0, tg.get(), osg::StateAttribute::ON);
+
+    osg::ref_ptr<osg::TexEnv> te = new osg::TexEnv;
+    te->setMode(osg::TexEnv::REPLACE);
+    stateset->setTextureAttributeAndModes(0, te.get(), osg::StateAttribute::ON);
+
     stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    
-    // 关闭背面剔除（关键！）
     stateset->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 
-    // 将深度设置为远平面
+    // 深度设置
     osg::ref_ptr<osg::Depth> depth = new osg::Depth;
-    depth->setFunction(osg::Depth::LEQUAL);  // 改用 LEQUAL
+    depth->setFunction(osg::Depth::LEQUAL);
     depth->setRange(1.0, 1.0);
+    depth->setWriteMask(false);  // ⚠️ 禁止写深度
     stateset->setAttributeAndModes(depth, osg::StateAttribute::ON);
 
-    // 设置渲染顺序
     stateset->setRenderBinDetails(-1, "RenderBin");
 
-    // 创建立方体几何体
+    // 创建立方体
     osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
-    
-    // 创建顶点数组
     osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array;
-    // 创建法线数组（关键！）
-    osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array;
+    
     float size = 500.0f;
     
-    // 24个顶点（每个面4个独立顶点）
-    // 前面
-    vertices->push_back(osg::Vec3(-size, -size,  size)); // 0
-    vertices->push_back(osg::Vec3( size, -size,  size)); // 1
-    vertices->push_back(osg::Vec3( size,  size,  size)); // 2
-    vertices->push_back(osg::Vec3(-size,  size,  size)); // 3
-    normals->push_back(osg::Vec3(-1.0f, -1.0f,  1.0f));  // 法线
-    normals->push_back(osg::Vec3( 1.0f, -1.0f,  1.0f));
-    normals->push_back(osg::Vec3( 1.0f,  1.0f,  1.0f));
-    normals->push_back(osg::Vec3(-1.0f,  1.0f,  1.0f));
-    
-    // 后面
-    vertices->push_back(osg::Vec3(-size, -size, -size)); // 4
-    vertices->push_back(osg::Vec3( size, -size, -size)); // 5
-    vertices->push_back(osg::Vec3( size,  size, -size)); // 6
-    vertices->push_back(osg::Vec3(-size,  size, -size)); // 7
-    normals->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));  // 法线
-    normals->push_back(osg::Vec3( 1.0f, -1.0f, -1.0f));
-    normals->push_back(osg::Vec3( 1.0f,  1.0f, -1.0f));
-    normals->push_back(osg::Vec3(-1.0f,  1.0f, -1.0f));
-    
-    // 左面
-    vertices->push_back(osg::Vec3(-size, -size, -size)); // 8
-    vertices->push_back(osg::Vec3(-size, -size,  size)); // 9
-    vertices->push_back(osg::Vec3(-size,  size,  size)); // 10
-    vertices->push_back(osg::Vec3(-size,  size, -size)); // 11
-    normals->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));  // 法线
-    normals->push_back(osg::Vec3(-1.0f, -1.0f,  1.0f));
-    normals->push_back(osg::Vec3(-1.0f,  1.0f,  1.0f));
-    normals->push_back(osg::Vec3(-1.0f,  1.0f, -1.0f));
-    
-    // 右面
-    vertices->push_back(osg::Vec3( size, -size, -size)); // 12
-    vertices->push_back(osg::Vec3( size, -size,  size)); // 13
-    vertices->push_back(osg::Vec3( size,  size,  size)); // 14
-    vertices->push_back(osg::Vec3( size,  size, -size)); // 15
-    normals->push_back(osg::Vec3( 1.0f, -1.0f, -1.0f));  // 法线
-    normals->push_back(osg::Vec3( 1.0f, -1.0f,  1.0f));
-    normals->push_back(osg::Vec3( 1.0f,  1.0f,  1.0f));
-    normals->push_back(osg::Vec3( 1.0f,  1.0f, -1.0f));
-    
-    // 上面
-    vertices->push_back(osg::Vec3(-size,  size, -size)); // 16
-    vertices->push_back(osg::Vec3( size,  size, -size)); // 17
-    vertices->push_back(osg::Vec3( size,  size,  size)); // 18
-    vertices->push_back(osg::Vec3(-size,  size,  size)); // 19
-    normals->push_back(osg::Vec3(-1.0f,  1.0f, -1.0f));  // 法线
-    normals->push_back(osg::Vec3( 1.0f,  1.0f, -1.0f));
-    normals->push_back(osg::Vec3( 1.0f,  1.0f,  1.0f));
-    normals->push_back(osg::Vec3(-1.0f,  1.0f,  1.0f));
-    
-    // 下面
-    vertices->push_back(osg::Vec3(-size, -size, -size)); // 20
-    vertices->push_back(osg::Vec3( size, -size, -size)); // 21
-    vertices->push_back(osg::Vec3( size, -size,  size)); // 22
-    vertices->push_back(osg::Vec3(-size, -size,  size)); // 23
-    normals->push_back(osg::Vec3(-1.0f, -1.0f, -1.0f));  // 法线
-    normals->push_back(osg::Vec3( 1.0f, -1.0f, -1.0f));
-    normals->push_back(osg::Vec3( 1.0f, -1.0f,  1.0f));
-    normals->push_back(osg::Vec3(-1.0f, -1.0f,  1.0f));
+    vertices->push_back(osg::Vec3(-size, -size, -size));
+    vertices->push_back(osg::Vec3( size, -size, -size));
+    vertices->push_back(osg::Vec3( size,  size, -size));
+    vertices->push_back(osg::Vec3(-size,  size, -size));
+    vertices->push_back(osg::Vec3(-size, -size,  size));
+    vertices->push_back(osg::Vec3( size, -size,  size));
+    vertices->push_back(osg::Vec3( size,  size,  size));
+    vertices->push_back(osg::Vec3(-size,  size,  size));
     
     geometry->setVertexArray(vertices);
     
-    // 设置法线（关键！）
-    geometry->setNormalArray(normals);
-    geometry->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
-    
-    // 创建索引数组
     osg::ref_ptr<osg::DrawElementsUInt> indices = new osg::DrawElementsUInt(GL_TRIANGLES);
     
-    // 前面
-    indices->push_back(0); indices->push_back(1); indices->push_back(2);
-    indices->push_back(2); indices->push_back(3); indices->push_back(0);
-    
-    // 后面
-    indices->push_back(4); indices->push_back(7); indices->push_back(6);
-    indices->push_back(6); indices->push_back(5); indices->push_back(4);
-    
-    // 左面
-    indices->push_back(8); indices->push_back(9); indices->push_back(10);
-    indices->push_back(10); indices->push_back(11); indices->push_back(8);
-    
-    // 右面
-    indices->push_back(12); indices->push_back(15); indices->push_back(14);
-    indices->push_back(14); indices->push_back(13); indices->push_back(12);
-    
-    // 上面
-    indices->push_back(16); indices->push_back(17); indices->push_back(18);
-    indices->push_back(18); indices->push_back(19); indices->push_back(16);
-    
-    // 下面
-    indices->push_back(20); indices->push_back(23); indices->push_back(22);
-    indices->push_back(22); indices->push_back(21); indices->push_back(20);
+    indices->push_back(0); indices->push_back(3); indices->push_back(2);
+    indices->push_back(2); indices->push_back(1); indices->push_back(0);
+    indices->push_back(4); indices->push_back(5); indices->push_back(6);
+    indices->push_back(6); indices->push_back(7); indices->push_back(4);
+    indices->push_back(0); indices->push_back(4); indices->push_back(7);
+    indices->push_back(7); indices->push_back(3); indices->push_back(0);
+    indices->push_back(1); indices->push_back(2); indices->push_back(6);
+    indices->push_back(6); indices->push_back(5); indices->push_back(1);
+    indices->push_back(0); indices->push_back(1); indices->push_back(5);
+    indices->push_back(5); indices->push_back(4); indices->push_back(0);
+    indices->push_back(3); indices->push_back(7); indices->push_back(6);
+    indices->push_back(6); indices->push_back(2); indices->push_back(3);
     
     geometry->addPrimitiveSet(indices);
     
-    // 把立方体加入到叶节点
+    // ⚠️ Geode携带StateSet（包含纹理）
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    geode->setCullingActive(false);  // 关闭视锥剔除
-    geode->setStateSet(stateset);
+    geode->setCullingActive(false);
+    geode->setStateSet(stateset);  // 纹理在这里！
     geode->addDrawable(geometry);
 
-    // 直接返回叶节点，不使用复杂的跟随相机逻辑
-    return geode.release();
+    // 天空盒回调
+    class SkyboxTransformCallback : public osg::NodeCallback
+    {
+    public:
+        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            osg::MatrixTransform* transform = dynamic_cast<osg::MatrixTransform*>(node);
+            if (transform)
+            {
+                // 使用单位矩阵，确保天空盒不会旋转
+                transform->setMatrix(osg::Matrix::identity());
+            }
+            traverse(node, nv);
+        }
+    };
+
+    // ⚠️ 包裹在Transform中
+    osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform;
+    transform->addChild(geode);
+    transform->setUpdateCallback(new SkyboxTransformCallback);
+    transform->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+
+    return transform.release();
 }
