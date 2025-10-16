@@ -41,8 +41,8 @@ public:
     void setViewType(SimpleOSGViewer::ViewType viewType);
     void setShapeColor(float r, float g, float b, float a = 1.0f);
     
-    // 添加更新PBR材质的方法
-    void updatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+    // 添加更新PBR材质的方法（包含Alpha参数）
+    void updatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                           float metallic, float roughness, 
                           float specular, float ao);
     

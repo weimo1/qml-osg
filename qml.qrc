@@ -3,5 +3,6 @@
         <file>qml/main.qml</file>
         <file>qml/PBRMaterialControl.qml</file>
         <file>qml/DraggableWindow.qml</file>
+        <file>qml/ColorPicker.qml</file>
     </qresource>
 </RCC>

@@ -333,26 +333,26 @@ void SimpleOSGViewer::updateCameraPosition() {
     }
 }
 
-// 添加更新PBR材质的方法
-void SimpleOSGViewer::updatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+// 添加更新PBR材质的方法（包含Alpha参数）
+void SimpleOSGViewer::updatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                                        float metallic, float roughness, 
                                        float specular, float ao)
 {
     // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
         QMetaObject::invokeMethod(this, "invokeUpdatePBRMaterial", Qt::QueuedConnection,
-                                 Q_ARG(float, albedoR), Q_ARG(float, albedoG), Q_ARG(float, albedoB),
+                                 Q_ARG(float, albedoR), Q_ARG(float, albedoG), Q_ARG(float, albedoB), Q_ARG(float, albedoA),
                                  Q_ARG(float, metallic), Q_ARG(float, roughness),
                                  Q_ARG(float, specular), Q_ARG(float, ao));
     }
 }
 
-// 实际调用渲染器更新PBR材质的方法
-void SimpleOSGViewer::invokeUpdatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+// 实际调用渲染器更新PBR材质的方法（包含Alpha参数）
+void SimpleOSGViewer::invokeUpdatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                                              float metallic, float roughness, 
                                              float specular, float ao)
 {
     if (m_renderer) {
-        m_renderer->updatePBRMaterial(albedoR, albedoG, albedoB, metallic, roughness, specular, ao);
+        m_renderer->updatePBRMaterial(albedoR, albedoG, albedoB, albedoA, metallic, roughness, specular, ao);
     }
 }

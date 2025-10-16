@@ -149,7 +149,7 @@ Window {
                 anchors.top: titleBar.bottom
                 anchors.bottom: parent.bottom
                 anchors.margins: 10
-                anchors.topMargin: 15
+                anchors.topMargin: 10  // 增加顶部边距，避免与标题栏重叠
                 visible: !draggableWindow.isCollapsed
             }
         }

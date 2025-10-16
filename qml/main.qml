@@ -26,6 +26,7 @@ ApplicationWindow {
     // PBR控制面板可见性
     property bool pbrControlVisible: false
     
+ 
     // 工具栏
     header: Rectangle {
         height: 60
@@ -125,6 +126,27 @@ ApplicationWindow {
                         pbrControlVisible = !pbrControlVisible;
                     }
                 }
+                
+                // 新增：使用新天空盒类创建图形的按钮
+                Button {
+                    text: "新天空盒"
+                    background: Rectangle {
+                        color: "#1abc9c"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "新天空盒"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Create Shape with New Skybox button clicked")
+                        osgViewer.createShapeWithNewSkybox()
+                    }
+                }
+                
+               
             }
             
             // 状态指示器
@@ -448,11 +470,11 @@ ApplicationWindow {
                 id: pbrControl
                 anchors.fill: parent
                 
-                onMaterialPropertiesChanged: function(albedoR, albedoG, albedoB, 
+                onMaterialPropertiesChanged: function(albedoR, albedoG, albedoB, albedoA,
                                                    metallic, roughness, 
                                                    specular, ao) {
                     // 当材质属性改变时，更新OSG场景中的材质
-                    osgViewer.updatePBRMaterial(albedoR, albedoG, albedoB, metallic, roughness, specular, ao);
+                    osgViewer.updatePBRMaterial(albedoR, albedoG, albedoB, albedoA, metallic, roughness, specular, ao);
                 }
             }
         }

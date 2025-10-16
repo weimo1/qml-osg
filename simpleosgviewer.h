@@ -79,8 +79,8 @@ public slots:
     void setShapeColor(float r, float g, float b, float a = 1.0f);  // 添加设置图形颜色的方法
     void selectModel(int x, int y);  // 添加选择模型的方法
     
-    // 添加更新PBR材质的方法
-    void updatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+    // 添加更新PBR材质的方法（包含Alpha参数）
+    void updatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                           float metallic, float roughness, 
                           float specular, float ao);
     
@@ -93,9 +93,10 @@ public slots:
     void invokeSetViewType(ViewType viewType);  // 添加设置视图类型的槽函数
     void invokeResetToHomeView();  // 添加回归主视角的槽函数
     void updateCameraPosition();  // 添加更新摄像机位置的槽函数
-    void invokeUpdatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+    // 更新PBR材质的槽函数（包含Alpha参数）
+    void invokeUpdatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                                 float metallic, float roughness, 
-                                float specular, float ao);  // 添加更新PBR材质的槽函数
+                                float specular, float ao);
 
 signals:
     // 添加信号，用于通知QML打开文件对话框

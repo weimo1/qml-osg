@@ -583,8 +583,8 @@ void SimpleOSGRenderer::highlightGeometry(osg::Geometry* geom)
     }
 }
 
-// 添加更新PBR材质的方法
-void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+// 添加更新PBR材质的方法（包含Alpha参数）
+void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                                         float metallic, float roughness, 
                                         float specular, float ao)
 {
@@ -592,17 +592,17 @@ void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float al
         // 创建访问器来遍历场景图并更新所有PBR球体的材质
         class PBRMaterialUpdater : public osg::NodeVisitor {
         public:
-            osg::Vec3 albedo;
+            osg::Vec4 albedo;  // 包含Alpha通道
             float metallic;
             float roughness;
             float specular;
             float ao;
             
-            PBRMaterialUpdater(float albedoR, float albedoG, float albedoB, 
+            PBRMaterialUpdater(float albedoR, float albedoG, float albedoB, float albedoA,
                               float metallic, float roughness, 
                               float specular, float ao)
                 : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-                  albedo(albedoR, albedoG, albedoB),
+                  albedo(albedoR, albedoG, albedoB, albedoA),
                   metallic(metallic),
                   roughness(roughness),
                   specular(specular),
@@ -619,12 +619,20 @@ void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float al
                         stateSet->getUniform("metallic") || 
                         stateSet->getUniform("roughness")) {
                         
-                        // 更新基础颜色uniform
+                        // 更新基础颜色uniform（包含Alpha）
                         osg::Uniform* albedoUniform = stateSet->getUniform("albedo");
                         if (albedoUniform) {
-                            albedoUniform->set(albedo);
+                            albedoUniform->set(osg::Vec3(albedo.x(), albedo.y(), albedo.z()));
                         } else {
-                            stateSet->addUniform(new osg::Uniform("albedo", albedo));
+                            stateSet->addUniform(new osg::Uniform("albedo", osg::Vec3(albedo.x(), albedo.y(), albedo.z())));
+                        }
+                        
+                        // 更新Alpha值（如果着色器支持）
+                        osg::Uniform* alphaUniform = stateSet->getUniform("alpha");
+                        if (alphaUniform) {
+                            alphaUniform->set(albedo.w());
+                        } else {
+                            stateSet->addUniform(new osg::Uniform("alpha", albedo.w()));
                         }
                         
                         // 更新金属度uniform
@@ -661,7 +669,7 @@ void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float al
         };
         
         // 创建并应用访问器
-        PBRMaterialUpdater updater(albedoR, albedoG, albedoB, metallic, roughness, specular, ao);
+        PBRMaterialUpdater updater(albedoR, albedoG, albedoB, albedoA, metallic, roughness, specular, ao);
         m_rootNode->accept(updater);
         
         // 强制更新视图
