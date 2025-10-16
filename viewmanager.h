@@ -16,10 +16,6 @@ public:
     // 设置视图参数
     void setViewParameters(osg::Vec3d eye, osg::Vec3d center, osg::Vec3d up);
     
-    // 设置和获取正交投影缩放因子
-    void setOrthographicScale(double scale);
-    double getOrthographicScale() const;
-    
     // 从操作器获取当前视图参数
     void updateViewParametersFromManipulator(osgViewer::Viewer* viewer);
     
@@ -34,7 +30,7 @@ public:
     // 设置特定视图类型
     void setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
     
-    // 更新正交投影（用于滚轮缩放）
+    // 更新投影（用于滚轮缩放）- 保持函数名但只处理透视投影
     void updateOrthographicProjection(osgViewer::Viewer* viewer, int width, int height);
     
 private:
@@ -42,9 +38,6 @@ private:
     osg::Vec3d m_eye;
     osg::Vec3d m_center;
     osg::Vec3d m_up;
-    
-    // 正交投影缩放因子
-    double m_orthographicScale;
     
     // 视图相关的辅助函数
     void setupFrontView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height);

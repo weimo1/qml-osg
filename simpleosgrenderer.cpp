@@ -96,6 +96,10 @@ void SimpleOSGRenderer::initializeOSG(int width, int height)
         // 启用轨迹球操作器，允许鼠标旋转 (所有视图类型)
         osg::ref_ptr<osgGA::TrackballManipulator> manipulator = new osgGA::TrackballManipulator;
         
+        // 设置操作器参数以改善旋转体验
+        manipulator->setVerticalAxisFixed(false);  // 不固定垂直轴
+        manipulator->setAllowThrow(false);         // 禁止投掷效果，避免自动旋转
+        
         m_viewer->setCameraManipulator(manipulator.get());
         
         osg::Vec3 center(0.0f, 0.0f, 0.0f);  
@@ -110,6 +114,11 @@ void SimpleOSGRenderer::initializeOSG(int width, int height)
             // 使用场景的中心作为旋转中心
             center = bb.center();
         }
+        
+        // 设置操作器的home位置
+        osg::Vec3 eye(0.0f, -5.0f, 0.0f);
+        osg::Vec3 up(0.0f, 0.0f, 1.0f);
+        manipulator->setHomePosition(eye, center, up);
         
         // 添加事件处理器
         m_viewer->addEventHandler(new osgViewer::StatsHandler);

@@ -9,7 +9,6 @@ ViewManager::ViewManager()
     : m_eye(0.0, -5.0, 0.0)
     , m_center(0.0, 0.0, 0.0)
     , m_up(0.0, 0.0, 1.0)
-    , m_orthographicScale(1.0)
 {
 }
 
@@ -23,18 +22,6 @@ void ViewManager::setViewParameters(osg::Vec3d eye, osg::Vec3d center, osg::Vec3
     m_eye = eye;
     m_center = center;
     m_up = up;
-}
-
-// 设置正交投影缩放因子
-void ViewManager::setOrthographicScale(double scale)
-{
-    m_orthographicScale = scale;
-}
-
-// 获取正交投影缩放因子
-double ViewManager::getOrthographicScale() const
-{
-    return m_orthographicScale;
 }
 
 // 从操作器获取当前视图参数
@@ -92,9 +79,6 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
 {
     if (!viewer || !rootNode) return;
     
-    // 重置正交投影缩放因子
-    m_orthographicScale = 1.0;
-    
     // 获取场景的边界框，用于设置操作器的旋转中心
     osg::ComputeBoundsVisitor boundsVisitor;
     rootNode->accept(boundsVisitor);
@@ -147,6 +131,9 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
         
         // 对于所有视图类型，都不固定垂直轴以获得更好的旋转体验
         manipulator->setVerticalAxisFixed(false);
+        
+        // 禁止投掷效果，避免自动旋转
+        manipulator->setAllowThrow(false);
         
         // 立即应用home位置
         manipulator->home(0.0);
@@ -207,15 +194,8 @@ void ViewManager::setupFrontView(osgViewer::Viewer* viewer, osg::Group* rootNode
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置正交投影，根据模型大小和宽高比调整范围
-    double orthoSize = modelSize * m_orthographicScale;
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-orthoSize * aspectRatio, orthoSize * aspectRatio, 
-                                          -orthoSize, orthoSize, -viewDistance, viewDistance * 3);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-orthoSize, orthoSize,
-                                          -orthoSize / aspectRatio, orthoSize / aspectRatio, -viewDistance, viewDistance * 3);
-    }
+    // 设置透视投影（不再使用正交投影）
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 1.0, 10000.0);
 }
 
 void ViewManager::setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -260,15 +240,8 @@ void ViewManager::setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置正交投影，根据模型大小和宽高比调整范围
-    double orthoSize = modelSize * m_orthographicScale;
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-orthoSize * aspectRatio, orthoSize * aspectRatio, 
-                                          -orthoSize, orthoSize, -viewDistance, viewDistance * 3);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-orthoSize, orthoSize,
-                                          -orthoSize / aspectRatio, orthoSize / aspectRatio, -viewDistance, viewDistance * 3);
-    }
+    // 设置透视投影（不再使用正交投影）
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 1.0, 10000.0);
 }
 
 void ViewManager::setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -313,15 +286,8 @@ void ViewManager::setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, 
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置正交投影，根据模型大小和宽高比调整范围
-    double orthoSize = modelSize * m_orthographicScale;
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-orthoSize * aspectRatio, orthoSize * aspectRatio, 
-                                          -orthoSize, orthoSize, -viewDistance, viewDistance * 3);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-orthoSize, orthoSize,
-                                          -orthoSize / aspectRatio, orthoSize / aspectRatio, -viewDistance, viewDistance * 3);
-    }
+    // 设置透视投影（不再使用正交投影）
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 1.0, 10000.0);
 }
 
 void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -345,9 +311,13 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     
     // 设置透视投影
     camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 1.0, 10000.0);
+    
+    // 确保深度测试正确配置
+    osg::StateSet* stateset = camera->getOrCreateStateSet();
+    stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
 }
 
-// 更新正交投影（用于滚轮缩放）
+// 更新投影（用于滚轮缩放）- 现在只处理透视投影
 void ViewManager::updateOrthographicProjection(osgViewer::Viewer* viewer, int width, int height)
 {
     if (!viewer) return;
@@ -355,16 +325,4 @@ void ViewManager::updateOrthographicProjection(osgViewer::Viewer* viewer, int wi
     osg::Camera* camera = viewer->getCamera();
     if (!camera) return;
     
-    // 计算宽高比
-    double aspectRatio = static_cast<double>(width) / static_cast<double>(height);
-    
-    // 根据当前视图类型更新正交投影
-    // 这里我们假设当前是正交投影模式，直接更新投影矩阵
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-1.0 * aspectRatio * m_orthographicScale, 1.0 * aspectRatio * m_orthographicScale,
-                                          -1.0 * m_orthographicScale, 1.0 * m_orthographicScale, 1.0, 100.0);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-1.0 * m_orthographicScale, 1.0 * m_orthographicScale,
-                                          -1.0 / aspectRatio * m_orthographicScale, 1.0 / aspectRatio * m_orthographicScale, 1.0, 100.0);
-    }
 }
