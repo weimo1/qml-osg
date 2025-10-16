@@ -41,6 +41,7 @@
 #include<osgUtil/CullVisitor>
 #include <osgViewer/Viewer>
 #include <osgGA/TrackballManipulator>
+#include "skybox.h"
 
 // 天空盒回调：使天空盒始终跟随摄像机位置但不旋转
 class SkyboxTransformCallback : public osg::NodeCallback
@@ -691,4 +692,94 @@ osg::Node* ShaderCube::createSkyBox(const std::string& resourcePath)
     transform->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 
     return transform.release();
+}
+
+// 创建使用新SkyBox类的天空盒
+osg::Node* ShaderCube::createSkyBoxWithNewClass(const std::string& resourcePath)
+{
+    // 创建球体几何体作为天空盒
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    
+    // 创建自定义球体几何体，确保正确的纹理坐标
+    osg::ref_ptr<osg::Geometry> geometry = createSphereGeometry(500.0f, 64, 32);
+    geode->addDrawable(geometry);
+    
+    // 创建新的SkyBox实例
+    osg::ref_ptr<SkyBox> skybox = new SkyBox;
+    
+    // 加载立方体贴图
+    osg::ref_ptr<osg::Image> posX = osgDB::readImageFile(resourcePath + "/px.png");
+    osg::ref_ptr<osg::Image> negX = osgDB::readImageFile(resourcePath + "/nx.png");
+    osg::ref_ptr<osg::Image> posY = osgDB::readImageFile(resourcePath + "/py.png");
+    osg::ref_ptr<osg::Image> negY = osgDB::readImageFile(resourcePath + "/ny.png");
+    osg::ref_ptr<osg::Image> posZ = osgDB::readImageFile(resourcePath + "/pz.png");
+    osg::ref_ptr<osg::Image> negZ = osgDB::readImageFile(resourcePath + "/nz.png");
+    
+    // 检查所有图像是否加载成功
+    if (!posX || !negX || !posY || !negY || !posZ || !negZ) {
+        std::cout << "Failed to load one or more skybox textures" << std::endl;
+        return new osg::Group;
+    }
+    
+    // 设置环境贴图
+    skybox->setEnvironmentMap(0, posX, negX, posY, negY, posZ, negZ);
+    
+    // 添加几何体到天空盒
+    skybox->addChild(geode);
+    
+    return skybox.release();
+}
+
+// 创建球体几何体
+osg::Geometry* ShaderCube::createSphereGeometry(float radius, unsigned int longitudeSegments, unsigned int latitudeSegments)
+{
+    osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
+    
+    // 创建顶点数组
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array;
+    
+    // 生成球体顶点
+    for (unsigned int lat = 0; lat <= latitudeSegments; ++lat) {
+        float theta = static_cast<float>(lat) * osg::PI / static_cast<float>(latitudeSegments); // 极角 (0 to PI)
+        
+        for (unsigned int lon = 0; lon <= longitudeSegments; ++lon) {
+            float phi = static_cast<float>(lon) * 2.0f * osg::PI / static_cast<float>(longitudeSegments); // 方位角 (0 to 2PI)
+            
+            // 球面坐标转笛卡尔坐标
+            float x = radius * sin(theta) * cos(phi);
+            float y = radius * sin(theta) * sin(phi);
+            float z = radius * cos(theta);
+            
+            vertices->push_back(osg::Vec3(x, y, z));
+        }
+    }
+    
+    geometry->setVertexArray(vertices);
+    
+    // 创建索引数组
+    osg::ref_ptr<osg::DrawElementsUInt> indices = new osg::DrawElementsUInt(GL_TRIANGLES);
+    
+    for (unsigned int lat = 0; lat < latitudeSegments; ++lat) {
+        for (unsigned int lon = 0; lon < longitudeSegments; ++lon) {
+            unsigned int first = lat * (longitudeSegments + 1) + lon;
+            unsigned int second = first + longitudeSegments + 1;
+            
+            // 第一个三角形
+            indices->push_back(first);
+            indices->push_back(second);
+            indices->push_back(first + 1);
+            
+            // 第二个三角形
+            indices->push_back(second);
+            indices->push_back(second + 1);
+            indices->push_back(first + 1);
+        }
+    }
+    
+    geometry->addPrimitiveSet(indices);
+    
+    // 设置顶点属性数组
+    geometry->setVertexAttribArray(0, vertices, osg::Array::BIND_PER_VERTEX);
+    
+    return geometry.release();
 }

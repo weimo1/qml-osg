@@ -268,6 +268,17 @@ void SimpleOSGRenderer::changeGeometryColor(osg::Geometry* geom)
         m_viewer->requestRedraw();
     }
 }
+
+// 实现创建使用新天空盒类的图形功能
+void SimpleOSGRenderer::createShapeWithNewSkybox()
+{
+    if (m_viewer && m_rootNode) {
+        m_uiHandler->createShapeWithNewSkybox(m_viewer, m_rootNode, m_shapeNode);
+        // 重置视图以适应新创建的立方体
+        resetView(m_viewType);
+    }
+}
+
 void SimpleOSGRenderer::createSimpleScene()
 {
     // 创建一个自定义的立方体，每个面有不同的颜色
@@ -569,5 +580,94 @@ void SimpleOSGRenderer::highlightGeometry(osg::Geometry* geom)
     if (m_viewer) {
         m_viewer->advance();
         m_viewer->requestRedraw();
+    }
+}
+
+// 添加更新PBR材质的方法
+void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+                                        float metallic, float roughness, 
+                                        float specular, float ao)
+{
+    if (m_rootNode.valid()) {
+        // 创建访问器来遍历场景图并更新所有PBR球体的材质
+        class PBRMaterialUpdater : public osg::NodeVisitor {
+        public:
+            osg::Vec3 albedo;
+            float metallic;
+            float roughness;
+            float specular;
+            float ao;
+            
+            PBRMaterialUpdater(float albedoR, float albedoG, float albedoB, 
+                              float metallic, float roughness, 
+                              float specular, float ao)
+                : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+                  albedo(albedoR, albedoG, albedoB),
+                  metallic(metallic),
+                  roughness(roughness),
+                  specular(specular),
+                  ao(ao)
+            {
+            }
+            
+            virtual void apply(osg::Geode& geode) {
+                // 检查这个Geode是否包含PBR球体
+                osg::StateSet* stateSet = geode.getStateSet();
+                if (stateSet) {
+                    // 检查是否存在PBR相关的uniform
+                    if (stateSet->getUniform("albedo") || 
+                        stateSet->getUniform("metallic") || 
+                        stateSet->getUniform("roughness")) {
+                        
+                        // 更新基础颜色uniform
+                        osg::Uniform* albedoUniform = stateSet->getUniform("albedo");
+                        if (albedoUniform) {
+                            albedoUniform->set(albedo);
+                        } else {
+                            stateSet->addUniform(new osg::Uniform("albedo", albedo));
+                        }
+                        
+                        // 更新金属度uniform
+                        osg::Uniform* metallicUniform = stateSet->getUniform("metallic");
+                        if (metallicUniform) {
+                            metallicUniform->set(metallic);
+                        } else {
+                            stateSet->addUniform(new osg::Uniform("metallic", metallic));
+                        }
+                        
+                        // 更新粗糙度uniform
+                        osg::Uniform* roughnessUniform = stateSet->getUniform("roughness");
+                        if (roughnessUniform) {
+                            roughnessUniform->set(roughness);
+                        } else {
+                            stateSet->addUniform(new osg::Uniform("roughness", roughness));
+                        }
+                        
+                        // 更新环境光遮蔽uniform
+                        osg::Uniform* aoUniform = stateSet->getUniform("ao");
+                        if (aoUniform) {
+                            aoUniform->set(ao);
+                        } else {
+                            stateSet->addUniform(new osg::Uniform("ao", ao));
+                        }
+                        
+                        // 注意：specular在PBR中通常不作为uniform传递，因为它是在着色器中计算的
+                        // 如果需要，可以添加其他uniform更新
+                    }
+                }
+                
+                traverse(geode);
+            }
+        };
+        
+        // 创建并应用访问器
+        PBRMaterialUpdater updater(albedoR, albedoG, albedoB, metallic, roughness, specular, ao);
+        m_rootNode->accept(updater);
+        
+        // 强制更新视图
+        if (m_viewer) {
+            m_viewer->advance();
+            m_viewer->requestRedraw();
+        }
     }
 }

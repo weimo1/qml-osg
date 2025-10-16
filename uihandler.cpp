@@ -29,6 +29,7 @@
 #include <QDebug>
 #include "shadercube.h"
 #include "shaderpbr.h"  // 添加PBR头文件
+#include "skybox.h"
 
 
 UIHandler::UIHandler()
@@ -48,6 +49,36 @@ void UIHandler::createShape(osgViewer::Viewer* viewer, osg::Group* rootNode, osg
         // 创建天空盒
         std::string resourcePath = "E:/qt test/qml+osg/resource";
         osg::ref_ptr<osg::Node> skyBox = ShaderCube::createSkyBox(resourcePath);
+        if (skyBox.valid()) {
+            rootNode->addChild(skyBox);
+        }
+        
+        // 使用Shader创建立方体
+        osg::ref_ptr<osg::Node> shaderCube = ShaderCube::createCube(1.0f);
+        
+        // 更新节点引用
+        shapeNode = dynamic_cast<osg::Geode*>(shaderCube.get());
+        
+        // 将Shader立方体添加到根节点
+        if (shaderCube.valid()) {
+            rootNode->addChild(shaderCube);
+        }
+        
+        // 强制更新视图
+        viewer->advance();
+        viewer->requestRedraw();
+    }
+}
+
+void UIHandler::createShapeWithNewSkybox(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode)
+{
+    if (viewer && rootNode) {
+        // 清除现有的场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        
+        // 创建使用新类的天空盒
+        std::string resourcePath = "E:/qt test/qml+osg/resource";
+        osg::ref_ptr<osg::Node> skyBox = ShaderCube::createSkyBoxWithNewClass(resourcePath);
         if (skyBox.valid()) {
             rootNode->addChild(skyBox);
         }

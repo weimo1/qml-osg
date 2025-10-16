@@ -54,6 +54,8 @@ add_executable(${PROJECT_NAME}
     uihandler.h
     viewmanager.cpp
     viewmanager.h
+    skybox.cpp
+    skybox.h
     qml.qrc
 )
 

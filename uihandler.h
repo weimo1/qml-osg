@@ -19,6 +19,7 @@ public:
     ~UIHandler();
     
     void createShape(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);
+    void createShapeWithNewSkybox(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);
     void createPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);  // 添加PBR场景创建函数
     void resetView(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
     void resetToHomeView(osgViewer::Viewer* viewer, osg::Group* rootNode);

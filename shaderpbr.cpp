@@ -31,9 +31,9 @@ osg::Node* ShaderPBR::createPBRSphere(float radius)
     
     for (int row = 0; row < rows; ++row) {
         for (int col = 0; col < cols; ++col) {
-            // 计算金属度和粗糙度
-            float metallic = (float)row / (float)(rows - 1);
-            float roughness = (float)col / (float)(cols - 1);
+            // 调整金属度和粗糙度的范围，避免极端值
+            float metallic = (float)row / (float)(rows - 1) * 0.9f + 0.05f;  // 范围 0.05-0.95
+            float roughness = (float)col / (float)(cols - 1) * 0.9f + 0.05f; // 范围 0.05-0.95
             
             // 使用不同的颜色来更好地展示金属度
             osg::Vec3 baseColor;
@@ -67,14 +67,14 @@ osg::Node* ShaderPBR::createPBRSphere(float radius)
             
             // 设置多个光源颜色 - 适中的光源强度
             osg::ref_ptr<osg::Uniform> lightColors = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightColors", 4);
-            lightColors->setElement(0, osg::Vec3(300.0f, 300.0f, 300.0f));
-            lightColors->setElement(1, osg::Vec3(300.0f, 300.0f, 300.0f));
-            lightColors->setElement(2, osg::Vec3(300.0f, 300.0f, 300.0f));
-            lightColors->setElement(3, osg::Vec3(300.0f, 300.0f, 300.0f));
+            lightColors->setElement(0, osg::Vec3(500.0f, 500.0f, 500.0f)); // 增加光源强度
+            lightColors->setElement(1, osg::Vec3(500.0f, 500.0f, 500.0f));
+            lightColors->setElement(2, osg::Vec3(500.0f, 500.0f, 500.0f));
+            lightColors->setElement(3, osg::Vec3(500.0f, 500.0f, 500.0f));
             stateset->addUniform(lightColors);
             
-            // 设置相机位置
-            stateset->addUniform(new osg::Uniform("camPos", osg::Vec3(0.0f, 0.0f, 20.0f)));
+            // 设置相机位置（统一设置）
+            stateset->addUniform(new osg::Uniform("camPos", osg::Vec3(0.0f, -10.0f, 2.0f)));
             
             // 创建并应用简化版IBL着色器程序
             osg::ref_ptr<osg::Program> program = ShaderPBR::createPBRShaderSimpleIBL();
@@ -164,8 +164,9 @@ osg::Node* ShaderPBR::createPBRSphereWithSkyboxTexture(float radius, osg::Textur
     
     for (int row = 0; row < rows; ++row) {
         for (int col = 0; col < cols; ++col) {
-            float metallic = (float)row / (float)(rows - 1);
-            float roughness = (float)col / (float)(cols - 1);
+            // 调整金属度和粗糙度的范围，避免极端值
+            float metallic = (float)row / (float)(rows - 1) * 0.9f + 0.05f;  // 范围 0.05-0.95
+            float roughness = (float)col / (float)(cols - 1) * 0.9f + 0.05f; // 范围 0.05-0.95
             
             // 使用对比色
             osg::Vec3 baseColor;
@@ -184,21 +185,24 @@ osg::Node* ShaderPBR::createPBRSphereWithSkyboxTexture(float radius, osg::Textur
             stateset->addUniform(new osg::Uniform("roughness", roughness));
             stateset->addUniform(new osg::Uniform("ao", 1.0f));
             
-            // 点光源
+            // 调整点光源位置，使其更容易观察到光照效果
             osg::ref_ptr<osg::Uniform> lightPositions = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightPositions", 4);
-            lightPositions->setElement(0, osg::Vec3(10.0f, 10.0f, 10.0f));
-            lightPositions->setElement(1, osg::Vec3(-10.0f, 10.0f, 10.0f));
-            lightPositions->setElement(2, osg::Vec3(10.0f, -10.0f, 10.0f));
-            lightPositions->setElement(3, osg::Vec3(-10.0f, -10.0f, 10.0f));
+            // 将光源位置调整得更靠近球体阵列中心
+            lightPositions->setElement(0, osg::Vec3(5.0f, 5.0f, 5.0f));
+            lightPositions->setElement(1, osg::Vec3(-5.0f, 5.0f, 5.0f));
+            lightPositions->setElement(2, osg::Vec3(5.0f, -5.0f, 5.0f));
+            lightPositions->setElement(3, osg::Vec3(-5.0f, -5.0f, 5.0f));
             stateset->addUniform(lightPositions);
             
+            // 增加光源强度，使其更明显
             osg::ref_ptr<osg::Uniform> lightColors = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightColors", 4);
             for(int i = 0; i < 4; i++) {
-                lightColors->setElement(i, osg::Vec3(300.0f, 300.0f, 300.0f));
+                lightColors->setElement(i, osg::Vec3(500.0f, 500.0f, 500.0f)); // 增加光源强度
             }
             stateset->addUniform(lightColors);
             
-            stateset->addUniform(new osg::Uniform("camPos", osg::Vec3(0.0f, 0.0f, 20.0f)));
+            // 调整相机位置，使其更适合观察球体阵列
+            stateset->addUniform(new osg::Uniform("camPos", osg::Vec3(0.0f, -10.0f, 2.0f)));
             
             // ⚠️ 关键：设置天空盒纹理到纹理单元1
             if (skyboxTexture) {
@@ -451,10 +455,10 @@ osg::Program* ShaderPBR::createPBRShaderSimpleIBL()
             
             vec3 ambient = (kD * diffuse + specular) * ao;
             
-            // ============ 最终颜色 ============
+            // ============ 最终颜色 ============  
             vec3 color = ambient + Lo;
             
-            // 增强对比度
+            // 增强对比度，但避免过度饱和
             color = color / (color + vec3(1.0));
             color = pow(color, vec3(1.0/2.2));
             

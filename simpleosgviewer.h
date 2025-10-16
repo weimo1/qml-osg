@@ -70,6 +70,7 @@ signals:
 public slots:
     // 添加公共方法供QML调用
     void createShape();
+    void createShapeWithNewSkybox();
     void createPBRScene();  // 添加PBR场景创建方法
     void resetView();
     void resetToHomeView();  // 添加回归主视角的方法
@@ -78,14 +79,23 @@ public slots:
     void setShapeColor(float r, float g, float b, float a = 1.0f);  // 添加设置图形颜色的方法
     void selectModel(int x, int y);  // 添加选择模型的方法
     
+    // 添加更新PBR材质的方法
+    void updatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+                          float metallic, float roughness, 
+                          float specular, float ao);
+    
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
+    void invokeCreateShapeWithNewSkybox();
     void invokeCreatePBRScene();  // 添加PBR场景创建的槽函数
     void invokeResetView();
     void invokeLoadOSGFile(const QString& fileName);
     void invokeSetViewType(ViewType viewType);  // 添加设置视图类型的槽函数
     void invokeResetToHomeView();  // 添加回归主视角的槽函数
     void updateCameraPosition();  // 添加更新摄像机位置的槽函数
+    void invokeUpdatePBRMaterial(float albedoR, float albedoG, float albedoB, 
+                                float metallic, float roughness, 
+                                float specular, float ao);  // 添加更新PBR材质的槽函数
 
 signals:
     // 添加信号，用于通知QML打开文件对话框

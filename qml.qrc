@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>qml/main.qml</file>
+        <file>qml/PBRMaterialControl.qml</file>
+        <file>qml/DraggableWindow.qml</file>
     </qresource>
 </RCC>

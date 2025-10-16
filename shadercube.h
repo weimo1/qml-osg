@@ -3,6 +3,7 @@
 
 #include <osg/Node>
 #include <osg/Program>
+#include <osg/Geometry>
 #include <osg/Matrix>
 #include <string>
 
@@ -21,8 +22,15 @@ public:
     // 创建天空盒
     static osg::Node* createSkyBox(const std::string& resourcePath);
     
+    // 创建使用新类的天空盒
+    static osg::Node* createSkyBoxWithNewClass(const std::string& resourcePath);
+    
     // 设置uniform变量
     static void setupUniforms(osg::StateSet* stateset);
+    
+private:
+    // 创建球体几何体
+    static osg::Geometry* createSphereGeometry(float radius, unsigned int longitudeSegments, unsigned int latitudeSegments);
 };
 
 #endif // SHADERCUBE_H
