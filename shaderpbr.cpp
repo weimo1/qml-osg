@@ -18,6 +18,8 @@
 #include <osg/Depth>
 #include <osg/TexEnv>
 #include <cmath>
+#include <osg/TextureCubeMap>
+#include <QDir>
 
 // 创建带PBR效果的球体阵列
 osg::Node* ShaderPBR::createPBRSphere(float radius)
@@ -103,8 +105,8 @@ osg::Node* ShaderPBR::createPBRSceneWithSkybox(float sphereRadius)
     // 创建场景根节点
     osg::ref_ptr<osg::Group> root = new osg::Group;
     
-    // ⚠️ 步骤1: 先创建天空盒，提取CubeMap纹理
-    osg::ref_ptr<osg::Node> skyboxNode = ShaderPBR::createSkybox("E:/qt test/qml+osg/resource");
+    std::string resourcePath = QDir::currentPath().toStdString() + "/../../resource";
+    osg::ref_ptr<osg::Node> skyboxNode = ShaderPBR::createSkybox(resourcePath);
     
     // ⚠️ 步骤2: 从天空盒中提取TextureCubeMap
     osg::TextureCubeMap* skyboxTexture = nullptr;

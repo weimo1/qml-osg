@@ -1,7 +1,6 @@
 #include "uihandler.h"
 #include "viewmanager.h"
 #include <QFile>
-#include <QCoreApplication>
 #include <QDir>
 #include <osg/Group>
 #include <osg/Geode>
@@ -46,8 +45,8 @@ void UIHandler::createShape(osgViewer::Viewer* viewer, osg::Group* rootNode, osg
         // 清除现有的场景
         rootNode->removeChildren(0, rootNode->getNumChildren());
         
-        // 创建天空盒
-        std::string resourcePath = "E:/qt test/qml+osg/resource";
+        // 创建天空盒，使用相对路径（基于应用程序目录）
+        std::string resourcePath = QDir::currentPath().toStdString() + "/../../resource";
         osg::ref_ptr<osg::Node> skyBox = ShaderCube::createSkyBox(resourcePath);
         if (skyBox.valid()) {
             rootNode->addChild(skyBox);
@@ -76,8 +75,8 @@ void UIHandler::createShapeWithNewSkybox(osgViewer::Viewer* viewer, osg::Group* 
         // 清除现有的场景
         rootNode->removeChildren(0, rootNode->getNumChildren());
         
-        // 创建使用新类的天空盒
-        std::string resourcePath = "E:/qt test/qml+osg/resource";
+        // 创建使用新类的天空盒，使用相对路径（基于应用程序目录）
+        std::string resourcePath = QDir::currentPath().toStdString() + "/../../resource";
         osg::ref_ptr<osg::Node> skyBox = ShaderCube::createSkyBoxWithNewClass(resourcePath);
         if (skyBox.valid()) {
             rootNode->addChild(skyBox);

@@ -115,11 +115,11 @@ Item {
                     // 增加点击区域
                     anchors.margins: -20
                     
-                    onPressed: {
+                    onPressed: function() {
                         handleSV(mouseX, mouseY);
                     }
                     
-                    onPositionChanged: {
+                    onPositionChanged: function() {
                         if (pressed) {
                             handleSV(mouseX, mouseY);
                         }
@@ -206,11 +206,11 @@ Item {
                     // 增加点击区域
                     anchors.margins: -15
                     
-                    onPressed: {
+                    onPressed: function() {
                         handleHue(mouseX);
                     }
                     
-                    onPositionChanged: {
+                    onPositionChanged: function() {
                         if (pressed) {
                             handleHue(mouseX);
                         }
@@ -310,11 +310,11 @@ Item {
                     // 增加点击区域
                     anchors.margins: -15
                     
-                    onPressed: {
+                    onPressed: function() {
                         handleAlpha(mouseX);
                     }
                     
-                    onPositionChanged: {
+                    onPositionChanged: function() {
                         if (pressed) {
                             handleAlpha(mouseX);
                         }
@@ -352,7 +352,7 @@ Item {
                     text: Math.round(colorPicker.selectedColor.r * 255)
                     inputMethodHints: Qt.ImhDigitsOnly
                     validator: IntValidator { bottom: 0; top: 255 }
-                    onTextChanged: {
+                    onTextChanged: function() {
                         if (text !== "" && !internalUpdate) {
                             var r = parseInt(text) / 255.0;
                             var newColor = Qt.rgba(r, colorPicker.selectedColor.g, colorPicker.selectedColor.b, colorPicker.alpha);
@@ -368,7 +368,7 @@ Item {
                     text: Math.round(colorPicker.selectedColor.g * 255)
                     inputMethodHints: Qt.ImhDigitsOnly
                     validator: IntValidator { bottom: 0; top: 255 }
-                    onTextChanged: {
+                    onTextChanged: function() {
                         if (text !== "" && !internalUpdate) {
                             var g = parseInt(text) / 255.0;
                             var newColor = Qt.rgba(colorPicker.selectedColor.r, g, colorPicker.selectedColor.b, colorPicker.alpha);
@@ -384,7 +384,7 @@ Item {
                     text: Math.round(colorPicker.selectedColor.b * 255)
                     inputMethodHints: Qt.ImhDigitsOnly
                     validator: IntValidator { bottom: 0; top: 255 }
-                    onTextChanged: {
+                    onTextChanged: function() {
                         if (text !== "" && !internalUpdate) {
                             var b = parseInt(text) / 255.0;
                             var newColor = Qt.rgba(colorPicker.selectedColor.r, colorPicker.selectedColor.g, b, colorPicker.alpha);
@@ -411,7 +411,7 @@ Item {
                 from: 0
                 to: 255
                 value: Math.round(colorPicker.selectedColor.r * 255)
-                onValueChanged: {
+                onValueChanged: function() {
                     if (!internalUpdate) {
                         var newColor = Qt.rgba(value / 255, colorPicker.selectedColor.g, colorPicker.selectedColor.b, colorPicker.alpha);
                         updateFromRgb(newColor);
@@ -425,7 +425,7 @@ Item {
                 from: 0
                 to: 255
                 value: Math.round(colorPicker.selectedColor.g * 255)
-                onValueChanged: {
+                onValueChanged: function() {
                     if (!internalUpdate) {
                         var newColor = Qt.rgba(colorPicker.selectedColor.r, value / 255, colorPicker.selectedColor.b, colorPicker.alpha);
                         updateFromRgb(newColor);
@@ -439,7 +439,7 @@ Item {
                 from: 0
                 to: 255
                 value: Math.round(colorPicker.selectedColor.b * 255)
-                onValueChanged: {
+                onValueChanged: function() {
                     if (!internalUpdate) {
                         var newColor = Qt.rgba(colorPicker.selectedColor.r, colorPicker.selectedColor.g, value / 255, colorPicker.alpha);
                         updateFromRgb(newColor);
@@ -453,7 +453,7 @@ Item {
                 from: 0
                 to: 255
                 value: Math.round(colorPicker.alpha * 255)
-                onValueChanged: {
+                onValueChanged: function() {
                     if (!internalUpdate) {
                         colorPicker.alpha = value / 255;
                         updateColor();

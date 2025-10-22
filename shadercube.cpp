@@ -23,7 +23,7 @@
 #include<osg/Quat>
 #include<osg/Matrix>
 #include<osg/ShapeDrawable>
-
+#include <QDir>
 #include<osg/Geode>
 #include<osg/Geometry>
 #include<osg/Transform>
@@ -42,7 +42,7 @@
 #include <osgViewer/Viewer>
 #include <osgGA/TrackballManipulator>
 #include "skybox.h"
-
+#include <QCoreApplication> 
 // 天空盒回调：使天空盒始终跟随摄像机位置但不旋转
 class SkyboxTransformCallback : public osg::NodeCallback
 {
@@ -443,7 +443,9 @@ osg::Node* ShaderCube::createCube(float size)
     stateset->addUniform(new osg::Uniform("useLighting", true)); // 启用光照
     
     // 加载并应用纹理
-    osg::ref_ptr<osg::Image> image = osgDB::readImageFile("E://1.png");
+    std::string resourcePath = QDir::currentPath().toStdString() + "/../../resource";
+    std::cout<<resourcePath<<std::endl;
+    osg::ref_ptr<osg::Image> image = osgDB::readImageFile(resourcePath + "/1.png");
     if (image.valid()) {
         osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
         texture->setImage(image);

@@ -26,6 +26,14 @@ ApplicationWindow {
     // PBR控制面板可见性
     property bool pbrControlVisible: false
     
+    // 导航栏宽度
+    property int navigationWidth: 80
+    
+    // 侧边栏宽度
+    property int sidebarWidth: 250
+    
+    // 当前选中的导航项
+    property string currentNavSelection: ""
  
     // 工具栏
     header: Rectangle {
@@ -146,6 +154,25 @@ ApplicationWindow {
                     }
                 }
                 
+                // 新增：大气渲染场景按钮
+                Button {
+                    text: "大气渲染"
+                    background: Rectangle {
+                        color: "#e74c3c"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "大气渲染"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Create Atmosphere Scene button clicked")
+                        osgViewer.createAtmosphereScene()
+                    }
+                }
+                
                
             }
             
@@ -179,265 +206,439 @@ ApplicationWindow {
         }
     }
     
-    // 主要内容区域
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.topMargin: 60  // 为工具栏留出空间
-        spacing: 10
+    // 主要内容区域 - 使用绝对定位确保完全填充
+    Item {
+        id: mainContent
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+            topMargin: 0 // 精确匹配工具栏高度
+        }
         
-        // OSG视图区域 - 横屏显示
+        // 左侧导航栏
         Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.margins: 15
-            color: "transparent"
-            border.color: "#bdc3c7"
-            border.width: 2
-            radius: 8
+            id: navigationBar
+            width: navigationWidth
+            height: parent.height
+            color: "#2c3e50"
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
             
-            // 添加内边框效果
-            Rectangle {
+            Column {
                 anchors.fill: parent
-                anchors.margins: 2
-                color: "transparent"
-                border.color: "#7f8c8d"
-                border.width: 1
-                radius: 6
+                spacing: 0
                 
-                // OSG视图
-                SimpleOSGViewer {
-                    id: osgViewer
-                    anchors.fill: parent
-                    anchors.margins: 5
-                    viewType: currentViewType
-                    
-                    // 监听视图类型变化
-                    onViewTypeChanged: {
-                        console.log("OSG Viewer view type changed to:", viewType);
+                // 导航项
+                Repeater {
+                    model: ListModel {
+                        ListElement { name: "场景"; icon: "\u{1F310}"; action: "scene" }  // 地球图标
+                        ListElement { name: "材质"; icon: "\u{1F3A8}"; action: "material" }  // 调色板图标
+                        ListElement { name: "视图"; icon: "\u{1F441}"; action: "view" }   // 眼睛图标
+                        ListElement { name: "模型"; icon: "\u{1F532}"; action: "model" }  // 方块图标
+                        ListElement { name: "光照"; icon: "\u{1F4A1}"; action: "light" }  // 灯泡图标
+                        ListElement { name: "动画"; icon: "\u{1F3AC}"; action: "animation" } // 电影图标
+                        ListElement { name: "粒子"; icon: "\u{2600}"; action: "particle" }  // 太阳图标
+                        ListElement { name: "物理"; icon: "\u{1F30C}"; action: "physics" }  // 银河图标
                     }
                     
-                    // 双击全屏和点选择
-                    MouseArea {
+                    Rectangle {
+                        width: parent.width
+                        height: 80
+                        color: mouseArea.containsMouse || currentNavSelection === model.action ? "#34495e" : "transparent"
+                        
+                        MouseArea {
+                            id: mouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                console.log(model.name + " clicked");
+                                // 二次点击收起侧边栏
+                                if (currentNavSelection === model.action) {
+                                    currentNavSelection = "";  // 收起侧边栏
+                                } else {
+                                    currentNavSelection = model.action;  // 展开侧边栏
+                                }
+                            }
+                        }
+                        
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 5
+                            
+                            Text {
+                                text: model.icon
+                                color: "white"
+                                font.pixelSize: 24
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                            
+                            Text {
+                                text: model.name
+                                color: "white"
+                                font.pixelSize: 12
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                        }
+                    }
+                }
+                
+                Item {
+                    Layout.fillHeight: true
+                    Rectangle {
                         anchors.fill: parent
-                        onPressed: function(mouse) {
-                            // Ctrl+左键点击选择模型
-                            if (mouse.button === Qt.LeftButton && (mouse.modifiers & Qt.ControlModifier)) {
-                                // 将鼠标坐标转换为OSG视图坐标
-                                var point = mapToItem(osgViewer, mouse.x, mouse.y);
-                                osgViewer.selectModel(point.x, point.y);
-                                mouse.accepted = true;
-                            } else {
-                                // 不处理任何鼠标按下事件，全部传递给OSG视图
-                                mouse.accepted = false;
-                            }
-                        }
-                        onDoubleClicked: function(mouse) {
-                            if (mouse.button === Qt.LeftButton) {
-                                // 左键双击回归视角
-                                osgViewer.resetToHomeView();
-                                mouse.accepted = true; // 左键双击被处理
-                            } else {
-                                mouse.accepted = false; // 其他双击事件传递给OSG视图
-                            }
-                        }
-                        onReleased: function(mouse) {
-                            // 不处理任何鼠标释放事件，全部传递给OSG视图
-                            mouse.accepted = false;
-                        }
-                        onPositionChanged: function(mouse) {
-                            // 不处理任何鼠标移动事件，全部传递给OSG视图
-                            mouse.accepted = false;
-                        }
-                        onWheel: function(wheel) {
-                            // 不处理任何滚轮事件，全部传递给OSG视图
-                            wheel.accepted = false;
-                        }
-                        // 确保事件能够正确传递
-                        propagateComposedEvents: true
+                        color: "#2c3e50"
                     }
-
-                    onRequestFileDialog: {
-                        fileDialog.open();
-                    }
-                }
-                
-                // 添加鼠标位置显示（右下角）
-                Text {
-                    id: mousePosition
-                    text: "鼠标: x=" + osgViewer.mouseX + " y=" + osgViewer.mouseY
-                    color: "white"
-                    font.pixelSize: 12
-                    x: parent.width - width - 10
-                    y: parent.height - height - 10
-                    z: 100  // 确保在最上层显示
-                }
-                
-                // 添加摄像机位置显示（左上角）
-                Text {
-                    id: cameraPosition
-                    text: "相机: x=" + osgViewer.cameraX.toFixed(2) + " y=" + osgViewer.cameraY.toFixed(2) + " z=" + osgViewer.cameraZ.toFixed(2)
-                    color: "white"
-                    font.pixelSize: 12
-                    x: 10
-                    y: 10
-                    z: 100  // 确保在最上层显示
                 }
             }
         }
         
-        // 底部控制面板
+        // 侧边栏 - 显示选中导航项的详细功能
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 120
-            Layout.margins: 15
-            color: "white"
+            id: sidebar
+            width: currentNavSelection !== "" ? sidebarWidth : 0
+            height: parent.height
+            color: "#f8f9fa"
+            anchors.left: navigationBar.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
             border.color: "#bdc3c7"
             border.width: 1
-            radius: 8
             
-            ColumnLayout {
+            // 侧边栏内容根据选中的导航项显示
+            ScrollView {
                 anchors.fill: parent
-                anchors.margins: 15
-                spacing: 10
+                clip: true
                 
-                // 文件操作和视图切换
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 20
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 15
+                    
+                    // 标题
+                    Text {
+                        text: {
+                            switch(currentNavSelection) {
+                            case "view": return "视图控制";
+                            case "model": return "模型管理";
+                            default: return "功能面板";
+                            }
+                        }
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: "#2c3e50"
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 根据选中的导航项显示不同的内容
+                    Loader {
+                        sourceComponent: {
+                            switch(currentNavSelection) {
+                            case "view": return viewControls;
+                            case "model": return modelControls;
+                            default: return defaultControls;
+                            }
+                        }
+                        width: parent.width
+                    }
+                }
+            }
+            
+            // 视图控制组件
+            Component {
+                id: viewControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
+                    
+                    // 视图切换按钮
+                    Text {
+                        text: "视图类型"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    // 使用Column代替Grid来避免布局循环问题
+                    Column {
+                        width: parent.width
+                        spacing: 10
+                        
+                        Button {
+                            text: "主视图"
+                            width: parent.width
+                            checkable: true
+                            checked: currentViewType === SimpleOSGViewer.MainView
+                            onClicked: {
+                                currentViewType = SimpleOSGViewer.MainView;
+                            }
+                        }
+                        
+                        Button {
+                            text: "前视图"
+                            width: parent.width
+                            checkable: true
+                            checked: currentViewType === SimpleOSGViewer.FrontView
+                            onClicked: {
+                                currentViewType = SimpleOSGViewer.FrontView;
+                            }
+                        }
+                        
+                        Button {
+                            text: "侧视图"
+                            width: parent.width
+                            checkable: true
+                            checked: currentViewType === SimpleOSGViewer.SideView
+                            onClicked: {
+                                currentViewType = SimpleOSGViewer.SideView;
+                            }
+                        }
+                        
+                        Button {
+                            text: "俯视图"
+                            width: parent.width
+                            checkable: true
+                            checked: currentViewType === SimpleOSGViewer.TopView
+                            onClicked: {
+                                currentViewType = SimpleOSGViewer.TopView;
+                            }
+                        }
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 视图操作按钮
+                    Text {
+                        text: "视图操作"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Button {
+                        text: "重置视野"
+                        width: parent.width
+                        onClicked: {
+                            console.log("Reset View button clicked")
+                            osgViewer.resetView()
+                        }
+                    }
+                }
+            }
+            
+            // 模型控制组件
+            Component {
+                id: modelControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
                     
                     // 文件操作
-                    GroupBox {
-                        title: "文件操作"
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 300
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            spacing: 10
-                            
-                            TextField {
-                                id: filePathInput
-                                Layout.fillWidth: true
-                                text: filePath
-                                placeholderText: "请输入OSG文件路径..."
-                                selectByMouse: true
-                                font.pixelSize: 12
-                                onTextChanged: {
-                                    filePath = text
-                                }
-                            }
-                            
-                            Button {
-                                text: "加载"
-                                Layout.preferredWidth: 60
-                                onClicked: {
-                                    console.log("Load File button clicked, file path: " + filePath)
-                                    osgViewer.loadOSGFile(filePath)
-                                }
-                            }
-                            
-                            Button {
-                                text: "选择"
-                                Layout.preferredWidth: 60
-                                onClicked: {
-                                    console.log("Select File button clicked")
-                                    osgViewer.openFileSelector()
-                                }
-                            }
-                        }
+                    Text {
+                        text: "文件操作"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
                     }
                     
-                    // 视图切换
-                    GroupBox {
-                        title: "视图切换"
-                        Layout.fillWidth: true
-                        Layout.preferredWidth: 300
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            spacing: 10
-                            
-                            Button {
-                                text: "主视图"
-                                checkable: true
-                                checked: currentViewType === SimpleOSGViewer.MainView
-                                onClicked: {
-                                    currentViewType = SimpleOSGViewer.MainView;
-                                }
-                            }
-                            
-                            Button {
-                                text: "前视图"
-                                checkable: true
-                                checked: currentViewType === SimpleOSGViewer.FrontView
-                                onClicked: {
-                                    currentViewType = SimpleOSGViewer.FrontView;
-                                }
-                            }
-                            
-                            Button {
-                                text: "侧视图"
-                                checkable: true
-                                checked: currentViewType === SimpleOSGViewer.SideView
-                                onClicked: {
-                                    currentViewType = SimpleOSGViewer.SideView;
-                                }
-                            }
-                            
-                            Button {
-                                text: "俯视图"
-                                checkable: true
-                                checked: currentViewType === SimpleOSGViewer.TopView
-                                onClicked: {
-                                    currentViewType = SimpleOSGViewer.TopView;
-                                }
-                            }
+                    TextField {
+                        id: filePathInput
+                        width: parent.width
+                        text: filePath
+                        placeholderText: "请输入OSG文件路径..."
+                        selectByMouse: true
+                        font.pixelSize: 12
+                        onTextChanged: {
+                            filePath = text
                         }
                     }
-                    
-                    Item {
-                        Layout.fillWidth: true
-                    }
-                }
-                
-                // 操作提示
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 30
-                    color: "#f8f9fa"
-                    border.color: "#e9ecef"
-                    border.width: 1
-                    radius: 5
                     
                     Row {
-                        anchors.centerIn: parent
-                        spacing: 20
+                        width: parent.width
+                        spacing: 10
                         
-                        Text {
-                            text: "鼠标左键拖拽: 旋转视图"
-                            color: "#7f8c8d"
-                            font.pixelSize: 11
+                        Button {
+                            text: "加载"
+                            Layout.fillWidth: true
+                            onClicked: {
+                                console.log("Load File button clicked, file path: " + filePath)
+                                osgViewer.loadOSGFile(filePath)
+                            }
                         }
                         
-                        Text {
-                            text: "鼠标滚轮: 缩放视图"
-                            color: "#7f8c8d"
-                            font.pixelSize: 11
+                        Button {
+                            text: "选择"
+                            Layout.fillWidth: true
+                            onClicked: {
+                                console.log("Select File button clicked")
+                                osgViewer.openFileSelector()
+                            }
                         }
-                        
-                        Text {
-                            text: "鼠标右键拖拽: 平移视图"
-                            color: "#7f8c8d"
-                            font.pixelSize: 11
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 模型操作
+                    Text {
+                        text: "模型操作"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Button {
+                        text: "创建立方体"
+                        width: parent.width
+                        onClicked: {
+                            console.log("Create Cube button clicked")
+                            osgViewer.createShape()
                         }
-                        
-                        Text {
-                            text: "Ctrl+左键点击: 选择模型"
-                            color: "#7f8c8d"
-                            font.pixelSize: 11
+                    }
+                    
+                    Button {
+                        text: "创建PBR球体"
+                        width: parent.width
+                        onClicked: {
+                            console.log("Create PBR Sphere button clicked")
+                            osgViewer.createPBRScene()
+                        }
+                    }
+                    
+                    Button {
+                        text: "创建天空盒"
+                        width: parent.width
+                        onClicked: {
+                            console.log("Create Skybox button clicked")
+                            osgViewer.createShapeWithNewSkybox()
                         }
                     }
                 }
+            }
+            
+            // 默认控制组件
+            Component {
+                id: defaultControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
+                    
+                    Text {
+                        text: "请选择一个功能选项"
+                        font.pixelSize: 14
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+        }
+        
+        // 右侧内容区域
+        Item {
+            id: contentArea
+            anchors {
+                left: sidebar.right
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
+            }
+            
+            // OSG视图区域 - 填充整个可用空间
+            SimpleOSGViewer {
+                id: osgViewer
+                anchors.fill: parent
+                viewType: currentViewType
+                
+                // 监听视图类型变化
+                onViewTypeChanged: {
+                    console.log("OSG Viewer view type changed to:", viewType);
+                }
+                
+                // 双击全屏和点选择
+                MouseArea {
+                    anchors.fill: parent
+                    onPressed: function(mouse) {
+                        // Ctrl+左键点击选择模型
+                        if (mouse.button === Qt.LeftButton && (mouse.modifiers & Qt.ControlModifier)) {
+                            // 将鼠标坐标转换为OSG视图坐标
+                            var point = mapToItem(osgViewer, mouse.x, mouse.y);
+                            osgViewer.selectModel(point.x, point.y);
+                            mouse.accepted = true;
+                        } else {
+                            // 不处理任何鼠标按下事件，全部传递给OSG视图
+                            mouse.accepted = false;
+                        }
+                    }
+                    onDoubleClicked: function(mouse) {
+                        if (mouse.button === Qt.LeftButton) {
+                            // 左键双击回归视角
+                            osgViewer.resetToHomeView();
+                            mouse.accepted = true; // 左键双击被处理
+                        } else {
+                            mouse.accepted = false; // 其他双击事件传递给OSG视图
+                        }
+                    }
+                    onReleased: function(mouse) {
+                        // 不处理任何鼠标释放事件，全部传递给OSG视图
+                        mouse.accepted = false;
+                    }
+                    onPositionChanged: function(mouse) {
+                        // 不处理任何鼠标移动事件，全部传递给OSG视图
+                        mouse.accepted = false;
+                    }
+                    onWheel: function(wheel) {
+                        // 不处理任何滚轮事件，全部传递给OSG视图
+                        wheel.accepted = false;
+                    }
+                    // 确保事件能够正确传递
+                    propagateComposedEvents: true
+                }
+
+                onRequestFileDialog: {
+                    fileDialog.open();
+                }
+            }
+            
+            // 添加鼠标位置显示（右下角）
+            Text {
+                id: mousePosition
+                text: "鼠标: x=" + osgViewer.mouseX + " y=" + osgViewer.mouseY
+                color: "white"
+                font.pixelSize: 12
+                x: parent.width - width - 10
+                y: parent.height - height - 10
+                z: 100  // 确保在最上层显示
+            }
+            
+            // 添加摄像机位置显示（左上角）
+            Text {
+                id: cameraPosition
+                text: "相机: x=" + osgViewer.cameraX.toFixed(2) + " y=" + osgViewer.cameraY.toFixed(2) + " z=" + osgViewer.cameraZ.toFixed(2)
+                color: "white"
+                font.pixelSize: 12
+                x: 10
+                y: 10
+                z: 100  // 确保在最上层显示
             }
         }
     }

@@ -21,42 +21,42 @@ Item {
                                    real specular, real ao)
     
     // 当任何属性改变时发出信号
-    onAlbedoRChanged: {
+    onAlbedoRChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onAlbedoGChanged: {
+    onAlbedoGChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onAlbedoBChanged: {
+    onAlbedoBChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onAlbedoAChanged: {
+    onAlbedoAChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onMetallicChanged: {
+    onMetallicChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onRoughnessChanged: {
+    onRoughnessChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onSpecularChanged: {
+    onSpecularChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
     }
-    onAoChanged: {
+    onAoChanged: function() {
         materialPropertiesChanged(pbrControl.albedoR, pbrControl.albedoG, pbrControl.albedoB, pbrControl.albedoA,
                                 pbrControl.metallic, pbrControl.roughness, 
                                 pbrControl.specular, pbrControl.ao);
@@ -91,7 +91,7 @@ Item {
                         Layout.preferredHeight: 550  // 增加高度
                         Layout.alignment: Qt.AlignHCenter
                         
-                        onColorChanged: {
+                        onColorChanged: function(newColor) {
                             // 将选中的颜色转换为RGB并更新属性
                             pbrControl.albedoR = newColor.r;
                             pbrControl.albedoG = newColor.g;
@@ -125,7 +125,7 @@ Item {
                         to: 1.0
                         stepSize: 0.01
                         value: pbrControl.metallic
-                        onValueChanged: pbrControl.metallic = value
+                        onValueChanged: function() { pbrControl.metallic = metallicSlider.value; }
                         Layout.fillWidth: true
                     }
                     Text { 
@@ -146,7 +146,7 @@ Item {
                         to: 1.0
                         stepSize: 0.01
                         value: pbrControl.roughness
-                        onValueChanged: pbrControl.roughness = value
+                        onValueChanged: function() { pbrControl.roughness = roughnessSlider.value; }
                         Layout.fillWidth: true
                     }
                     Text { 
@@ -167,7 +167,7 @@ Item {
                         to: 1.0
                         stepSize: 0.01
                         value: pbrControl.specular
-                        onValueChanged: pbrControl.specular = value
+                        onValueChanged: function() { pbrControl.specular = specularSlider.value; }
                         Layout.fillWidth: true
                     }
                     Text { 
@@ -188,7 +188,7 @@ Item {
                         to: 1.0
                         stepSize: 0.01
                         value: pbrControl.ao
-                        onValueChanged: pbrControl.ao = value
+                        onValueChanged: function() { pbrControl.ao = aoSlider.value; }
                         Layout.fillWidth: true
                     }
                     Text { 
