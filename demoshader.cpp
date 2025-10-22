@@ -90,11 +90,11 @@ osg::Node* DemoShader::createAtmosphereScene()
     std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
     
     // 加载顶点着色器
-    std::string vertexShaderPath = resourcePath + "/atmosphere_vertex.txt";
-    osg::Shader* vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
+    std::string vertexShaderPath = resourcePath + "/sky_vertex.txt";
+    osg::ref_ptr<osg::Shader> vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
     if (!vertexShader) {
         // 如果失败，尝试使用绝对路径
-        vertexShaderPath = "E:/qt test/qml+osg/shader/atmosphere_vertex.txt";
+        vertexShaderPath = "E:/qt test/qml+osg/shader/sky_vertex.txt";
         vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
         if (!vertexShader) {
             std::cerr << "Failed to load atmosphere vertex shader from: " << vertexShaderPath << std::endl;
@@ -104,11 +104,11 @@ osg::Node* DemoShader::createAtmosphereScene()
     atmosphereProgram->addShader(vertexShader);
     
     // 加载片段着色器
-    std::string fragmentShaderPath = resourcePath + "/atmosphere_fragment.txt";
-    osg::Shader* fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
+    std::string fragmentShaderPath = resourcePath + "/sky_fragment.txt";
+    osg::ref_ptr<osg::Shader> fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
     if (!fragmentShader) {
         // 如果失败，尝试使用绝对路径
-        fragmentShaderPath = "E:/qt test/qml+osg/shader/atmosphere_fragment.txt";
+        fragmentShaderPath = "E:/qt test/qml+osg/shader/sky_fragment.txt";
         fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
         if (!fragmentShader) {
             std::cerr << "Failed to load atmosphere fragment shader from: " << fragmentShaderPath << std::endl;
@@ -152,7 +152,7 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
     osg::Vec3 sunDirection(
         sin(_sunZenithAngleRadians) * sin(_sunAzimuthAngleRadians),   // X分量
         cos(_sunZenithAngleRadians),                                   // Y分量（天顶角的余弦）
-        sin(_sunZenithAngleRadians) * cos(_sunAzimuthAngleRadians)    // Z分量
+        sin(_sunZenithAngleRadians) * cos(_sunAzimuthAngleRadians)   // Z分量（负号用于调整方向）
     );
     sunDirection.normalize();
     
@@ -165,20 +165,20 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
     }
     
     // 添加更多大气散射相关的uniform变量
+    // 瑞利散射系数
+    osg::Uniform* rayleighScatteringUniform = stateset->getUniform("rayleighScattering");
+    if (rayleighScatteringUniform) {
+        rayleighScatteringUniform->set(_rayleighScattering);
+    } else {
+        stateset->addUniform(new osg::Uniform("rayleighScattering", _rayleighScattering));
+    }
+    
     // 大气密度
     osg::Uniform* atmosphereDensityUniform = stateset->getUniform("atmosphereDensity");
     if (atmosphereDensityUniform) {
         atmosphereDensityUniform->set(_atmosphereDensity);
     } else {
         stateset->addUniform(new osg::Uniform("atmosphereDensity", _atmosphereDensity));
-    }
-    
-    // 太阳强度
-    osg::Uniform* sunIntensityUniform = stateset->getUniform("sunIntensity");
-    if (sunIntensityUniform) {
-        sunIntensityUniform->set(_sunIntensity);
-    } else {
-        stateset->addUniform(new osg::Uniform("sunIntensity", _sunIntensity));
     }
     
     // 米氏散射系数
@@ -189,22 +189,38 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
         stateset->addUniform(new osg::Uniform("mieScattering", _mieScattering));
     }
     
-    // 瑞利散射系数
-    osg::Uniform* rayleighScatteringUniform = stateset->getUniform("rayleighScattering");
-    if (rayleighScatteringUniform) {
-        rayleighScatteringUniform->set(_rayleighScattering);
+    // 太阳强度
+    osg::Uniform* sunIntensityUniform = stateset->getUniform("sunIntensity");
+    if (sunIntensityUniform) {
+        sunIntensityUniform->set(_sunIntensity);
     } else {
-        stateset->addUniform(new osg::Uniform("rayleighScattering", _rayleighScattering));
+        stateset->addUniform(new osg::Uniform("sunIntensity", _sunIntensity));
+    }
+    
+    // 米氏散射方向性参数
+    osg::Uniform* mieDirectionalGUniform = stateset->getUniform("mieDirectionalG");
+    if (mieDirectionalGUniform) {
+        mieDirectionalGUniform->set(0.8f);  // 固定值
+    } else {
+        stateset->addUniform(new osg::Uniform("mieDirectionalG", 0.8f));
+    }
+    
+    // 上方向
+    osg::Uniform* upUniform = stateset->getUniform("up");
+    if (upUniform) {
+        upUniform->set(osg::Vec3(0.0f, 1.0f, 0.0f));
+    } else {
+        stateset->addUniform(new osg::Uniform("up", osg::Vec3(0.0f, 1.0f, 0.0f)));
     }
     
     std::cout << "Updated atmosphere uniforms:" << std::endl;
     std::cout << "  Sun zenith angle: " << _sunZenithAngleRadians << " (" << _sunZenithAngleRadians * 180.0 / M_PI << " degrees)" << std::endl;
     std::cout << "  Sun azimuth angle: " << _sunAzimuthAngleRadians << " (" << _sunAzimuthAngleRadians * 180.0 / M_PI << " degrees)" << std::endl;
     std::cout << "  Sun direction: " << sunDirection.x() << ", " << sunDirection.y() << ", " << sunDirection.z() << std::endl;
-    std::cout << "  Atmosphere density: " << _atmosphereDensity << std::endl;
-    std::cout << "  Sun intensity: " << _sunIntensity << std::endl;
-    std::cout << "  Mie scattering: " << _mieScattering << std::endl;
     std::cout << "  Rayleigh scattering: " << _rayleighScattering << std::endl;
+    std::cout << "  Atmosphere density: " << _atmosphereDensity << std::endl;
+    std::cout << "  Mie scattering: " << _mieScattering << std::endl;
+    std::cout << "  Sun intensity: " << _sunIntensity << std::endl;
     
     // 添加额外的调试信息
     std::cout << "  Sun direction length: " << sunDirection.length() << std::endl;

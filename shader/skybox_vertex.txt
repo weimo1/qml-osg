@@ -1,0 +1,22 @@
+#version 330
+
+// 天空盒顶点着色器
+layout(location = 0) in vec3 vertexPosition;
+
+// 传递给片段着色器的变量
+out vec3 v_direction;
+
+// OSG内置矩阵uniform变量
+uniform mat4 osg_ModelViewMatrix;
+uniform mat4 osg_ModelViewProjectionMatrix;
+
+void main() {
+    // 计算视线方向（用于片段着色器中的大气散射计算）
+    // 我们需要去除旋转和缩放，只保留方向信息
+    v_direction = vertexPosition;
+    
+    // 设置顶点位置
+    gl_Position = osg_ModelViewProjectionMatrix * vec4(vertexPosition, 1.0);
+    // 设置z值为w值，确保天空盒始终在最远端渲染
+    gl_Position.z = gl_Position.w;
+}
