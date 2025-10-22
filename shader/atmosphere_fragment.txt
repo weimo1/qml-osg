@@ -8,6 +8,8 @@ out vec4 fragColor;
 uniform vec3 sunPosition;        // 太阳位置
 uniform float atmosphereDensity; // 大气密度
 uniform float sunIntensity;      // 太阳强度
+uniform float mieScattering;     // 米氏散射系数
+uniform float rayleighScattering; // 瑞利散射系数
 
 // 常量
 const float PI = 3.14159265359;
@@ -88,7 +90,8 @@ vec3 computeTransmittance(vec3 viewDir, vec3 sunDir) {
         float altitude = length(pos) - PLANET_RADIUS;
         
         if (altitude > 0.0) {
-            opticalDepth += (BETA_RAYLEIGH * density(altitude) + BETA_MIE * mieDensity(altitude)) * dt * atmosphereDensity;
+            opticalDepth += (BETA_RAYLEIGH * density(altitude) * rayleighScattering + 
+                           BETA_MIE * mieDensity(altitude) * mieScattering) * dt * atmosphereDensity;
         }
     }
     
@@ -110,8 +113,8 @@ vec3 computeScattering(vec3 viewDir, vec3 sunDir) {
     const int SAMPLE_COUNT = 8;
     float dt = (tMax - tMin) / float(SAMPLE_COUNT);
     
-    vec3 rayleighScattering = vec3(0.0);
-    vec3 mieScattering = vec3(0.0);
+    vec3 rayleighScatteringSum = vec3(0.0);
+    vec3 mieScatteringSum = vec3(0.0);
     
     for (int i = 0; i < SAMPLE_COUNT; i++) {
         float t = tMin + (float(i) + 0.5) * dt;
@@ -119,8 +122,8 @@ vec3 computeScattering(vec3 viewDir, vec3 sunDir) {
         float altitude = length(pos) - PLANET_RADIUS;
         
         if (altitude > 0.0) {
-            float rayleighDensity = density(altitude);
-            float mieDensityValue = mieDensity(altitude);
+            float rayleighDensity = density(altitude) * rayleighScattering;
+            float mieDensityValue = mieDensity(altitude) * mieScattering;
             
             // 计算到太阳的透射率
             vec2 sunIntersect = rayIntersectSphere(pos, sunDir, ATMOSPHERE_RADIUS);
@@ -136,24 +139,25 @@ vec3 computeScattering(vec3 viewDir, vec3 sunDir) {
                 float sunAltitude = length(sunPos) - PLANET_RADIUS;
                 
                 if (sunAltitude > 0.0) {
-                    sunOpticalDepth += (BETA_RAYLEIGH * density(sunAltitude) + BETA_MIE * mieDensity(sunAltitude)) * sunDt * atmosphereDensity;
+                    sunOpticalDepth += (BETA_RAYLEIGH * density(sunAltitude) * rayleighScattering + 
+                                      BETA_MIE * mieDensity(sunAltitude) * mieScattering) * sunDt * atmosphereDensity;
                 }
             }
             
             vec3 sunTransmittance = exp(-sunOpticalDepth);
             
             // 累积散射
-            rayleighScattering += rayleighDensity * sunTransmittance * dt * atmosphereDensity;
-            mieScattering += mieDensityValue * sunTransmittance * dt * atmosphereDensity;
+            rayleighScatteringSum += rayleighDensity * sunTransmittance * dt * atmosphereDensity;
+            mieScatteringSum += mieDensityValue * sunTransmittance * dt * atmosphereDensity;
         }
     }
     
     // 应用相位函数
     float cosTheta = dot(viewDir, sunDir);
-    rayleighScattering *= rayleighPhase(cosTheta) * BETA_RAYLEIGH;
-    mieScattering *= miePhase(cosTheta) * BETA_MIE;
+    rayleighScatteringSum *= rayleighPhase(cosTheta) * BETA_RAYLEIGH;
+    mieScatteringSum *= miePhase(cosTheta) * BETA_MIE;
     
-    return (rayleighScattering + mieScattering) * sunIntensity;
+    return (rayleighScatteringSum + mieScatteringSum) * sunIntensity;
 }
 
 void main() {
