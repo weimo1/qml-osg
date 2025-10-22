@@ -26,6 +26,9 @@ ApplicationWindow {
     // PBR控制面板可见性
     property bool pbrControlVisible: false
     
+    // 大气控制面板可见性
+    property bool atmosphereControlVisible: false
+    
     // 导航栏宽度
     property int navigationWidth: 80
     
@@ -34,7 +37,11 @@ ApplicationWindow {
     
     // 当前选中的导航项
     property string currentNavSelection: ""
- 
+    
+    // 大气参数
+    property real sunZenithAngle: 0.5
+    property real sunAzimuthAngle: 0.0
+
     // 工具栏
     header: Rectangle {
         height: 60
@@ -323,6 +330,7 @@ ApplicationWindow {
                             switch(currentNavSelection) {
                             case "view": return "视图控制";
                             case "model": return "模型管理";
+                            case "light": return "光照控制";
                             default: return "功能面板";
                             }
                         }
@@ -344,6 +352,7 @@ ApplicationWindow {
                             switch(currentNavSelection) {
                             case "view": return viewControls;
                             case "model": return modelControls;
+                            case "light": return lightControls;
                             default: return defaultControls;
                             }
                         }
@@ -531,6 +540,219 @@ ApplicationWindow {
                             console.log("Create Skybox button clicked")
                             osgViewer.createShapeWithNewSkybox()
                         }
+                    }
+                    
+                    Button {
+                        text: "创建大气效果"
+                        width: parent.width
+                        onClicked: {
+                            console.log("Create Atmosphere Scene button clicked")
+                            osgViewer.createAtmosphereScene()
+                            atmosphereControlVisible = true;
+                        }
+                    }
+                }
+            }
+            
+            // 光照控制组件
+            Component {
+                id: lightControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
+                    
+                    // 太阳天顶角控制
+                    Text {
+                        text: "太阳天顶角"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: sunZenithSlider
+                        width: parent.width
+                        from: 0
+                        to: Math.PI
+                        value: sunZenithAngle
+                        onValueChanged: {
+                            sunZenithAngle = value;
+                            osgViewer.updateAtmosphereParameters(sunZenithAngle, sunAzimuthAngle);
+                        }
+                    }
+                    
+                    Text {
+                        text: "角度: " + (sunZenithAngle * 180 / Math.PI).toFixed(1) + "°"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 太阳方位角控制
+                    Text {
+                        text: "太阳方位角"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: sunAzimuthSlider
+                        width: parent.width
+                        from: 0
+                        to: 2 * Math.PI
+                        value: sunAzimuthAngle
+                        onValueChanged: {
+                            sunAzimuthAngle = value;
+                            osgViewer.updateAtmosphereParameters(sunZenithAngle, sunAzimuthAngle);
+                        }
+                    }
+                    
+                    Text {
+                        text: "角度: " + (sunAzimuthAngle * 180 / Math.PI).toFixed(1) + "°"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 大气密度控制
+                    Text {
+                        text: "大气密度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: atmosphereDensitySlider
+                        width: parent.width
+                        from: 0.1
+                        to: 70.0
+                        value: 1.0
+                        onValueChanged: {
+                            osgViewer.updateAtmosphereDensityAndIntensity(value, sunIntensitySlider.value);
+                        }
+                    }
+                    
+                    Text {
+                        text: "密度: " + atmosphereDensitySlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 太阳强度控制
+                    Text {
+                        text: "太阳强度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: sunIntensitySlider
+                        width: parent.width
+                        from: 30.0
+                        to: 200.0
+                        value: 20.0
+                        onValueChanged: {
+                            osgViewer.updateAtmosphereDensityAndIntensity(atmosphereDensitySlider.value, value);
+                        }
+                    }
+                    
+                    Text {
+                        text: "强度: " + sunIntensitySlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 米氏散射控制
+                    Text {
+                        text: "米氏散射"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: mieScatteringSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 3.0
+                        value: 1.0
+                        onValueChanged: {
+                            osgViewer.updateAtmosphereScattering(value, rayleighScatteringSlider.value);
+                        }
+                    }
+                    
+                    Text {
+                        text: "系数: " + mieScatteringSlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 瑞利散射控制
+                    Text {
+                        text: "瑞利散射"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: rayleighScatteringSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 3.0
+                        value: 1.0
+                        onValueChanged: {
+                            osgViewer.updateAtmosphereScattering(mieScatteringSlider.value, value);
+                        }
+                    }
+                    
+                    Text {
+                        text: "系数: " + rayleighScatteringSlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
                     }
                 }
             }

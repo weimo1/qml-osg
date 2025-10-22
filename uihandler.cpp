@@ -29,6 +29,7 @@
 #include "shadercube.h"
 #include "shaderpbr.h"  // 添加PBR头文件
 #include "skybox.h"
+#include "demoshader.h"  // 添加DemoShader头文件
 
 
 UIHandler::UIHandler()
@@ -125,6 +126,115 @@ void UIHandler::createPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode, 
         // 强制更新视图
         viewer->advance();
         viewer->requestRedraw();
+    }
+}
+
+void UIHandler::createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (viewer && rootNode) {
+        // 清除现有的场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        
+        // 创建DemoShader实例
+        m_demoShader = new DemoShader();
+        
+        
+        // 创建大气渲染场景（使用全屏四边形）
+        osg::ref_ptr<osg::Node> atmosphereScene = m_demoShader->createAtmosphereScene();
+        
+        // 将大气渲染场景添加到根节点
+        if (atmosphereScene.valid()) {
+            rootNode->addChild(atmosphereScene);
+        } else {
+            qDebug() << "Failed to create atmosphere scene";
+            return;
+        }
+        
+        // 设置默认的视图参数
+        osg::Vec3d eye(0.0, 0.0, 1.0);  // 设置相机位置在原点附近
+        osg::Vec3d center(0.0, 0.0, 0.0);
+        osg::Vec3d up(0.0, 1.0, 0.0);
+        m_viewManager.setViewParameters(eye, center, up);
+        
+        // 设置相机背景色为黑色，避免干扰大气渲染效果
+        if (viewer->getCamera()) {
+            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+        
+        // 强制更新视图
+        viewer->advance();
+        viewer->requestRedraw();
+        
+        qDebug() << "Atmosphere scene created successfully";
+    }
+}
+
+void UIHandler::updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode, 
+                                         float sunZenithAngle, float sunAzimuthAngle)
+{
+    if (m_demoShader.valid()) {
+        // 更新DemoShader中的参数
+        m_demoShader->setSunZenithAngle(sunZenithAngle);
+        m_demoShader->setSunAzimuthAngle(sunAzimuthAngle);
+        
+        // 调用DemoShader的更新函数来更新uniform变量
+        // 修复：使用DemoShader中保存的状态集而不是尝试从Program获取
+        osg::StateSet* atmosphereStateSet = m_demoShader->getAtmosphereStateSet();
+        if (atmosphereStateSet) {
+            m_demoShader->updateAtmosphereUniforms(atmosphereStateSet);
+        }
+        
+        // 强制更新视图
+        if (viewer) {
+            viewer->advance();
+            viewer->requestRedraw();
+        }
+    }
+}
+
+// 添加更新大气密度和太阳强度的方法
+void UIHandler::updateAtmosphereDensityAndIntensity(osgViewer::Viewer* viewer, osg::Group* rootNode, 
+                                                   float density, float intensity)
+{
+    if (m_demoShader.valid()) {
+        // 更新DemoShader中的参数
+        m_demoShader->setAtmosphereDensity(density);
+        m_demoShader->setSunIntensity(intensity);
+        
+        // 调用DemoShader的更新函数来更新uniform变量
+        osg::StateSet* atmosphereStateSet = m_demoShader->getAtmosphereStateSet();
+        if (atmosphereStateSet) {
+            m_demoShader->updateAtmosphereUniforms(atmosphereStateSet);
+        }
+        
+        // 强制更新视图
+        if (viewer) {
+            viewer->advance();
+            viewer->requestRedraw();
+        }
+    }
+}
+
+// 添加更新米氏散射和瑞利散射的方法
+void UIHandler::updateAtmosphereScattering(osgViewer::Viewer* viewer, osg::Group* rootNode, 
+                                         float mie, float rayleigh)
+{
+    if (m_demoShader.valid()) {
+        // 更新DemoShader中的参数
+        m_demoShader->setMieScattering(mie);
+        m_demoShader->setRayleighScattering(rayleigh);
+        
+        // 调用DemoShader的更新函数来更新uniform变量
+        osg::StateSet* atmosphereStateSet = m_demoShader->getAtmosphereStateSet();
+        if (atmosphereStateSet) {
+            m_demoShader->updateAtmosphereUniforms(atmosphereStateSet);
+        }
+        
+        // 强制更新视图
+        if (viewer) {
+            viewer->advance();
+            viewer->requestRedraw();
+        }
     }
 }
 

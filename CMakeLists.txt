@@ -56,6 +56,8 @@ add_executable(${PROJECT_NAME}
     viewmanager.h
     skybox.cpp
     skybox.h
+    demoshader.cpp
+    demoshader.h
     qml.qrc
 )
 

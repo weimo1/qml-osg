@@ -15,6 +15,7 @@
 
 // 前向声明
 class MouseHandler;
+class DemoShader;
 
 class SimpleOSGRenderer : public QQuickFramebufferObject::Renderer
 {
@@ -35,16 +36,27 @@ public:
     void createShape();
     void createShapeWithNewSkybox();
     void createPBRScene();  // 添加PBR场景创建的槽函数
+    void createAtmosphereScene(); // 添加大气渲染场景创建的槽函数
     void resetView(SimpleOSGViewer::ViewType viewType);
     void resetToHomeView();
     void loadOSGFile(const QString& fileName);
     void setViewType(SimpleOSGViewer::ViewType viewType);
     void setShapeColor(float r, float g, float b, float a = 1.0f);
     
+    
     // 添加更新PBR材质的方法（包含Alpha参数）
     void updatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                           float metallic, float roughness, 
                           float specular, float ao);
+    
+    // 添加更新大气参数的方法
+    void updateAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle);
+    
+    // 添加更新大气密度和太阳强度的方法
+    void updateAtmosphereDensityAndIntensity(float density, float intensity);
+    
+    // 添加更新米氏散射和瑞利散射的方法
+    void updateAtmosphereScattering(float mie, float rayleigh);
     
     // 添加模型选择相关方法
     void selectModel(int x, int y);
@@ -72,6 +84,9 @@ private:
     // 添加处理器成员变量
     MouseHandler* m_mouseHandler;
     UIHandler* m_uiHandler;
+    
+    // 添加DemoShader成员变量
+    osg::ref_ptr<DemoShader> m_demoShader;
 };
 
 #endif // SIMPLEOSGRENDERER_H

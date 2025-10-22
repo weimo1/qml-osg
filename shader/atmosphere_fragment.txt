@@ -1,0 +1,195 @@
+#version 330
+
+// 更逼真的大气散射渲染片段着色器
+in vec2 texCoord;
+out vec4 fragColor;
+
+// Uniforms
+uniform vec3 sunPosition;        // 太阳位置
+uniform float atmosphereDensity; // 大气密度
+uniform float sunIntensity;      // 太阳强度
+
+// 常量
+const float PI = 3.14159265359;
+
+// 大气参数
+const float PLANET_RADIUS = 6371e3;      // 地球半径(米)
+const float ATMOSPHERE_RADIUS = 6471e3;  // 大气层顶部半径(米)
+const float RAYLEIGH_SCALE_HEIGHT = 8e3; // 瑞利散射比例高度(米)
+const float MIE_SCALE_HEIGHT = 1.2e3;    // 米氏散射比例高度(米)
+
+// 散射系数
+const vec3 BETA_RAYLEIGH = vec3(5.8e-6, 1.35e-5, 3.31e-5); // 瑞利散射系数
+const vec3 BETA_MIE = vec3(21e-6);                         // 米氏散射系数
+
+// 散射方向性参数
+const float G_MIE = 0.76; // 米氏散射的各向异性参数
+
+// 计算瑞利相位函数
+float rayleighPhase(float cosTheta) {
+    return 3.0 * (1.0 + cosTheta * cosTheta) / (16.0 * PI);
+}
+
+// 计算米氏相位函数 (Henyey-Greenstein)
+float miePhase(float cosTheta) {
+    float g = G_MIE;
+    float g2 = g * g;
+    return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5) / (4.0 * PI);
+}
+
+// 计算大气密度
+float density(float altitude) {
+    return exp(-altitude / RAYLEIGH_SCALE_HEIGHT);
+}
+
+// 计算米氏散射密度 (使用不同的比例高度)
+float mieDensity(float altitude) {
+    return exp(-altitude / MIE_SCALE_HEIGHT);
+}
+
+// 简化的光线-大气相交计算
+vec2 rayIntersectSphere(vec3 rayOrigin, vec3 rayDir, float sphereRadius) {
+    float a = dot(rayDir, rayDir);
+    float b = 2.0 * dot(rayDir, rayOrigin);
+    float c = dot(rayOrigin, rayOrigin) - sphereRadius * sphereRadius;
+    float discriminant = b * b - 4.0 * a * c;
+    
+    if (discriminant < 0.0) {
+        return vec2(-1.0, -1.0);
+    }
+    
+    float sqrtDiscriminant = sqrt(discriminant);
+    float t1 = (-b - sqrtDiscriminant) / (2.0 * a);
+    float t2 = (-b + sqrtDiscriminant) / (2.0 * a);
+    
+    return vec2(t1, t2);
+}
+
+// 计算透射率 (简化版本)
+vec3 computeTransmittance(vec3 viewDir, vec3 sunDir) {
+    // 计算视线与大气层的交点
+    vec2 atmosphereIntersect = rayIntersectSphere(vec3(0.0, 0.0, PLANET_RADIUS), viewDir, ATMOSPHERE_RADIUS);
+    if (atmosphereIntersect.y < 0.0) {
+        return vec3(1.0);
+    }
+    
+    float tMin = max(0.0, atmosphereIntersect.x);
+    float tMax = atmosphereIntersect.y;
+    
+    // 采样光线路径
+    const int SAMPLE_COUNT = 8;
+    float dt = (tMax - tMin) / float(SAMPLE_COUNT);
+    
+    vec3 opticalDepth = vec3(0.0);
+    
+    for (int i = 0; i < SAMPLE_COUNT; i++) {
+        float t = tMin + (float(i) + 0.5) * dt;
+        vec3 pos = vec3(0.0, 0.0, PLANET_RADIUS) + t * viewDir;
+        float altitude = length(pos) - PLANET_RADIUS;
+        
+        if (altitude > 0.0) {
+            opticalDepth += (BETA_RAYLEIGH * density(altitude) + BETA_MIE * mieDensity(altitude)) * dt * atmosphereDensity;
+        }
+    }
+    
+    return exp(-opticalDepth);
+}
+
+// 计算散射积分 (简化版本)
+vec3 computeScattering(vec3 viewDir, vec3 sunDir) {
+    // 计算视线与大气层的交点
+    vec2 atmosphereIntersect = rayIntersectSphere(vec3(0.0, 0.0, PLANET_RADIUS), viewDir, ATMOSPHERE_RADIUS);
+    if (atmosphereIntersect.y < 0.0) {
+        return vec3(0.0);
+    }
+    
+    float tMin = max(0.0, atmosphereIntersect.x);
+    float tMax = atmosphereIntersect.y;
+    
+    // 采样光线路径
+    const int SAMPLE_COUNT = 8;
+    float dt = (tMax - tMin) / float(SAMPLE_COUNT);
+    
+    vec3 rayleighScattering = vec3(0.0);
+    vec3 mieScattering = vec3(0.0);
+    
+    for (int i = 0; i < SAMPLE_COUNT; i++) {
+        float t = tMin + (float(i) + 0.5) * dt;
+        vec3 pos = vec3(0.0, 0.0, PLANET_RADIUS) + t * viewDir;
+        float altitude = length(pos) - PLANET_RADIUS;
+        
+        if (altitude > 0.0) {
+            float rayleighDensity = density(altitude);
+            float mieDensityValue = mieDensity(altitude);
+            
+            // 计算到太阳的透射率
+            vec2 sunIntersect = rayIntersectSphere(pos, sunDir, ATMOSPHERE_RADIUS);
+            float sunDistance = max(0.0, sunIntersect.y);
+            
+            const int SUN_SAMPLE_COUNT = 4;
+            float sunDt = sunDistance / float(SUN_SAMPLE_COUNT);
+            vec3 sunOpticalDepth = vec3(0.0);
+            
+            for (int j = 0; j < SUN_SAMPLE_COUNT; j++) {
+                float sunT = (float(j) + 0.5) * sunDt;
+                vec3 sunPos = pos + sunT * sunDir;
+                float sunAltitude = length(sunPos) - PLANET_RADIUS;
+                
+                if (sunAltitude > 0.0) {
+                    sunOpticalDepth += (BETA_RAYLEIGH * density(sunAltitude) + BETA_MIE * mieDensity(sunAltitude)) * sunDt * atmosphereDensity;
+                }
+            }
+            
+            vec3 sunTransmittance = exp(-sunOpticalDepth);
+            
+            // 累积散射
+            rayleighScattering += rayleighDensity * sunTransmittance * dt * atmosphereDensity;
+            mieScattering += mieDensityValue * sunTransmittance * dt * atmosphereDensity;
+        }
+    }
+    
+    // 应用相位函数
+    float cosTheta = dot(viewDir, sunDir);
+    rayleighScattering *= rayleighPhase(cosTheta) * BETA_RAYLEIGH;
+    mieScattering *= miePhase(cosTheta) * BETA_MIE;
+    
+    return (rayleighScattering + mieScattering) * sunIntensity;
+}
+
+void main() {
+    // 将屏幕坐标转换为视图方向
+    vec2 uv = texCoord * 2.0 - 1.0;  // [-1, 1] 范围
+    // 调整坐标系：在OpenGL中，Y轴向上为正，但屏幕坐标Y轴向下为正
+    // 所以我们需要翻转Y轴
+    vec3 viewDir = normalize(vec3(uv.x, -uv.y, 1.0));  // 视图方向
+    
+    // 获取太阳方向
+    vec3 sunDirection = normalize(sunPosition);
+    
+    // 计算透射率和散射
+    vec3 transmittance = computeTransmittance(viewDir, sunDirection);
+    vec3 scattering = computeScattering(viewDir, sunDirection);
+    
+    // 创建基础天空颜色
+    float cosTheta = viewDir.z;
+    float gradient = cosTheta * 0.5 + 0.5;  // 将[-1,1]映射到[0,1]
+    vec3 skyColor = mix(vec3(0.2, 0.4, 0.8), vec3(0.5, 0.7, 1.0), gradient);
+    
+    // 添加散射效果
+    skyColor = skyColor * transmittance + scattering;
+    
+    // 添加太阳
+    float sunDot = max(dot(viewDir, sunDirection), 0.0);
+    if (sunDot > 0.9995) {
+        // 太阳核心 - 非常亮的黄色，受太阳强度影响
+        skyColor += vec3(1.0, 1.0, 0.0) * sunIntensity;
+    } else if (sunDot > 0.999) {
+        // 太阳边缘 - 橙色，受太阳强度影响
+        skyColor += vec3(1.0, 0.8, 0.0) * sunIntensity * 0.5;
+    } else if (sunDot > 0.998) {
+        // 太阳光晕 - 浅黄色，受太阳强度影响
+        skyColor += vec3(1.0, 1.0, 0.5) * sunIntensity * 0.2;
+    }
+    
+    fragColor = vec4(skyColor, 1.0);
+}

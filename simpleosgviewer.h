@@ -72,6 +72,7 @@ public slots:
     void createShape();
     void createShapeWithNewSkybox();
     void createPBRScene();  // 添加PBR场景创建方法
+    void createAtmosphereScene(); // 添加大气渲染场景创建方法
     void resetView();
     void resetToHomeView();  // 添加回归主视角的方法
     void loadOSGFile(const QString& fileName);
@@ -84,10 +85,20 @@ public slots:
                           float metallic, float roughness, 
                           float specular, float ao);
     
+    // 添加更新大气参数的方法
+    void updateAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle);
+    
+    // 添加更新大气密度和太阳强度的方法
+    void updateAtmosphereDensityAndIntensity(float density, float intensity);
+    
+    // 添加更新米氏散射和瑞利散射的方法
+    void updateAtmosphereScattering(float mie, float rayleigh);
+    
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
     void invokeCreateShapeWithNewSkybox();
     void invokeCreatePBRScene();  // 添加PBR场景创建的槽函数
+    void invokeCreateAtmosphereScene(); // 添加大气渲染场景创建的槽函数
     void invokeResetView();
     void invokeLoadOSGFile(const QString& fileName);
     void invokeSetViewType(ViewType viewType);  // 添加设置视图类型的槽函数
@@ -97,6 +108,14 @@ public slots:
     void invokeUpdatePBRMaterial(float albedoR, float albedoG, float albedoB, float albedoA,
                                 float metallic, float roughness, 
                                 float specular, float ao);
+    // 更新大气参数的槽函数
+    void invokeUpdateAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle);
+    
+    // 更新大气密度和太阳强度的槽函数
+    void invokeUpdateAtmosphereDensityAndIntensity(float density, float intensity);
+
+    // 添加更新米氏散射和瑞利散射的槽函数声明
+    void invokeUpdateAtmosphereScattering(float mie, float rayleigh);
 
 signals:
     // 添加信号，用于通知QML打开文件对话框

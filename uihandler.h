@@ -10,6 +10,7 @@
 #include "simpleosgviewer.h"
 #include "shadercube.h"
 #include "shaderpbr.h"  // 添加PBR头文件
+#include "demoshader.h"  // 添加DemoShader头文件
 #include "viewmanager.h"
 
 class UIHandler
@@ -21,6 +22,7 @@ public:
     void createShape(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);
     void createShapeWithNewSkybox(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);
     void createPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);  // 添加PBR场景创建函数
+    void createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode);  // 添加大气渲染场景创建函数
     void resetView(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
     void resetToHomeView(osgViewer::Viewer* viewer, osg::Group* rootNode);
     void loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName);
@@ -33,8 +35,21 @@ public:
     // 获取视图管理器，用于在UI中显示相机位置信息
     ViewManager* getViewManager() { return &m_viewManager; }
     
+    // 更新大气渲染参数
+    void updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode, 
+                                  float sunZenithAngle, float sunAzimuthAngle);
+    
+    // 更新大气密度和太阳强度
+    void updateAtmosphereDensityAndIntensity(osgViewer::Viewer* viewer, osg::Group* rootNode, 
+                                           float density, float intensity);
+    
+    // 更新米氏散射和瑞利散射
+    void updateAtmosphereScattering(osgViewer::Viewer* viewer, osg::Group* rootNode, 
+                                  float mie, float rayleigh);
+    
 private:
     ViewManager m_viewManager;
+    osg::ref_ptr<DemoShader> m_demoShader;  // 保存DemoShader引用
 };
 
 #endif // UIHANDLER_H

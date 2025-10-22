@@ -2,6 +2,7 @@
 #include "simpleosgviewer.h"
 #include "mousehandler.h"
 #include "uihandler.h"
+#include "demoshader.h"
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
@@ -169,6 +170,16 @@ void SimpleOSGRenderer::createPBRScene()
             osg::Vec3d up(0.0, 0.0, 1.0);
             manipulator->setHomePosition(eye, center, up);
         }
+    }
+}
+
+// 实现创建大气渲染场景功能
+void SimpleOSGRenderer::createAtmosphereScene()
+{
+    if (m_viewer && m_rootNode) {
+        // 清除现有场景
+        m_uiHandler->createAtmosphereScene(m_viewer, m_rootNode);
+      
     }
 }
 
@@ -677,5 +688,29 @@ void SimpleOSGRenderer::updatePBRMaterial(float albedoR, float albedoG, float al
             m_viewer->advance();
             m_viewer->requestRedraw();
         }
+    }
+}
+
+// 添加更新大气参数的方法
+void SimpleOSGRenderer::updateAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle)
+{
+    if (m_viewer && m_rootNode) {
+        m_uiHandler->updateAtmosphereParameters(m_viewer, m_rootNode, sunZenithAngle, sunAzimuthAngle);
+    }
+}
+
+// 添加更新大气密度和太阳强度的方法
+void SimpleOSGRenderer::updateAtmosphereDensityAndIntensity(float density, float intensity)
+{
+    if (m_viewer && m_rootNode) {
+        m_uiHandler->updateAtmosphereDensityAndIntensity(m_viewer, m_rootNode, density, intensity);
+    }
+}
+
+// 添加更新米氏散射和瑞利散射的方法
+void SimpleOSGRenderer::updateAtmosphereScattering(float mie, float rayleigh)
+{
+    if (m_viewer && m_rootNode) {
+        m_uiHandler->updateAtmosphereScattering(m_viewer, m_rootNode, mie, rayleigh);
     }
 }

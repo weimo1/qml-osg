@@ -194,6 +194,15 @@ void SimpleOSGViewer::createPBRScene()
     }
 }
 
+// 实现创建大气渲染场景功能
+void SimpleOSGViewer::createAtmosphereScene()
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeCreateAtmosphereScene", Qt::QueuedConnection);
+    }
+}
+
 // 实现重置视野功能
 void SimpleOSGViewer::resetView()
 {
@@ -237,7 +246,7 @@ void SimpleOSGViewer::setShapeColor(float r, float g, float b, float a)
     }
 }
 
-// 实际调用渲染器创建图形的方法
+// 添加实际调用渲染器的槽函数
 void SimpleOSGViewer::invokeCreateShape()
 {
     if (m_renderer) {
@@ -245,11 +254,24 @@ void SimpleOSGViewer::invokeCreateShape()
     }
 }
 
-// 实际调用渲染器创建PBR场景的方法
+void SimpleOSGViewer::invokeCreateShapeWithNewSkybox()
+{
+    if (m_renderer) {
+        m_renderer->createShapeWithNewSkybox();
+    }
+}
+
 void SimpleOSGViewer::invokeCreatePBRScene()
 {
     if (m_renderer) {
         m_renderer->createPBRScene();
+    }
+}
+
+void SimpleOSGViewer::invokeCreateAtmosphereScene()
+{
+    if (m_renderer) {
+        m_renderer->createAtmosphereScene();
     }
 }
 
@@ -287,14 +309,6 @@ void SimpleOSGViewer::createShapeWithNewSkybox()
     // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
         QMetaObject::invokeMethod(this, "invokeCreateShapeWithNewSkybox", Qt::QueuedConnection);
-    }
-}
-
-// 实际调用渲染器创建使用新天空盒类的图形的方法
-void SimpleOSGViewer::invokeCreateShapeWithNewSkybox()
-{
-    if (m_renderer) {
-        m_renderer->createShapeWithNewSkybox();
     }
 }
 
@@ -354,5 +368,59 @@ void SimpleOSGViewer::invokeUpdatePBRMaterial(float albedoR, float albedoG, floa
 {
     if (m_renderer) {
         m_renderer->updatePBRMaterial(albedoR, albedoG, albedoB, albedoA, metallic, roughness, specular, ao);
+    }
+}
+
+// 添加更新大气参数的方法
+void SimpleOSGViewer::updateAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateAtmosphereParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle));
+    }
+}
+
+// 实际调用渲染器更新大气参数的方法
+void SimpleOSGViewer::invokeUpdateAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle)
+{
+    if (m_renderer) {
+        m_renderer->updateAtmosphereParameters(sunZenithAngle, sunAzimuthAngle);
+    }
+}
+
+// 添加更新大气密度和太阳强度的方法
+void SimpleOSGViewer::updateAtmosphereDensityAndIntensity(float density, float intensity)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateAtmosphereDensityAndIntensity", Qt::QueuedConnection,
+                                 Q_ARG(float, density), Q_ARG(float, intensity));
+    }
+}
+
+// 实际调用渲染器更新大气密度和太阳强度的方法
+void SimpleOSGViewer::invokeUpdateAtmosphereDensityAndIntensity(float density, float intensity)
+{
+    if (m_renderer) {
+        m_renderer->updateAtmosphereDensityAndIntensity(density, intensity);
+    }
+}
+
+// 添加更新米氏散射和瑞利散射的方法
+void SimpleOSGViewer::updateAtmosphereScattering(float mie, float rayleigh)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateAtmosphereScattering", Qt::QueuedConnection,
+                                 Q_ARG(float, mie), Q_ARG(float, rayleigh));
+    }
+}
+
+// 实际调用渲染器更新米氏散射和瑞利散射的方法
+void SimpleOSGViewer::invokeUpdateAtmosphereScattering(float mie, float rayleigh)
+{
+    if (m_renderer) {
+        m_renderer->updateAtmosphereScattering(mie, rayleigh);
     }
 }

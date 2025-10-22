@@ -1,0 +1,15 @@
+#version 330
+
+// 全屏四边形顶点着色器
+layout(location = 0) in vec3 vertexPosition;
+
+// 传递给片段着色器的纹理坐标
+out vec2 texCoord;
+
+void main() {
+    // 设置顶点位置（直接使用输入的顶点位置）
+    gl_Position = vec4(vertexPosition, 1.0);
+    
+    // 计算纹理坐标（将[-1,1]映射到[0,1]）
+    texCoord = (vertexPosition.xy + vec2(1.0)) * 0.5;
+}
