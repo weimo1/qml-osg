@@ -180,7 +180,45 @@ ApplicationWindow {
                     }
                 }
                 
-               
+                // 新增：结合天空盒和大气渲染的场景按钮
+                Button {
+                    text: "天空盒大气"
+                    background: Rectangle {
+                        color: "#9b59b6"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "天空盒大气"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Create Skybox Atmosphere Scene button clicked")
+                        osgViewer.createSkyboxAtmosphereScene()
+                    }
+                }
+                
+                // 新增：结合纹理和大气渲染的场景按钮
+                Button {
+                    text: "纹理大气"
+                    background: Rectangle {
+                        color: "#3498db"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "纹理大气"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Create Textured Atmosphere Scene button clicked")
+                        // 直接调用，纹理路径在C++代码中设置
+                        osgViewer.createTexturedAtmosphereScene()
+                    }
+                }
+                
             }
             
             // 状态指示器
@@ -249,6 +287,7 @@ ApplicationWindow {
                         ListElement { name: "动画"; icon: "\u{1F3AC}"; action: "animation" } // 电影图标
                         ListElement { name: "粒子"; icon: "\u{2600}"; action: "particle" }  // 太阳图标
                         ListElement { name: "物理"; icon: "\u{1F30C}"; action: "physics" }  // 银河图标
+                        ListElement { name: "SkyNode"; icon: "\u{1F324}"; action: "skynode" }  // 小太阳图标
                     }
                     
                     Rectangle {
@@ -353,6 +392,7 @@ ApplicationWindow {
                             case "view": return viewControls;
                             case "model": return modelControls;
                             case "light": return lightControls;
+                            case "skynode": return skyNodeAtmosphereControls;
                             default: return defaultControls;
                             }
                         }
@@ -630,9 +670,9 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 大气密度控制
+                    // 大气密度控制 (对应turbidity)
                     Text {
-                        text: "大气密度"
+                        text: "大气密度 (Turbidity)"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
@@ -641,9 +681,9 @@ ApplicationWindow {
                     Slider {
                         id: atmosphereDensitySlider
                         width: parent.width
-                        from: 0.1
-                        to: 70.0
-                        value: 1.0
+                        from: 1.0
+                        to: 10.0
+                        value: 2.0
                         onValueChanged: {
                             osgViewer.updateAtmosphereDensityAndIntensity(value, sunIntensitySlider.value);
                         }
@@ -674,8 +714,8 @@ ApplicationWindow {
                     Slider {
                         id: sunIntensitySlider
                         width: parent.width
-                        from: 30.0
-                        to: 200.0
+                        from: 5.0
+                        to: 50.0
                         value: 20.0
                         onValueChanged: {
                             osgViewer.updateAtmosphereDensityAndIntensity(atmosphereDensitySlider.value, value);
@@ -696,9 +736,9 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 米氏散射控制
+                    // 米氏散射控制 (对应mieCoefficient)
                     Text {
-                        text: "米氏散射"
+                        text: "米氏散射 (Mie Coefficient)"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
@@ -707,16 +747,16 @@ ApplicationWindow {
                     Slider {
                         id: mieScatteringSlider
                         width: parent.width
-                        from: 0.1
-                        to: 3.0
-                        value: 1.0
+                        from: 0.001
+                        to: 0.1
+                        value: 0.005
                         onValueChanged: {
                             osgViewer.updateAtmosphereScattering(value, rayleighScatteringSlider.value);
                         }
                     }
                     
                     Text {
-                        text: "系数: " + mieScatteringSlider.value.toFixed(1)
+                        text: "系数: " + mieScatteringSlider.value.toFixed(3)
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -729,9 +769,9 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 瑞利散射控制
+                    // 瑞利散射控制 (对应rayleigh)
                     Text {
-                        text: "瑞利散射"
+                        text: "瑞利散射 (Rayleigh)"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
@@ -741,7 +781,7 @@ ApplicationWindow {
                         id: rayleighScatteringSlider
                         width: parent.width
                         from: 0.1
-                        to: 3.0
+                        to: 5.0
                         value: 1.0
                         onValueChanged: {
                             osgViewer.updateAtmosphereScattering(mieScatteringSlider.value, value);
@@ -750,6 +790,161 @@ ApplicationWindow {
                     
                     Text {
                         text: "系数: " + rayleighScatteringSlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+            
+            // SkyNode大气控制组件
+            Component {
+                id: skyNodeAtmosphereControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
+                    
+                    // 大气密度控制 (对应turbidity)
+                    Text {
+                        text: "大气密度 (Turbidity)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyNodeTurbiditySlider
+                        width: parent.width
+                        from: 1.0
+                        to: 10.0
+                        value: 2.0
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeAtmosphereParameters(
+                                value, 
+                                skyNodeRayleighSlider.value, 
+                                skyNodeMieCoefficientSlider.value, 
+                                skyNodeMieDirectionalGSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "密度: " + skyNodeTurbiditySlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 瑞利散射控制 (对应rayleigh)
+                    Text {
+                        text: "瑞利散射 (Rayleigh)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyNodeRayleighSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 5.0
+                        value: 1.0
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeAtmosphereParameters(
+                                skyNodeTurbiditySlider.value, 
+                                value, 
+                                skyNodeMieCoefficientSlider.value, 
+                                skyNodeMieDirectionalGSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "系数: " + skyNodeRayleighSlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 米氏散射控制 (对应mieCoefficient)
+                    Text {
+                        text: "米氏散射 (Mie Coefficient)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyNodeMieCoefficientSlider
+                        width: parent.width
+                        from: 0.001
+                        to: 0.1
+                        value: 0.005
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeAtmosphereParameters(
+                                skyNodeTurbiditySlider.value, 
+                                skyNodeRayleighSlider.value, 
+                                value, 
+                                skyNodeMieDirectionalGSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "系数: " + skyNodeMieCoefficientSlider.value.toFixed(3)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 米氏散射方向性控制 (对应mieDirectionalG)
+                    Text {
+                        text: "米氏散射方向性 (Mie Directional G)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyNodeMieDirectionalGSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: 0.8
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeAtmosphereParameters(
+                                skyNodeTurbiditySlider.value, 
+                                skyNodeRayleighSlider.value, 
+                                skyNodeMieCoefficientSlider.value, 
+                                value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "方向性: " + skyNodeMieDirectionalGSlider.value.toFixed(2)
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter

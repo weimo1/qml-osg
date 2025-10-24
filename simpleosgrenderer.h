@@ -37,6 +37,8 @@ public:
     void createShapeWithNewSkybox();
     void createPBRScene();  // 添加PBR场景创建的槽函数
     void createAtmosphereScene(); // 添加大气渲染场景创建的槽函数
+    void createTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建的槽函数
+    void createSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建的槽函数
     void resetView(SimpleOSGViewer::ViewType viewType);
     void resetToHomeView();
     void loadOSGFile(const QString& fileName);
@@ -58,6 +60,12 @@ public:
     // 添加更新米氏散射和瑞利散射的方法
     void updateAtmosphereScattering(float mie, float rayleigh);
     
+    // 添加更新SkyNode大气参数的方法
+    void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
+    
+    // 添加更新Textured Atmosphere参数的方法
+    void updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);
+
     // 添加模型选择相关方法
     void selectModel(int x, int y);
     osg::Geometry* pickGeometry(int x, int y);

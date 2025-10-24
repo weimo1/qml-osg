@@ -183,6 +183,25 @@ void SimpleOSGRenderer::createAtmosphereScene()
     }
 }
 
+// 新增：实现创建结合纹理和大气渲染的场景功能
+void SimpleOSGRenderer::createTexturedAtmosphereScene()
+{
+    if (m_viewer && m_rootNode) {
+        // 创建结合纹理和大气渲染的场景
+        // 使用空字符串作为纹理路径，因为纹理路径在UIHandler中设置
+        m_uiHandler->createTexturedAtmosphereScene(m_viewer, m_rootNode);
+    }
+}
+
+// 新增：实现创建结合天空盒和大气渲染的场景功能
+void SimpleOSGRenderer::createSkyboxAtmosphereScene()
+{
+    if (m_viewer && m_rootNode) {
+        // 创建结合天空盒和大气渲染的场景
+        m_uiHandler->createSkyboxAtmosphereScene(m_viewer, m_rootNode);
+    }
+}
+
 // 实现重置视野功能
 void SimpleOSGRenderer::resetView(SimpleOSGViewer::ViewType viewType)
 {
@@ -712,5 +731,21 @@ void SimpleOSGRenderer::updateAtmosphereScattering(float mie, float rayleigh)
 {
     if (m_viewer && m_rootNode) {
         m_uiHandler->updateAtmosphereScattering(m_viewer, m_rootNode, mie, rayleigh);
+    }
+}
+
+// 添加更新SkyNode大气参数的方法
+void SimpleOSGRenderer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+{
+    if (m_viewer && m_rootNode) {
+        m_uiHandler->updateSkyNodeAtmosphereParameters(m_viewer, m_rootNode, turbidity, rayleigh, mieCoefficient, mieDirectionalG);
+    }
+}
+
+// 添加更新Textured Atmosphere参数的方法
+void SimpleOSGRenderer::updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure)
+{
+    if (m_rootNode.valid()) {
+        m_uiHandler->updateTexturedAtmosphereParameters(m_viewer, m_rootNode, sunZenithAngle, sunAzimuthAngle, exposure);
     }
 }

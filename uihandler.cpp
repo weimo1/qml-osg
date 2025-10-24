@@ -30,7 +30,7 @@
 #include "shaderpbr.h"  // 添加PBR头文件
 #include "skybox.h"
 #include "demoshader.h"  // 添加DemoShader头文件
-
+#include "SkyNode.h"
 
 UIHandler::UIHandler()
 {
@@ -169,6 +169,92 @@ void UIHandler::createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* roo
     }
 }
 
+// 新增：创建结合纹理和大气渲染的场景
+void UIHandler::createTexturedAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (viewer && rootNode) {
+        // 清除现有的场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        
+        // 创建DemoShader实例
+        m_demoShader = new DemoShader();
+        
+        // 创建结合纹理和大气渲染的场景
+        // 使用空字符串作为纹理路径，因为纹理路径在DemoShader中设置
+        osg::ref_ptr<osg::Node> texturedAtmosphereScene = m_demoShader->createTexturedAtmosphereScene();
+        
+        // 将场景添加到根节点
+        if (texturedAtmosphereScene.valid()) {
+            rootNode->addChild(texturedAtmosphereScene);
+        } else {
+            qDebug() << "Failed to create textured atmosphere scene";
+            return;
+        }
+        
+        // 设置默认的视图参数
+        osg::Vec3d eye(0.0, 0.0, 5.0);  // 设置相机位置
+        osg::Vec3d center(0.0, 0.0, 0.0);
+        osg::Vec3d up(0.0, 1.0, 0.0);
+        m_viewManager.setViewParameters(eye, center, up);
+        
+        // 设置相机背景色为黑色，避免干扰大气渲染效果
+        if (viewer->getCamera()) {
+            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+        
+        // 强制更新视图
+        viewer->advance();
+        viewer->requestRedraw();
+        
+        qDebug() << "Textured atmosphere scene created successfully";
+    }
+}
+
+// 新增：创建结合天空盒和大气渲染的场景
+void UIHandler::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (viewer && rootNode) {
+        // 清除现有的场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        
+       
+        
+        // 创建结合天空盒和大气渲染的场景
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(), 450000.0)));
+    geode->setCullingActive(false);
+    osg::ref_ptr<SkyBoxThree> skybox = new SkyBoxThree(viewer->getCamera());
+    skybox->setName("skybox");
+    skybox->addChild(geode.get());
+    
+        
+        // 将场景添加到根节点
+        if (skybox.valid()) {
+            rootNode->addChild(skybox);
+        } else {
+            qDebug() << "Failed to create skybox atmosphere scene";
+            return;
+        }
+        
+        // 设置默认的视图参数
+        // osg::Vec3d eye(0.0, 0.0, 0.0);  // 设置相机位置
+        // osg::Vec3d center(0.0, 0.0, 0.0);
+        // osg::Vec3d up(0.0, 1.0, 0.0);
+        // m_viewManager.setViewParameters(eye, center, up);
+        
+        // 设置相机背景色为黑色，避免干扰大气渲染效果
+        if (viewer->getCamera()) {
+            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+        
+        // 强制更新视图
+        viewer->advance();
+        viewer->requestRedraw();
+        
+        qDebug() << "Skybox atmosphere scene created successfully";
+    }
+}
+
 void UIHandler::updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode, 
                                          float sunZenithAngle, float sunAzimuthAngle)
 {
@@ -181,7 +267,39 @@ void UIHandler::updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group
         // 修复：使用DemoShader中保存的状态集而不是尝试从Program获取
         osg::StateSet* atmosphereStateSet = m_demoShader->getAtmosphereStateSet();
         if (atmosphereStateSet) {
+            // 根据场景类型选择合适的更新方法
+            // 对于Textured Atmosphere场景，使用updateAtmosphereSceneUniforms
             m_demoShader->updateAtmosphereUniforms(atmosphereStateSet);
+        }
+    
+        // 强制更新视图
+        if (viewer) {
+            viewer->advance();
+            viewer->requestRedraw();
+        }
+    }
+}
+
+void UIHandler::updateTexturedAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                                float sunZenithAngle, float sunAzimuthAngle,
+                                                float exposure)
+{
+    if (m_demoShader.valid()) {
+        // 更新DemoShader中的参数
+        m_demoShader->setSunZenithAngle(sunZenithAngle);
+        m_demoShader->setSunAzimuthAngle(sunAzimuthAngle);
+        m_demoShader->setExposure(exposure);
+        
+        qDebug() << "Updating Textured Atmosphere Parameters:";
+        qDebug() << "  Sun Zenith Angle:" << sunZenithAngle;
+        qDebug() << "  Sun Azimuth Angle:" << sunAzimuthAngle;
+        qDebug() << "  Exposure:" << exposure;
+        
+        // 调用DemoShader的更新函数来更新uniform变量
+        osg::StateSet* atmosphereStateSet = m_demoShader->getAtmosphereStateSet();
+        if (atmosphereStateSet) {
+            // 对于Textured Atmosphere场景，使用updateAtmosphereSceneUniforms
+            m_demoShader->updateAtmosphereSceneUniforms(atmosphereStateSet);
         }
         
         // 强制更新视图
@@ -444,4 +562,54 @@ void UIHandler::setupCameraForView(osgViewer::Viewer* viewer, osg::Group* rootNo
 void UIHandler::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType)
 {
     m_viewManager.setViewType(viewer, rootNode, viewType);
+}
+
+// 更新SkyNode中的大气参数
+void UIHandler::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                               float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+{
+    if (!viewer || !rootNode) return;
+    
+    // 查找场景中的SkyBoxThree节点
+    osg::Node* skyboxNode = nullptr;
+    for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+        osg::Node* child = rootNode->getChild(i);
+        if (child && child->getName() == "skybox") {
+            skyboxNode = child;
+            break;
+        }
+    }
+    
+    if (skyboxNode) {
+        // 获取SkyBoxThree节点的状态集
+        osg::StateSet* stateset = skyboxNode->getOrCreateStateSet();
+        if (stateset) {
+            // 更新uniform变量
+            osg::Uniform* turbidityUniform = stateset->getUniform("turbidity");
+            if (turbidityUniform) {
+                turbidityUniform->set(turbidity);
+            }
+            
+            osg::Uniform* rayleighUniform = stateset->getUniform("rayleigh");
+            if (rayleighUniform) {
+                rayleighUniform->set(rayleigh);
+            }
+            
+            osg::Uniform* mieCoefficientUniform = stateset->getUniform("mieCoefficient");
+            if (mieCoefficientUniform) {
+                mieCoefficientUniform->set(mieCoefficient);
+            }
+            
+            osg::Uniform* mieDirectionalGUniform = stateset->getUniform("mieDirectionalG");
+            if (mieDirectionalGUniform) {
+                mieDirectionalGUniform->set(mieDirectionalG);
+            }
+        }
+    }
+    
+    // 强制更新视图
+    if (viewer) {
+        viewer->advance();
+        viewer->requestRedraw();
+    }
 }

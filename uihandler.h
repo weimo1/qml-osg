@@ -13,6 +13,7 @@
 #include "demoshader.h"  // 添加DemoShader头文件
 #include "viewmanager.h"
 
+class SkyNode;
 class UIHandler
 {
 public:
@@ -23,6 +24,8 @@ public:
     void createShapeWithNewSkybox(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);
     void createPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);  // 添加PBR场景创建函数
     void createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode);  // 添加大气渲染场景创建函数
+    void createTexturedAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合纹理和大气渲染的场景创建函数
+    void createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合天空盒和大气渲染的场景创建函数
     void resetView(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
     void resetToHomeView(osgViewer::Viewer* viewer, osg::Group* rootNode);
     void loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName);
@@ -46,6 +49,15 @@ public:
     // 更新米氏散射和瑞利散射
     void updateAtmosphereScattering(osgViewer::Viewer* viewer, osg::Group* rootNode, 
                                   float mie, float rayleigh);
+    
+    // 更新Textured Atmosphere场景参数
+    void updateTexturedAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                          float sunZenithAngle, float sunAzimuthAngle,
+                                          float exposure);
+    
+    // 更新SkyNode中的大气参数
+    void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                        float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
     
 private:
     ViewManager m_viewManager;

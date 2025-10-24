@@ -1,0 +1,59 @@
+#version 330
+
+// 纹理采样器
+uniform sampler2D transmittance_texture;
+uniform sampler3D scattering_texture;
+uniform sampler2D irradiance_texture;
+
+// Uniform变量
+uniform vec3 camera;
+uniform float exposure;
+uniform vec3 white_point;
+uniform vec3 earth_center;
+uniform vec3 sun_direction;
+uniform vec2 sun_size;
+
+// 从顶点着色器传递的视图射线
+in vec3 view_ray;
+
+// 输出颜色
+layout(location = 0) out vec4 color;
+
+// 常量定义
+const float PI = 3.14159265;
+
+// 获取太阳辐射
+vec3 GetSolarRadiance() {
+  return vec3(1.474000, 1.850400, 1.911980) / (PI * 0.004675 * 0.004675);
+}
+
+// 主函数
+void main() {
+  // 标准化视图方向
+  vec3 view_direction = normalize(view_ray);
+  
+  // 计算球面纹理坐标
+  float u = 0.5 + 0.5 * atan(view_direction.x, view_direction.z) / PI;
+  float v = 0.5 - asin(view_direction.y) / PI;
+  
+  // 从散射纹理中采样
+  vec3 scattering = texture(scattering_texture, vec3(u, v, 0.5)).rgb;
+  
+  // 从辐照度纹理中采样
+  vec3 irradiance = texture(irradiance_texture, vec2(u, v)).rgb;
+  
+  // 计算太阳可见性
+  float sun_visibility = 0.0;
+  if (dot(view_direction, sun_direction) > sun_size.y) {
+    sun_visibility = 1.0;
+  }
+  
+  // 合成最终颜色
+  vec3 radiance = scattering + irradiance + GetSolarRadiance() * sun_visibility;
+  
+  // 应用色调映射和伽马校正
+  vec3 color_rgb = 1.0 - exp(-radiance / white_point * exposure);
+  color_rgb = pow(color_rgb, vec3(1.0 / 2.2));
+  
+  color = vec4(color_rgb, 1.0);
+}

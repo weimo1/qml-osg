@@ -22,7 +22,7 @@
 // 常量定义
 const float DemoShader::kSunAngularRadius = 0.00935f / 2.0f;
 const float DemoShader::kLengthUnitInMeters = 1000.0f;
-
+#include"SkyNode.h"
 DemoShader::DemoShader()
     : _viewDistanceMeters(5000.0f)  // 初始观察距离5km，更接近地球表面
     , _viewZenithAngleRadians(0.0f)  // 初始视角天顶角，从地面向上看
@@ -30,9 +30,9 @@ DemoShader::DemoShader()
     , _sunZenithAngleRadians(0.5f)  // 初始太阳天顶角，接近地平线
     , _sunAzimuthAngleRadians(0.0f)  // 初始太阳方位角
     , _exposure(15.0f)  // 初始曝光值，增加对比度
-    , _atmosphereDensity(1.0f)  // 初始大气密度
+    , _atmosphereDensity(2.0f)  // 初始大气密度 (turbidity)
     , _sunIntensity(20.0f)  // 初始太阳强度
-    , _mieScattering(1.0f)  // 初始米氏散射系数
+    , _mieScattering(0.005f)  // 初始米氏散射系数
     , _rayleighScattering(1.0f)  // 初始瑞利散射系数
     , _texturesInitialized(false)
 {
@@ -54,7 +54,15 @@ osg::Geometry* DemoShader::createFullScreenQuad()
     vertices->push_back(osg::Vec3(-1.0f, 1.0f, 0.0f));  // 左上角
     vertices->push_back(osg::Vec3(1.0f, 1.0f, 0.0f));   // 右上角
     
+    // 纹理坐标
+    osg::ref_ptr<osg::Vec2Array> texcoords = new osg::Vec2Array;
+    texcoords->push_back(osg::Vec2(0.0f, 0.0f)); // 左下角
+    texcoords->push_back(osg::Vec2(1.0f, 0.0f)); // 右下角
+    texcoords->push_back(osg::Vec2(0.0f, 1.0f)); // 左上角
+    texcoords->push_back(osg::Vec2(1.0f, 1.0f)); // 右上角
+    
     geom->setVertexArray(vertices);
+    geom->setTexCoordArray(0, texcoords);
     
     // 顶点索引
     osg::ref_ptr<osg::DrawElementsUInt> indices = new osg::DrawElementsUInt(GL_TRIANGLE_STRIP);
@@ -65,11 +73,89 @@ osg::Geometry* DemoShader::createFullScreenQuad()
     
     geom->addPrimitiveSet(indices);
     
+    // 设置顶点属性
+    geom->setVertexAttribArray(0, vertices);  // 顶点位置
+    geom->setVertexAttribBinding(0, osg::Geometry::BIND_PER_VERTEX);
+    geom->setVertexAttribArray(1, texcoords); // 纹理坐标
+    geom->setVertexAttribBinding(1, osg::Geometry::BIND_PER_VERTEX);
+    
     // 禁用光照以确保颜色正确显示
     osg::StateSet* stateset = geom->getOrCreateStateSet();
     stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
     
     return geom.release();
+}
+
+// 新增：创建结合天空盒纹理和大气渲染的场景
+osg::Node* DemoShader::createTexturedAtmosphereScene()
+{
+    std::cout << "Creating textured atmosphere scene with full-screen quad..." << std::endl;
+    
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 创建全屏四边形
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    osg::ref_ptr<osg::Geometry> quad = createFullScreenQuad();
+    geode->addDrawable(quad);
+    
+    // 创建大气散射着色器程序
+    osg::ref_ptr<osg::Program> atmosphereProgram = new osg::Program;
+    
+    // 使用相对路径定位着色器文件
+    std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
+    
+    // 加载顶点着色器
+    std::string vertexShaderPath = resourcePath + "/vertex_shader.txt";
+    osg::ref_ptr<osg::Shader> vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
+    if (!vertexShader) {
+        // 如果失败，尝试使用绝对路径
+        vertexShaderPath = "E:/qt test/qml+osg/shader/vertex_shader.txt";
+        vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
+        if (!vertexShader) {
+            std::cerr << "Failed to load atmosphere vertex shader from: " << vertexShaderPath << std::endl;
+            return nullptr;
+        }
+    }
+    atmosphereProgram->addShader(vertexShader);
+    
+    // 加载片段着色器
+    std::string fragmentShaderPath = resourcePath + "/fragment_shader.txt";
+    osg::ref_ptr<osg::Shader> fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
+    if (!fragmentShader) {
+        // 如果失败，尝试使用绝对路径
+        fragmentShaderPath = "E:/qt test/qml+osg/shader/fragment_shader.txt";
+        fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
+        if (!fragmentShader) {
+            std::cerr << "Failed to load atmosphere fragment shader from: " << fragmentShaderPath << std::endl;
+            return nullptr;
+        }
+    }
+    atmosphereProgram->addShader(fragmentShader);
+    
+    // 设置着色器程序
+    osg::StateSet* stateset = geode->getOrCreateStateSet();
+    stateset->setAttributeAndModes(atmosphereProgram, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    
+    // 加载预计算的纹理数据
+    loadAtmosphereTextures(stateset);
+    
+    // 保存状态集引用，以便后续更新
+    _atmosphereStateSet = stateset;
+    
+    // 设置初始uniform变量
+    updateAtmosphereSceneUniforms(stateset);
+    
+    // 禁用深度测试以确保全屏四边形正确渲染
+    stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    
+    // 禁用光照
+    stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    
+    root->addChild(geode);
+    
+    std::cout << "Textured atmosphere scene created successfully" << std::endl;
+    
+    return root.release();
 }
 
 osg::Node* DemoShader::createAtmosphereScene()
@@ -90,11 +176,11 @@ osg::Node* DemoShader::createAtmosphereScene()
     std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
     
     // 加载顶点着色器
-    std::string vertexShaderPath = resourcePath + "/sky_vertex.txt";
+    std::string vertexShaderPath = resourcePath + "/atmosphere_vertex.txt";
     osg::ref_ptr<osg::Shader> vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
     if (!vertexShader) {
         // 如果失败，尝试使用绝对路径
-        vertexShaderPath = "E:/qt test/qml+osg/shader/sky_vertex.txt";
+        vertexShaderPath = "E:/qt test/qml+osg/shader/skybox_vertex.txt";
         vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
         if (!vertexShader) {
             std::cerr << "Failed to load atmosphere vertex shader from: " << vertexShaderPath << std::endl;
@@ -104,11 +190,11 @@ osg::Node* DemoShader::createAtmosphereScene()
     atmosphereProgram->addShader(vertexShader);
     
     // 加载片段着色器
-    std::string fragmentShaderPath = resourcePath + "/sky_fragment.txt";
+    std::string fragmentShaderPath = resourcePath + "/atmosphere_fragment.txt";
     osg::ref_ptr<osg::Shader> fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
     if (!fragmentShader) {
         // 如果失败，尝试使用绝对路径
-        fragmentShaderPath = "E:/qt test/qml+osg/shader/sky_fragment.txt";
+        fragmentShaderPath = "E:/qt test/qml+osg/shader/skybox_fragment.txt";
         fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
         if (!fragmentShader) {
             std::cerr << "Failed to load atmosphere fragment shader from: " << fragmentShaderPath << std::endl;
@@ -120,6 +206,9 @@ osg::Node* DemoShader::createAtmosphereScene()
     // 设置着色器程序
     osg::StateSet* stateset = geode->getOrCreateStateSet();
     stateset->setAttributeAndModes(atmosphereProgram, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    
+    // 添加纹理uniform，即使不使用纹理也需要添加以避免着色器错误
+    stateset->addUniform(new osg::Uniform("skyTexture", 0));
     
     // 保存状态集引用，以便后续更新
     _atmosphereStateSet = stateset;
@@ -138,6 +227,222 @@ osg::Node* DemoShader::createAtmosphereScene()
     std::cout << "Atmosphere scene created successfully" << std::endl;
     
     return root.release();
+}
+
+// 新增：创建结合天空盒和大气渲染的场景
+osg::Node* DemoShader::createSkyboxAtmosphereScene()
+{
+    return nullptr;
+}
+
+void DemoShader::loadAtmosphereTextures(osg::StateSet* stateset)
+{
+    if (!stateset) return;
+    
+    // 获取资源路径
+    std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
+    
+    // 加载透射率纹理数据
+    std::string transmittancePath = resourcePath + "/transmittance.dat";
+    osg::ref_ptr<osg::Texture2D> transmittanceTexture = loadTexture2DFromFile(transmittancePath, 
+        TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
+    
+    // 加载散射纹理数据
+    std::string scatteringPath = resourcePath + "/scattering.dat";
+    osg::ref_ptr<osg::Texture3D> scatteringTexture = loadTexture3DFromFile(scatteringPath,
+        SCATTERING_TEXTURE_WIDTH, SCATTERING_TEXTURE_HEIGHT, SCATTERING_TEXTURE_DEPTH);
+    
+    // 加载辐照度纹理数据
+    std::string irradiancePath = resourcePath + "/irradiance.dat";
+    osg::ref_ptr<osg::Texture2D> irradianceTexture = loadTexture2DFromFile(irradiancePath,
+        IRRADIANCE_TEXTURE_WIDTH, IRRADIANCE_TEXTURE_HEIGHT);
+    
+    if (!transmittanceTexture || !scatteringTexture || !irradianceTexture) {
+        std::cerr << "Failed to load atmosphere textures" << std::endl;
+        return;
+    }
+    
+    // 设置纹理单元
+    stateset->setTextureAttributeAndModes(0, transmittanceTexture, osg::StateAttribute::ON);
+    stateset->setTextureAttributeAndModes(1, scatteringTexture, osg::StateAttribute::ON);
+    stateset->setTextureAttributeAndModes(2, irradianceTexture, osg::StateAttribute::ON);
+    
+    // 设置uniform变量
+    stateset->addUniform(new osg::Uniform("transmittance_texture", 0));
+    stateset->addUniform(new osg::Uniform("scattering_texture", 1));
+    stateset->addUniform(new osg::Uniform("irradiance_texture", 2));
+    
+    // 保存纹理引用
+    _transmittanceTexture = transmittanceTexture;
+    _scatteringTexture = scatteringTexture;
+    _irradianceTexture = irradianceTexture;
+    
+    std::cout << "Atmosphere textures loaded successfully" << std::endl;
+    std::cout << "  Transmittance texture: " << transmittancePath << std::endl;
+    std::cout << "  Scattering texture: " << scatteringPath << std::endl;
+    std::cout << "  Irradiance texture: " << irradiancePath << std::endl;
+}
+
+osg::Texture2D* DemoShader::loadTexture2DFromFile(const std::string& filename, int width, int height)
+{
+    // 打开文件
+    FILE* file = fopen(filename.c_str(), "rb");
+    if (!file) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return nullptr;
+    }
+    
+    // 计算数据大小 (RGBA格式，每个分量是float)
+    size_t dataSize = width * height * 4 * sizeof(float);
+    std::vector<float> data(width * height * 4);
+    
+    // 读取数据
+    size_t readSize = fread(data.data(), 1, dataSize, file);
+    fclose(file);
+    
+    if (readSize != dataSize) {
+        std::cerr << "Failed to read complete texture data from: " << filename << std::endl;
+        return nullptr;
+    }
+    
+    // 创建图像
+    osg::ref_ptr<osg::Image> image = new osg::Image;
+    image->allocateImage(width, height, 1, GL_RGBA, GL_FLOAT);
+    
+    // 复制数据
+    float* imageData = (float*)image->data();
+    for (int i = 0; i < width * height * 4; ++i) {
+        imageData[i] = data[i];
+    }
+    
+    // 创建纹理
+    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
+    texture->setImage(image);
+    texture->setInternalFormat(GL_RGBA32F_ARB);
+    texture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+    texture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+    texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    
+    return texture.release();
+}
+
+osg::Texture3D* DemoShader::loadTexture3DFromFile(const std::string& filename, int width, int height, int depth)
+{
+    // 打开文件
+    FILE* file = fopen(filename.c_str(), "rb");
+    if (!file) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return nullptr;
+    }
+    
+    // 计算数据大小 (RGBA格式，每个分量是float)
+    size_t dataSize = width * height * depth * 4 * sizeof(float);
+    std::vector<float> data(width * height * depth * 4);
+    
+    // 读取数据
+    size_t readSize = fread(data.data(), 1, dataSize, file);
+    fclose(file);
+    
+    if (readSize != dataSize) {
+        std::cerr << "Failed to read complete texture data from: " << filename << std::endl;
+        return nullptr;
+    }
+    
+    // 创建图像
+    osg::ref_ptr<osg::Image> image = new osg::Image;
+    image->allocateImage(width, height, depth, GL_RGBA, GL_FLOAT);
+    
+    // 复制数据
+    float* imageData = (float*)image->data();
+    for (int i = 0; i < width * height * depth * 4; ++i) {
+        imageData[i] = data[i];
+    }
+    
+    // 创建纹理
+    osg::ref_ptr<osg::Texture3D> texture = new osg::Texture3D;
+    texture->setImage(image);
+    texture->setInternalFormat(GL_RGBA32F_ARB);
+    texture->setFilter(osg::Texture3D::MIN_FILTER, osg::Texture3D::LINEAR);
+    texture->setFilter(osg::Texture3D::MAG_FILTER, osg::Texture3D::LINEAR);
+    texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    texture->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
+    
+    return texture.release();
+}
+
+void DemoShader::updateAtmosphereSceneUniforms(osg::StateSet* stateset)
+{
+    if (!stateset) return;
+    
+    // 相机位置
+    osg::Vec3 camera(0.0f, 0.0f, _viewDistanceMeters / kLengthUnitInMeters);
+    osg::Uniform* cameraUniform = stateset->getUniform("camera");
+    if (cameraUniform) {
+        cameraUniform->set(camera);
+    } else {
+        stateset->addUniform(new osg::Uniform("camera", camera));
+    }
+    
+    // 曝光值
+    osg::Uniform* exposureUniform = stateset->getUniform("exposure");
+    if (exposureUniform) {
+        exposureUniform->set(_exposure);
+    } else {
+        stateset->addUniform(new osg::Uniform("exposure", _exposure));
+    }
+    
+    // 白点
+    osg::Vec3 whitePoint(1.0f, 1.0f, 1.0f);
+    osg::Uniform* whitePointUniform = stateset->getUniform("white_point");
+    if (whitePointUniform) {
+        whitePointUniform->set(whitePoint);
+    } else {
+        stateset->addUniform(new osg::Uniform("white_point", whitePoint));
+    }
+    
+    // 地球中心
+    osg::Vec3 earthCenter(0.0f, 0.0f, -6360000.0f / kLengthUnitInMeters);
+    osg::Uniform* earthCenterUniform = stateset->getUniform("earth_center");
+    if (earthCenterUniform) {
+        earthCenterUniform->set(earthCenter);
+    } else {
+        stateset->addUniform(new osg::Uniform("earth_center", earthCenter));
+    }
+    
+    // 太阳方向
+    osg::Vec3 sunDirection(
+        cos(_sunAzimuthAngleRadians) * sin(_sunZenithAngleRadians),
+        sin(_sunAzimuthAngleRadians) * sin(_sunZenithAngleRadians),
+        cos(_sunZenithAngleRadians)
+    );
+    sunDirection.normalize();
+    
+    osg::Uniform* sunDirectionUniform = stateset->getUniform("sun_direction");
+    if (sunDirectionUniform) {
+        sunDirectionUniform->set(sunDirection);
+    } else {
+        stateset->addUniform(new osg::Uniform("sun_direction", sunDirection));
+    }
+    
+    // 太阳大小
+    float sunAngularRadius = kSunAngularRadius;
+    float sunCosAngularRadius = cos(sunAngularRadius);
+    osg::Vec2 sunSize(tan(sunAngularRadius), sunCosAngularRadius);
+    
+    osg::Uniform* sunSizeUniform = stateset->getUniform("sun_size");
+    if (sunSizeUniform) {
+        sunSizeUniform->set(sunSize);
+    } else {
+        stateset->addUniform(new osg::Uniform("sun_size", sunSize));
+    }
+    
+    std::cout << "Updated atmosphere scene uniforms:" << std::endl;
+    std::cout << "  Camera: " << camera.x() << ", " << camera.y() << ", " << camera.z() << std::endl;
+    std::cout << "  Exposure: " << _exposure << std::endl;
+    std::cout << "  Sun direction: " << sunDirection.x() << ", " << sunDirection.y() << ", " << sunDirection.z() << std::endl;
+    std::cout << "  Sun size: " << sunSize.x() << ", " << sunSize.y() << std::endl;
 }
 
 void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
@@ -173,7 +478,7 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
         stateset->addUniform(new osg::Uniform("rayleighScattering", _rayleighScattering));
     }
     
-    // 大气密度
+    // 大气密度 (turbidity)
     osg::Uniform* atmosphereDensityUniform = stateset->getUniform("atmosphereDensity");
     if (atmosphereDensityUniform) {
         atmosphereDensityUniform->set(_atmosphereDensity);
@@ -200,7 +505,7 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
     // 米氏散射方向性参数
     osg::Uniform* mieDirectionalGUniform = stateset->getUniform("mieDirectionalG");
     if (mieDirectionalGUniform) {
-        mieDirectionalGUniform->set(0.8f);  // 固定值
+        mieDirectionalGUniform->set(0.8f);
     } else {
         stateset->addUniform(new osg::Uniform("mieDirectionalG", 0.8f));
     }
@@ -211,6 +516,22 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
         upUniform->set(osg::Vec3(0.0f, 1.0f, 0.0f));
     } else {
         stateset->addUniform(new osg::Uniform("up", osg::Vec3(0.0f, 1.0f, 0.0f)));
+    }
+    
+    // 相机位置（使用默认值）
+    osg::Uniform* cameraPositionUniform = stateset->getUniform("cameraPosition");
+    if (cameraPositionUniform) {
+        cameraPositionUniform->set(osg::Vec3(0.0f, 0.0f, 0.0f));
+    } else {
+        stateset->addUniform(new osg::Uniform("cameraPosition", osg::Vec3(0.0f, 0.0f, 0.0f)));
+    }
+    
+    // 视图逆矩阵（单位矩阵作为默认值）
+    osg::Uniform* viewInverseUniform = stateset->getUniform("viewInverse");
+    if (viewInverseUniform) {
+        viewInverseUniform->set(osg::Matrix::identity());
+    } else {
+        stateset->addUniform(new osg::Uniform("viewInverse", osg::Matrix::identity()));
     }
     
     std::cout << "Updated atmosphere uniforms:" << std::endl;

@@ -203,6 +203,24 @@ void SimpleOSGViewer::createAtmosphereScene()
     }
 }
 
+// 新增：实现创建结合纹理和大气渲染的场景功能
+void SimpleOSGViewer::createTexturedAtmosphereScene()
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeCreateTexturedAtmosphereScene", Qt::QueuedConnection);
+    }
+}
+
+// 新增：实现创建结合天空盒和大气渲染的场景功能
+void SimpleOSGViewer::createSkyboxAtmosphereScene()
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeCreateSkyboxAtmosphereScene", Qt::QueuedConnection);
+    }
+}
+
 // 实现重置视野功能
 void SimpleOSGViewer::resetView()
 {
@@ -422,5 +440,58 @@ void SimpleOSGViewer::invokeUpdateAtmosphereScattering(float mie, float rayleigh
 {
     if (m_renderer) {
         m_renderer->updateAtmosphereScattering(mie, rayleigh);
+    }
+}
+
+// 添加更新SkyNode大气参数的方法
+void SimpleOSGViewer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateSkyNodeAtmosphereParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, turbidity), Q_ARG(float, rayleigh),
+                                 Q_ARG(float, mieCoefficient), Q_ARG(float, mieDirectionalG));
+    }
+}
+
+// 实际调用渲染器更新SkyNode大气参数的方法
+void SimpleOSGViewer::invokeUpdateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+{
+    if (m_renderer) {
+        m_renderer->updateSkyNodeAtmosphereParameters(turbidity, rayleigh, mieCoefficient, mieDirectionalG);
+    }
+}
+
+// 添加更新Textured Atmosphere参数的方法
+void SimpleOSGViewer::updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateTexturedAtmosphereParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle), Q_ARG(float, exposure));
+    }
+}
+
+// 实际调用渲染器更新Textured Atmosphere参数的方法
+void SimpleOSGViewer::invokeUpdateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure)
+{
+    if (m_renderer) {
+        m_renderer->updateTexturedAtmosphereParameters(sunZenithAngle, sunAzimuthAngle, exposure);
+    }
+}
+
+// 实际调用渲染器创建结合纹理和大气渲染的场景的方法
+void SimpleOSGViewer::invokeCreateTexturedAtmosphereScene()
+{
+    if (m_renderer) {
+        m_renderer->createTexturedAtmosphereScene();
+    }
+}
+
+// 实际调用渲染器创建结合天空盒和大气渲染的场景的方法
+void SimpleOSGViewer::invokeCreateSkyboxAtmosphereScene()
+{
+    if (m_renderer) {
+        m_renderer->createSkyboxAtmosphereScene();
     }
 }

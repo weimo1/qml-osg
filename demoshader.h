@@ -22,6 +22,8 @@
 #include <vector>
 #include <cmath>
 
+class  SkyBoxThree;
+
 class DemoShader : public osg::Referenced
 {
 public:
@@ -67,8 +69,6 @@ public:
     void setMieScattering(float mie) { _mieScattering = mie; }
     void setRayleighScattering(float rayleigh) { _rayleighScattering = rayleigh; }
     
-   
-    
     // 创建用于大气渲染的全屏四边形场景
     osg::Node* createAtmosphereScene();
     osg::Geometry* createFullScreenQuad();
@@ -76,8 +76,20 @@ public:
     // 更新大气场景中的uniform变量
     void updateAtmosphereUniforms(osg::StateSet* stateset);
 
-     // 更新场景中的uniform变量
+    // 更新场景中的uniform变量
     void updateSceneUniforms(osg::StateSet* stateset);
+    
+    // 新增：创建结合天空盒纹理和大气渲染的场景
+    osg::Node* createTexturedAtmosphereScene();
+    
+    // 新增：加载大气纹理
+    void loadAtmosphereTextures(osg::StateSet* stateset);
+    
+    // 新增：更新大气场景uniform变量
+    void updateAtmosphereSceneUniforms(osg::StateSet* stateset);
+    
+    // 新增：创建结合天空盒和大气渲染的场景
+    osg::Node* createSkyboxAtmosphereScene();
 
 private:
     // 着色器程序
@@ -126,6 +138,11 @@ private:
     
     // 大气场景的状态集（用于动态更新）
     osg::ref_ptr<osg::StateSet> _atmosphereStateSet;
+    
+    // 新增：从文件加载纹理的辅助函数
+    osg::Texture2D* loadTexture2DFromFile(const std::string& filename, int width, int height);
+    osg::Texture3D* loadTexture3DFromFile(const std::string& filename, int width, int height, int depth);
+
 };
 
 #endif // DEMOSAHDER_H

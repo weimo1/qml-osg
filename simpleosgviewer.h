@@ -73,6 +73,8 @@ public slots:
     void createShapeWithNewSkybox();
     void createPBRScene();  // 添加PBR场景创建方法
     void createAtmosphereScene(); // 添加大气渲染场景创建方法
+    void createTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建方法
+    void createSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建方法
     void resetView();
     void resetToHomeView();  // 添加回归主视角的方法
     void loadOSGFile(const QString& fileName);
@@ -94,11 +96,19 @@ public slots:
     // 添加更新米氏散射和瑞利散射的方法
     void updateAtmosphereScattering(float mie, float rayleigh);
     
+    // 添加更新SkyNode大气参数的方法
+    void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
+    
+    // 添加更新Textured Atmosphere参数的方法
+    void updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);
+    
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
     void invokeCreateShapeWithNewSkybox();
     void invokeCreatePBRScene();  // 添加PBR场景创建的槽函数
     void invokeCreateAtmosphereScene(); // 添加大气渲染场景创建的槽函数
+    void invokeCreateTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建的槽函数
+    void invokeCreateSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建的槽函数
     void invokeResetView();
     void invokeLoadOSGFile(const QString& fileName);
     void invokeSetViewType(ViewType viewType);  // 添加设置视图类型的槽函数
@@ -116,6 +126,12 @@ public slots:
 
     // 添加更新米氏散射和瑞利散射的槽函数声明
     void invokeUpdateAtmosphereScattering(float mie, float rayleigh);
+    
+    // 添加更新SkyNode大气参数的槽函数声明
+    void invokeUpdateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
+    
+    // 添加更新Textured Atmosphere参数的槽函数声明
+    void invokeUpdateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);
 
 signals:
     // 添加信号，用于通知QML打开文件对话框

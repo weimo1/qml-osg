@@ -1,0 +1,16 @@
+#version 330
+
+// 顶点位置输入 (全屏四边形的顶点坐标: -1到1的范围)
+layout(location = 0) in vec4 vertex;
+
+// 传递给片段着色器的视图射线
+out vec3 view_ray;
+
+void main() {
+    // 直接使用顶点坐标作为视图射线
+    // 对于全屏四边形，顶点坐标就是标准化设备坐标(NDC)
+    view_ray = vertex.xyz;
+    
+    // 设置顶点位置
+    gl_Position = vertex;
+}
