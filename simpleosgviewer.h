@@ -75,6 +75,7 @@ public slots:
     void createAtmosphereScene(); // 添加大气渲染场景创建方法
     void createTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建方法
     void createSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建方法
+    void createSkyboxAtmosphereWithPBRScene(); // 添加结合天空盒大气和PBR立方体的场景创建方法
     void resetView();
     void resetToHomeView();  // 添加回归主视角的方法
     void loadOSGFile(const QString& fileName);
@@ -109,6 +110,7 @@ public slots:
     void invokeCreateAtmosphereScene(); // 添加大气渲染场景创建的槽函数
     void invokeCreateTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建的槽函数
     void invokeCreateSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建的槽函数
+    void invokeCreateSkyboxAtmosphereWithPBRScene(); // 添加结合天空盒大气和PBR立方体的场景创建的槽函数
     void invokeResetView();
     void invokeLoadOSGFile(const QString& fileName);
     void invokeSetViewType(ViewType viewType);  // 添加设置视图类型的槽函数

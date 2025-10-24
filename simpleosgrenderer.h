@@ -39,6 +39,7 @@ public:
     void createAtmosphereScene(); // 添加大气渲染场景创建的槽函数
     void createTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建的槽函数
     void createSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建的槽函数
+    void createSkyboxAtmosphereWithPBRScene(); // 添加结合天空盒大气和PBR立方体的场景创建的槽函数
     void resetView(SimpleOSGViewer::ViewType viewType);
     void resetToHomeView();
     void loadOSGFile(const QString& fileName);

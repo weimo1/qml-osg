@@ -23,6 +23,8 @@
 const float DemoShader::kSunAngularRadius = 0.00935f / 2.0f;
 const float DemoShader::kLengthUnitInMeters = 1000.0f;
 #include"SkyNode.h"
+#include "shaderpbr.h"  // 添加PBR头文件
+#include "shadercube.h"
 DemoShader::DemoShader()
     : _viewDistanceMeters(5000.0f)  // 初始观察距离5km，更接近地球表面
     , _viewZenithAngleRadians(0.0f)  // 初始视角天顶角，从地面向上看
@@ -230,8 +232,409 @@ osg::Node* DemoShader::createAtmosphereScene()
 }
 
 // 新增：创建结合天空盒和大气渲染的场景
-osg::Node* DemoShader::createSkyboxAtmosphereScene()
+osg::Node* DemoShader::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer)
 {
+    if (!viewer) return nullptr;
+    
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 创建天空盒
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    // 减小天空盒球体的大小，避免覆盖其他物体
+    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 100.0)));
+    geode->setCullingActive(false);
+    osg::ref_ptr<SkyBoxThree> skybox = new SkyBoxThree(viewer->getCamera());
+    skybox->setName("skybox");
+    skybox->addChild(geode.get());
+    
+    // 将天空盒添加到根节点
+    if (skybox.valid()) {
+        root->addChild(skybox);
+    } else {
+        std::cerr << "Failed to create skybox" << std::endl;
+        return nullptr;
+    }
+    
+    std::cout << "Skybox atmosphere scene created successfully" << std::endl;
+    
+    return root.release();
+}
+
+// 新增：创建使用改进大气着色器的场景
+osg::Node* DemoShader::createImprovedAtmosphereScene(osgViewer::Viewer* viewer)
+{
+    if (!viewer) return nullptr;
+    
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 创建一个球体几何体作为天空盒
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    // 使用较大的球体以包围整个场景
+    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 1000.0)));
+    geode->setCullingActive(false);
+    
+    // 创建SkyBoxThree对象
+    osg::ref_ptr<SkyBoxThree> skybox = new SkyBoxThree(viewer->getCamera());
+    skybox->setName("improved_skybox");
+    skybox->addChild(geode.get());
+    
+    // 将天空盒添加到根节点
+    if (skybox.valid()) {
+        root->addChild(skybox);
+    } else {
+        std::cerr << "Failed to create improved skybox" << std::endl;
+        return nullptr;
+    }
+    
+    std::cout << "Improved atmosphere scene created successfully" << std::endl;
+    
+    return root.release();
+}
+
+// 新增：创建PBR立方体
+osg::Node* DemoShader::createPBRCube()
+{
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 使用ShaderCube创建立方体
+    osg::ref_ptr<osg::Node> cube = ShaderCube::createCube(1.0f);
+    
+    if (cube.valid()) {
+        // 获取立方体的状态集
+        osg::StateSet* cubeStateSet = cube->getOrCreateStateSet();
+        
+        // 使用ShaderPBR创建PBR着色器程序
+        osg::ref_ptr<osg::Program> program = ShaderPBR::createPBRShaderSimpleIBL();
+        if (program.valid()) {
+            cubeStateSet->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        }
+        
+        // 移除原有的着色器程序和纹理
+        cubeStateSet->removeAttribute(osg::StateAttribute::PROGRAM);
+        
+        // 设置PBR材质参数
+        cubeStateSet->addUniform(new osg::Uniform("albedo", osg::Vec3(0.8f, 0.2f, 0.2f))); // 红色基础颜色
+        cubeStateSet->addUniform(new osg::Uniform("metallic", 0.0f)); // 非金属
+        cubeStateSet->addUniform(new osg::Uniform("roughness", 0.5f)); // 中等粗糙度
+        cubeStateSet->addUniform(new osg::Uniform("ao", 1.0f)); // 完全环境光遮蔽
+        
+        // 设置光源位置
+        osg::ref_ptr<osg::Uniform> lightPositions = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightPositions", 4);
+        lightPositions->setElement(0, osg::Vec3(5.0f, 5.0f, 5.0f));
+        lightPositions->setElement(1, osg::Vec3(-5.0f, 5.0f, 5.0f));
+        lightPositions->setElement(2, osg::Vec3(5.0f, -5.0f, 5.0f));
+        lightPositions->setElement(3, osg::Vec3(-5.0f, -5.0f, 5.0f));
+        cubeStateSet->addUniform(lightPositions);
+        
+        // 设置光源颜色
+        osg::ref_ptr<osg::Uniform> lightColors = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "lightColors", 4);
+        for(int i = 0; i < 4; i++) {
+            lightColors->setElement(i, osg::Vec3(500.0f, 500.0f, 500.0f)); // 光源强度
+        }
+        cubeStateSet->addUniform(lightColors);
+        
+        // 设置相机位置
+        cubeStateSet->addUniform(new osg::Uniform("camPos", osg::Vec3(0.0f, -5.0f, 0.0f)));
+        
+        // 设置渲染状态
+        cubeStateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        cubeStateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
+        // 设置渲染顺序，确保立方体在天空盒之前渲染
+        cubeStateSet->setRenderBinDetails(0, "RenderBin");
+        
+        root->addChild(cube);
+    }
+    
+    std::cout << "PBR cube created successfully" << std::endl;
+    
+    return root.release();
+}
+
+// 新增：创建调试用的简单立方体（用于验证基本渲染功能）
+osg::Node* DemoShader::createDebugCube()
+{
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 使用ShaderCube创建立方体
+    osg::ref_ptr<osg::Node> cube = ShaderCube::createCube(1.0f);
+    
+    if (cube.valid()) {
+        // 获取立方体的状态集
+        osg::StateSet* cubeStateSet = cube->getOrCreateStateSet();
+        
+        // 移除原有的着色器程序和纹理
+        cubeStateSet->removeAttribute(osg::StateAttribute::PROGRAM);
+        
+        // 创建简单的调试着色器
+        static const char* vertCode = R"(#version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec3 aNormal;
+            
+            uniform mat4 osg_ModelViewProjectionMatrix;
+            uniform mat4 osg_ModelViewMatrix;
+            uniform mat3 osg_NormalMatrix;
+            
+            out vec3 WorldPos;
+            out vec3 Normal;
+            
+            void main()
+            {
+                WorldPos = vec3(osg_ModelViewMatrix * vec4(aPos, 1.0));
+                Normal = normalize(osg_NormalMatrix * aNormal);
+                gl_Position = osg_ModelViewProjectionMatrix * vec4(aPos, 1.0);
+            }
+        )";
+        
+        static const char* fragCode = R"(#version 330 core
+            out vec4 FragColor;
+            in vec3 WorldPos;
+            in vec3 Normal;
+            
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            uniform vec3 lightColor;
+            uniform vec3 objectColor;
+            
+            void main()
+            {
+                // 环境光
+                float ambientStrength = 0.1;
+                vec3 ambient = ambientStrength * lightColor;
+                
+                // 漫反射
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - WorldPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * lightColor;
+                
+                // 镜面反射
+                float specularStrength = 0.5;
+                vec3 viewDir = normalize(viewPos - WorldPos);
+                vec3 reflectDir = reflect(-lightDir, norm);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+                vec3 specular = specularStrength * spec * lightColor;
+                
+                vec3 result = (ambient + diffuse + specular) * objectColor;
+                FragColor = vec4(result, 1.0);
+            }
+        )";
+        
+        // 编译着色器
+        osg::ref_ptr<osg::Shader> vertShader = new osg::Shader(osg::Shader::VERTEX, vertCode);
+        osg::ref_ptr<osg::Shader> fragShader = new osg::Shader(osg::Shader::FRAGMENT, fragCode);
+        osg::ref_ptr<osg::Program> program = new osg::Program;
+        program->addShader(vertShader);
+        program->addShader(fragShader);
+        
+        cubeStateSet->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        
+        // 设置调试uniform变量
+        cubeStateSet->addUniform(new osg::Uniform("objectColor", osg::Vec3(1.0f, 0.5f, 0.31f))); // 铜色
+        cubeStateSet->addUniform(new osg::Uniform("lightPos", osg::Vec3(5.0f, 5.0f, 5.0f)));
+        cubeStateSet->addUniform(new osg::Uniform("viewPos", osg::Vec3(0.0f, -5.0f, 0.0f)));
+        cubeStateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
+        
+        // 设置渲染状态
+        cubeStateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        cubeStateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
+        cubeStateSet->setRenderBinDetails(0, "RenderBin");
+        
+        root->addChild(cube);
+    }
+    
+    std::cout << "Debug cube created successfully" << std::endl;
+    
+    return root.release();
+}
+
+// 新增：创建结合天空盒大气和PBR立方体的场景
+osg::Node* DemoShader::createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer)
+{
+    if (!viewer) return nullptr;
+    
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 创建一个球体几何体作为天空盒
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    // 使用较大的球体以包围整个场景
+    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 1000.0)));
+    geode->setCullingActive(false);
+    
+    // 创建SkyBoxThree对象
+    osg::ref_ptr<SkyBoxThree> skybox = new SkyBoxThree(viewer->getCamera());
+    skybox->setName("improved_skybox");
+    skybox->addChild(geode.get());
+    
+    // 将天空盒添加到根节点
+    if (skybox.valid()) {
+        root->addChild(skybox);
+    } else {
+        std::cerr << "Failed to create improved skybox" << std::endl;
+        return nullptr;
+    }
+    
+    // 创建PBR立方体
+    osg::ref_ptr<osg::Node> pbrCube = createPBRCube();
+    if (pbrCube.valid()) {
+        root->addChild(pbrCube);
+    }
+    
+    std::cout << "Skybox atmosphere with PBR scene created successfully" << std::endl;
+    
+    return root.release();
+}
+
+// 新增：更新SkyNode大气参数的方法
+void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                               float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+{
+    if (!viewer || !rootNode) return;
+    
+    std::cout << "Updating SkyNode atmosphere parameters..." << std::endl;
+    std::cout << "  Turbidity: " << turbidity << ", Rayleigh: " << rayleigh 
+              << ", Mie Coefficient: " << mieCoefficient << ", Mie Directional G: " << mieDirectionalG << std::endl;
+    
+    // 查找场景中的SkyBoxThree节点
+    osg::Node* skyboxNode = nullptr;
+    
+    // 遍历根节点的所有子节点
+    for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+        osg::Node* child = rootNode->getChild(i);
+        if (!child) continue;
+        
+        // 首先检查当前子节点是否为SkyBoxThree
+        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)) {
+            skyboxNode = child;
+            std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
+            break;
+        }
+        
+        // 如果当前子节点是Group，继续在其子节点中查找
+        osg::Group* group = child->asGroup();
+        if (group) {
+            for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
+                osg::Node* grandChild = group->getChild(j);
+                if (!grandChild) continue;
+                
+                // 检查孙节点是否为SkyBoxThree
+                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)) {
+                    skyboxNode = grandChild;
+                    std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
+                    break;
+                }
+            }
+            
+            // 如果找到了就退出外层循环
+            if (skyboxNode) break;
+        }
+    }
+    
+    // 如果还是没有找到，尝试更广泛的搜索
+    if (!skyboxNode) {
+        std::cout << "Performing extensive search for SkyBoxThree nodes..." << std::endl;
+        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+            osg::Node* child = rootNode->getChild(i);
+            if (!child) continue;
+            
+            // 递归搜索所有子节点
+            skyboxNode = findSkyBoxThreeNode(child);
+            if (skyboxNode) {
+                std::cout << "Found SkyBoxThree node through recursive search: " << skyboxNode->getName() << std::endl;
+                break;
+            }
+        }
+    }
+    
+    if (skyboxNode) {
+        // 获取SkyBoxThree节点的状态集
+        osg::StateSet* stateset = skyboxNode->getOrCreateStateSet();
+        if (stateset) {
+            std::cout << "StateSet acquired successfully" << std::endl;
+            
+            // 更新uniform变量
+            // 注意：这里我们直接通过stateset来更新uniform，而不是通过SkyBoxThree的成员变量
+            osg::Uniform* turbidityUniform = stateset->getUniform("turbidity");
+            if (turbidityUniform) {
+                turbidityUniform->set(turbidity);
+                std::cout << "Turbidity uniform updated to: " << turbidity << std::endl;
+            } else {
+                std::cout << "Turbidity uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* rayleighUniform = stateset->getUniform("rayleigh");
+            if (rayleighUniform) {
+                rayleighUniform->set(rayleigh);
+                std::cout << "Rayleigh uniform updated to: " << rayleigh << std::endl;
+            } else {
+                std::cout << "Rayleigh uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* mieCoefficientUniform = stateset->getUniform("mieCoefficient");
+            if (mieCoefficientUniform) {
+                mieCoefficientUniform->set(mieCoefficient);
+                std::cout << "Mie Coefficient uniform updated to: " << mieCoefficient << std::endl;
+            } else {
+                std::cout << "Mie Coefficient uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* mieDirectionalGUniform = stateset->getUniform("mieDirectionalG");
+            if (mieDirectionalGUniform) {
+                mieDirectionalGUniform->set(mieDirectionalG);
+                std::cout << "Mie Directional G uniform updated to: " << mieDirectionalG << std::endl;
+            } else {
+                std::cout << "Mie Directional G uniform not found" << std::endl;
+            }
+        }
+    } else {
+        std::cerr << "Failed to find SkyBoxThree node in the scene" << std::endl;
+        // 打印所有子节点的信息以便调试
+        std::cout << "Scene children count: " << rootNode->getNumChildren() << std::endl;
+        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+            osg::Node* child = rootNode->getChild(i);
+            if (child) {
+                std::cout << "  Child " << i << ": " << child->getName() << " (class: " << child->className() << ")" << std::endl;
+                // 如果是Group，打印其子节点
+                osg::Group* group = child->asGroup();
+                if (group) {
+                    std::cout << "    Group children count: " << group->getNumChildren() << std::endl;
+                    for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
+                        osg::Node* grandChild = group->getChild(j);
+                        if (grandChild) {
+                            std::cout << "      Grandchild " << j << ": " << grandChild->getName() << " (class: " << grandChild->className() << ")" << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 强制更新视图
+    if (viewer) {
+        std::cout << "Requesting redraw..." << std::endl;
+        viewer->advance();
+        viewer->requestRedraw();
+    }
+}
+
+// 辅助函数：递归查找SkyBoxThree节点
+osg::Node* DemoShader::findSkyBoxThreeNode(osg::Node* node)
+{
+    if (!node) return nullptr;
+    
+    // 检查当前节点是否为SkyBoxThree
+    if (node->getName() == "skybox" || node->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(node)) {
+        return node;
+    }
+    
+    // 如果是Group，递归检查子节点
+    osg::Group* group = node->asGroup();
+    if (group) {
+        for (unsigned int i = 0; i < group->getNumChildren(); ++i) {
+            osg::Node* found = findSkyBoxThreeNode(group->getChild(i));
+            if (found) return found;
+        }
+    }
+    
     return nullptr;
 }
 
@@ -471,35 +874,27 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
     
     // 添加更多大气散射相关的uniform变量
     // 瑞利散射系数
-    osg::Uniform* rayleighScatteringUniform = stateset->getUniform("rayleighScattering");
+    osg::Uniform* rayleighScatteringUniform = stateset->getUniform("rayleigh");
     if (rayleighScatteringUniform) {
         rayleighScatteringUniform->set(_rayleighScattering);
     } else {
-        stateset->addUniform(new osg::Uniform("rayleighScattering", _rayleighScattering));
+        stateset->addUniform(new osg::Uniform("rayleigh", _rayleighScattering));
     }
     
     // 大气密度 (turbidity)
-    osg::Uniform* atmosphereDensityUniform = stateset->getUniform("atmosphereDensity");
+    osg::Uniform* atmosphereDensityUniform = stateset->getUniform("turbidity");
     if (atmosphereDensityUniform) {
         atmosphereDensityUniform->set(_atmosphereDensity);
     } else {
-        stateset->addUniform(new osg::Uniform("atmosphereDensity", _atmosphereDensity));
+        stateset->addUniform(new osg::Uniform("turbidity", _atmosphereDensity));
     }
     
     // 米氏散射系数
-    osg::Uniform* mieScatteringUniform = stateset->getUniform("mieScattering");
+    osg::Uniform* mieScatteringUniform = stateset->getUniform("mieCoefficient");
     if (mieScatteringUniform) {
         mieScatteringUniform->set(_mieScattering);
     } else {
-        stateset->addUniform(new osg::Uniform("mieScattering", _mieScattering));
-    }
-    
-    // 太阳强度
-    osg::Uniform* sunIntensityUniform = stateset->getUniform("sunIntensity");
-    if (sunIntensityUniform) {
-        sunIntensityUniform->set(_sunIntensity);
-    } else {
-        stateset->addUniform(new osg::Uniform("sunIntensity", _sunIntensity));
+        stateset->addUniform(new osg::Uniform("mieCoefficient", _mieScattering));
     }
     
     // 米氏散射方向性参数
@@ -526,12 +921,12 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
         stateset->addUniform(new osg::Uniform("cameraPosition", osg::Vec3(0.0f, 0.0f, 0.0f)));
     }
     
-    // 视图逆矩阵（单位矩阵作为默认值）
-    osg::Uniform* viewInverseUniform = stateset->getUniform("viewInverse");
-    if (viewInverseUniform) {
-        viewInverseUniform->set(osg::Matrix::identity());
+    // 太阳强度（这个uniform在天空盒着色器中可能不使用，但保留以备将来使用）
+    osg::Uniform* sunIntensityUniform = stateset->getUniform("sunIntensity");
+    if (sunIntensityUniform) {
+        sunIntensityUniform->set(_sunIntensity);
     } else {
-        stateset->addUniform(new osg::Uniform("viewInverse", osg::Matrix::identity()));
+        stateset->addUniform(new osg::Uniform("sunIntensity", _sunIntensity));
     }
     
     std::cout << "Updated atmosphere uniforms:" << std::endl;

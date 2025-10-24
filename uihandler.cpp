@@ -135,8 +135,10 @@ void UIHandler::createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* roo
         // 清除现有的场景
         rootNode->removeChildren(0, rootNode->getNumChildren());
         
-        // 创建DemoShader实例
-        m_demoShader = new DemoShader();
+        // 如果DemoShader还没有创建，则创建它
+        if (!m_demoShader.valid()) {
+            m_demoShader = new DemoShader();
+        }
         
         
         // 创建大气渲染场景（使用全屏四边形）
@@ -176,8 +178,10 @@ void UIHandler::createTexturedAtmosphereScene(osgViewer::Viewer* viewer, osg::Gr
         // 清除现有的场景
         rootNode->removeChildren(0, rootNode->getNumChildren());
         
-        // 创建DemoShader实例
-        m_demoShader = new DemoShader();
+        // 如果DemoShader还没有创建，则创建它
+        if (!m_demoShader.valid()) {
+            m_demoShader = new DemoShader();
+        }
         
         // 创建结合纹理和大气渲染的场景
         // 使用空字符串作为纹理路径，因为纹理路径在DemoShader中设置
@@ -217,34 +221,32 @@ void UIHandler::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Grou
         // 清除现有的场景
         rootNode->removeChildren(0, rootNode->getNumChildren());
         
-       
+        // 如果DemoShader还没有创建，则创建它
+        if (!m_demoShader.valid()) {
+            m_demoShader = new DemoShader();
+        }
         
-        // 创建结合天空盒和大气渲染的场景
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(), 450000.0)));
-    geode->setCullingActive(false);
-    osg::ref_ptr<SkyBoxThree> skybox = new SkyBoxThree(viewer->getCamera());
-    skybox->setName("skybox");
-    skybox->addChild(geode.get());
-    
+        // 使用DemoShader创建结合天空盒和大气渲染的场景
+        osg::ref_ptr<osg::Node> skyboxAtmosphereScene = m_demoShader->createSkyboxAtmosphereScene(viewer);
         
         // 将场景添加到根节点
-        if (skybox.valid()) {
-            rootNode->addChild(skybox);
+        if (skyboxAtmosphereScene.valid()) {
+            rootNode->addChild(skyboxAtmosphereScene);
         } else {
             qDebug() << "Failed to create skybox atmosphere scene";
             return;
         }
         
         // 设置默认的视图参数
-        // osg::Vec3d eye(0.0, 0.0, 0.0);  // 设置相机位置
-        // osg::Vec3d center(0.0, 0.0, 0.0);
-        // osg::Vec3d up(0.0, 1.0, 0.0);
-        // m_viewManager.setViewParameters(eye, center, up);
+        // 调整摄像机位置，使其更适合观察天空盒和大气效果
+        osg::Vec3d eye(0.0, 0.0, 2.0);  // 将摄像机位置调整为更靠近原点，Z轴稍高
+        osg::Vec3d center(0.0, 0.0, 0.0);
+        osg::Vec3d up(0.0, 0.0, 1.0);
+        m_viewManager.setViewParameters(eye, center, up);
         
-        // 设置相机背景色为黑色，避免干扰大气渲染效果
+        // 设置相机背景色为深蓝色
         if (viewer->getCamera()) {
-            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.2f, 1.0f));
         }
         
         // 强制更新视图
@@ -252,6 +254,49 @@ void UIHandler::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Grou
         viewer->requestRedraw();
         
         qDebug() << "Skybox atmosphere scene created successfully";
+    }
+}
+
+// 新增：创建结合天空盒大气和PBR立方体的场景
+void UIHandler::createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (viewer && rootNode) {
+        // 清除现有的场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        
+        // 如果DemoShader还没有创建，则创建它
+        if (!m_demoShader.valid()) {
+            m_demoShader = new DemoShader();
+        }
+        
+        // 使用DemoShader创建结合天空盒大气和PBR立方体的场景
+        osg::ref_ptr<osg::Node> skyboxAtmosphereWithPBRScene = m_demoShader->createSkyboxAtmosphereWithPBRScene(viewer);
+        
+        // 将场景添加到根节点
+        if (skyboxAtmosphereWithPBRScene.valid()) {
+            rootNode->addChild(skyboxAtmosphereWithPBRScene);
+        } else {
+            qDebug() << "Failed to create skybox atmosphere with PBR scene";
+            return;
+        }
+        
+        // 设置默认的视图参数
+        // 调整摄像机位置，使其更适合观察天空盒和大气效果
+        osg::Vec3d eye(0.0, 0.0, 0.0);  // 将摄像机位置调整为更靠近原点，Z轴稍高
+        osg::Vec3d center(0.0, 0.0, 0.0);
+        osg::Vec3d up(0.0, 0.0, 1.0);
+        m_viewManager.setViewParameters(eye, center, up);
+        
+        // 设置相机背景色为深蓝色
+        if (viewer->getCamera()) {
+            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.2f, 1.0f));
+        }
+        
+        // 强制更新视图
+        viewer->advance();
+        viewer->requestRedraw();
+        
+        qDebug() << "Skybox atmosphere with PBR scene created successfully";
     }
 }
 
@@ -565,51 +610,3 @@ void UIHandler::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, Sim
 }
 
 // 更新SkyNode中的大气参数
-void UIHandler::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
-                                               float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
-{
-    if (!viewer || !rootNode) return;
-    
-    // 查找场景中的SkyBoxThree节点
-    osg::Node* skyboxNode = nullptr;
-    for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
-        osg::Node* child = rootNode->getChild(i);
-        if (child && child->getName() == "skybox") {
-            skyboxNode = child;
-            break;
-        }
-    }
-    
-    if (skyboxNode) {
-        // 获取SkyBoxThree节点的状态集
-        osg::StateSet* stateset = skyboxNode->getOrCreateStateSet();
-        if (stateset) {
-            // 更新uniform变量
-            osg::Uniform* turbidityUniform = stateset->getUniform("turbidity");
-            if (turbidityUniform) {
-                turbidityUniform->set(turbidity);
-            }
-            
-            osg::Uniform* rayleighUniform = stateset->getUniform("rayleigh");
-            if (rayleighUniform) {
-                rayleighUniform->set(rayleigh);
-            }
-            
-            osg::Uniform* mieCoefficientUniform = stateset->getUniform("mieCoefficient");
-            if (mieCoefficientUniform) {
-                mieCoefficientUniform->set(mieCoefficient);
-            }
-            
-            osg::Uniform* mieDirectionalGUniform = stateset->getUniform("mieDirectionalG");
-            if (mieDirectionalGUniform) {
-                mieDirectionalGUniform->set(mieDirectionalG);
-            }
-        }
-    }
-    
-    // 强制更新视图
-    if (viewer) {
-        viewer->advance();
-        viewer->requestRedraw();
-    }
-}

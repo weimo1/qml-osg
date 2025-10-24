@@ -84,8 +84,8 @@ void SkyBoxThree::initUniforms()
 	_rayleigh = new osg::Uniform("rayleigh", 1.0f);
 	_mieCoefficient = new osg::Uniform("mieCoefficient", 0.005f);
 	_mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.8f);
-	_sunPosition = new osg::Uniform("sunPosition", osg::Vec3(0.7f, 0.7f, 0.7f));
-	_up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f,1.0f));
+	_sunPosition = new osg::Uniform("sunPosition", osg::Vec3(0.0f, 0.1f, 0.3f));
+	_up = new osg::Uniform("up", osg::Vec3(0.0f, 1.0f,0.0f));
 }
 
 

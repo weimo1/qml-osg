@@ -22,7 +22,8 @@
 #include <vector>
 #include <cmath>
 
-class  SkyBoxThree;
+// 前向声明
+class SkyBoxThree;
 
 class DemoShader : public osg::Referenced
 {
@@ -89,7 +90,26 @@ public:
     void updateAtmosphereSceneUniforms(osg::StateSet* stateset);
     
     // 新增：创建结合天空盒和大气渲染的场景
-    osg::Node* createSkyboxAtmosphereScene();
+    osg::Node* createSkyboxAtmosphereScene(osgViewer::Viewer* viewer);
+    
+    // 新增：创建PBR立方体
+    osg::Node* createPBRCube();
+    
+    // 新增：创建调试用的简单立方体
+    osg::Node* createDebugCube();
+    
+    // 新增：创建使用改进大气着色器的场景
+    osg::Node* createImprovedAtmosphereScene(osgViewer::Viewer* viewer);
+    
+    // 新增：创建结合天空盒大气和PBR立方体的场景
+    osg::Node* createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer);
+    
+    // 新增：更新SkyNode大气参数的方法
+    void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                        float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
+    
+    // 辅助函数：递归查找SkyBoxThree节点
+    osg::Node* findSkyBoxThreeNode(osg::Node* node);
 
 private:
     // 着色器程序

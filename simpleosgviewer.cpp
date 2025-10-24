@@ -221,6 +221,15 @@ void SimpleOSGViewer::createSkyboxAtmosphereScene()
     }
 }
 
+// 新增：实现创建结合天空盒大气和PBR立方体的场景功能
+void SimpleOSGViewer::createSkyboxAtmosphereWithPBRScene()
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeCreateSkyboxAtmosphereWithPBRScene", Qt::QueuedConnection);
+    }
+}
+
 // 实现重置视野功能
 void SimpleOSGViewer::resetView()
 {
@@ -493,5 +502,13 @@ void SimpleOSGViewer::invokeCreateSkyboxAtmosphereScene()
 {
     if (m_renderer) {
         m_renderer->createSkyboxAtmosphereScene();
+    }
+}
+
+// 实际调用渲染器创建结合天空盒大气和PBR立方体的场景的方法
+void SimpleOSGViewer::invokeCreateSkyboxAtmosphereWithPBRScene()
+{
+    if (m_renderer) {
+        m_renderer->createSkyboxAtmosphereWithPBRScene();
     }
 }

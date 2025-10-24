@@ -44,6 +44,11 @@ float hgPhase(float cosTheta, float g)
 void main() 
 {
     vec3 direction = normalize(vWorldPosition - cameraPosition);
+    
+    // 调整坐标系以匹配OpenGL/OSG的约定
+    direction.y = -direction.y;
+    vec3 sunDir = vSunDirection;
+    sunDir.y = -sunDir.y;
 
     // optical length
     // cutoff angle at 90 to avoid singularity in next formula.
@@ -56,7 +61,7 @@ void main()
     vec3 Fex = exp(-(vBetaR * sR + vBetaM * sM));
 
     // in scattering
-    float cosTheta = dot(direction, vSunDirection);
+    float cosTheta = dot(direction, sunDir);
 
     float rPhase = rayleighPhase(cosTheta * 0.5 + 0.5);
     vec3 betaRTheta = vBetaR * rPhase;
@@ -65,7 +70,7 @@ void main()
     vec3 betaMTheta = vBetaM * mPhase;
 
     vec3 Lin = pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * (1.0 - Fex), vec3(1.5));
-    Lin *= mix(vec3(1.0), pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(1.0 / 2.0)), clamp(pow(1.0 - dot(up, vSunDirection), 5.0), 0.0, 1.0));
+    Lin *= mix(vec3(1.0), pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(1.0 / 2.0)), clamp(pow(1.0 - dot(up, sunDir), 5.0), 0.0, 1.0));
 
     // nightsky
     float theta = acos(direction.y); // elevation --> y-axis, [-pi/2, pi/2]
@@ -85,6 +90,4 @@ void main()
     retColor*=0.2;
 
     color = vec4(retColor, 1.0);
-
-
 }

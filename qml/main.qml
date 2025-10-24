@@ -219,6 +219,24 @@ ApplicationWindow {
                     }
                 }
                 
+                // 新增：结合天空盒大气和PBR立方体的场景按钮
+                Button {
+                    text: "天空盒PBR"
+                    background: Rectangle {
+                        color: "#e67e22"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "天空盒PBR"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Create Skybox Atmosphere with PBR Scene button clicked")
+                        osgViewer.createSkyboxAtmosphereWithPBRScene()
+                    }
+                }
             }
             
             // 状态指示器

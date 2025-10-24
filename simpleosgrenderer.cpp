@@ -202,6 +202,15 @@ void SimpleOSGRenderer::createSkyboxAtmosphereScene()
     }
 }
 
+// 新增：实现创建结合天空盒大气和PBR立方体的场景功能
+void SimpleOSGRenderer::createSkyboxAtmosphereWithPBRScene()
+{
+    if (m_viewer && m_rootNode) {
+        // 创建结合天空盒大气和PBR立方体的场景
+        m_uiHandler->createSkyboxAtmosphereWithPBRScene(m_viewer, m_rootNode);
+    }
+}
+
 // 实现重置视野功能
 void SimpleOSGRenderer::resetView(SimpleOSGViewer::ViewType viewType)
 {
@@ -737,8 +746,11 @@ void SimpleOSGRenderer::updateAtmosphereScattering(float mie, float rayleigh)
 // 添加更新SkyNode大气参数的方法
 void SimpleOSGRenderer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
 {
-    if (m_viewer && m_rootNode) {
-        m_uiHandler->updateSkyNodeAtmosphereParameters(m_viewer, m_rootNode, turbidity, rayleigh, mieCoefficient, mieDirectionalG);
+    if (m_viewer && m_rootNode && m_uiHandler) {
+        // 使用DemoShader中的新方法来更新SkyNode大气参数
+        if (m_uiHandler->getDemoShader() && m_uiHandler->getDemoShader()) {
+            m_uiHandler->getDemoShader()->updateSkyNodeAtmosphereParameters(m_viewer, m_rootNode, turbidity, rayleigh, mieCoefficient, mieDirectionalG);
+        }
     }
 }
 

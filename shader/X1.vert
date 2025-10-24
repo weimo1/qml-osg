@@ -78,4 +78,9 @@ void main()
 
     // mie coefficients
     vBetaM = totalMie(turbidity) * mieCoefficient;
+    
+    // 调整坐标系以匹配OpenGL/OSG的约定
+    // 在OpenGL中，Y轴向上为正，但可能需要根据具体实现调整
+    vWorldPosition.y = -vWorldPosition.y;
+    vSunDirection.y = -vSunDirection.y;
 }
