@@ -62,7 +62,7 @@ public:
     void updateAtmosphereScattering(float mie, float rayleigh);
     
     // 添加更新SkyNode大气参数的方法
-    void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
+    void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
     
     // 添加更新Textured Atmosphere参数的方法
     void updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);

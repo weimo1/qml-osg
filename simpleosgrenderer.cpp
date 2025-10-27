@@ -744,12 +744,12 @@ void SimpleOSGRenderer::updateAtmosphereScattering(float mie, float rayleigh)
 }
 
 // 添加更新SkyNode大气参数的方法
-void SimpleOSGRenderer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+void SimpleOSGRenderer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle)
 {
     if (m_viewer && m_rootNode && m_uiHandler) {
         // 使用DemoShader中的新方法来更新SkyNode大气参数
         if (m_uiHandler->getDemoShader() && m_uiHandler->getDemoShader()) {
-            m_uiHandler->getDemoShader()->updateSkyNodeAtmosphereParameters(m_viewer, m_rootNode, turbidity, rayleigh, mieCoefficient, mieDirectionalG);
+            m_uiHandler->getDemoShader()->updateSkyNodeAtmosphereParameters(m_viewer, m_rootNode, turbidity, rayleigh, mieCoefficient, mieDirectionalG, sunZenithAngle, sunAzimuthAngle);
         }
     }
 }

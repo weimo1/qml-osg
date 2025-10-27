@@ -453,21 +453,22 @@ void SimpleOSGViewer::invokeUpdateAtmosphereScattering(float mie, float rayleigh
 }
 
 // 添加更新SkyNode大气参数的方法
-void SimpleOSGViewer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+void SimpleOSGViewer::updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle)
 {
     // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
         QMetaObject::invokeMethod(this, "invokeUpdateSkyNodeAtmosphereParameters", Qt::QueuedConnection,
                                  Q_ARG(float, turbidity), Q_ARG(float, rayleigh),
-                                 Q_ARG(float, mieCoefficient), Q_ARG(float, mieDirectionalG));
+                                 Q_ARG(float, mieCoefficient), Q_ARG(float, mieDirectionalG), 
+                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle));
     }
 }
 
 // 实际调用渲染器更新SkyNode大气参数的方法
-void SimpleOSGViewer::invokeUpdateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+void SimpleOSGViewer::invokeUpdateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle)
 {
     if (m_renderer) {
-        m_renderer->updateSkyNodeAtmosphereParameters(turbidity, rayleigh, mieCoefficient, mieDirectionalG);
+        m_renderer->updateSkyNodeAtmosphereParameters(turbidity, rayleigh, mieCoefficient, mieDirectionalG, sunZenithAngle, sunAzimuthAngle);
     }
 }
 

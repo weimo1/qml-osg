@@ -842,7 +842,9 @@ ApplicationWindow {
                                 value, 
                                 skyNodeRayleighSlider.value, 
                                 skyNodeMieCoefficientSlider.value, 
-                                skyNodeMieDirectionalGSlider.value
+                                skyNodeMieDirectionalGSlider.value,
+                                skyNodeSunZenithAngleSlider.value,
+                                skyNodeSunAzimuthAngleSlider.value
                             );
                         }
                     }
@@ -880,7 +882,9 @@ ApplicationWindow {
                                 skyNodeTurbiditySlider.value, 
                                 value, 
                                 skyNodeMieCoefficientSlider.value, 
-                                skyNodeMieDirectionalGSlider.value
+                                skyNodeMieDirectionalGSlider.value,
+                                skyNodeSunZenithAngleSlider.value,
+                                skyNodeSunAzimuthAngleSlider.value
                             );
                         }
                     }
@@ -918,7 +922,9 @@ ApplicationWindow {
                                 skyNodeTurbiditySlider.value, 
                                 skyNodeRayleighSlider.value, 
                                 value, 
-                                skyNodeMieDirectionalGSlider.value
+                                skyNodeMieDirectionalGSlider.value,
+                                skyNodeSunZenithAngleSlider.value,
+                                skyNodeSunAzimuthAngleSlider.value
                             );
                         }
                     }
@@ -956,13 +962,95 @@ ApplicationWindow {
                                 skyNodeTurbiditySlider.value, 
                                 skyNodeRayleighSlider.value, 
                                 skyNodeMieCoefficientSlider.value, 
-                                value
+                                value,
+                                skyNodeSunZenithAngleSlider.value,
+                                skyNodeSunAzimuthAngleSlider.value
                             );
                         }
                     }
                     
                     Text {
                         text: "方向性: " + skyNodeMieDirectionalGSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 太阳天顶角度控制
+                    Text {
+                        text: "太阳天顶角度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyNodeSunZenithAngleSlider
+                        width: parent.width
+                        from: 0.0
+                        to: Math.PI
+                        value: 75.0 * Math.PI / 180.0  // 初始化为75度
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeAtmosphereParameters(
+                                skyNodeTurbiditySlider.value, 
+                                skyNodeRayleighSlider.value, 
+                                skyNodeMieCoefficientSlider.value, 
+                                skyNodeMieDirectionalGSlider.value,
+                                value,
+                                skyNodeSunAzimuthAngleSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "角度: " + (skyNodeSunZenithAngleSlider.value * 180 / Math.PI).toFixed(1) + "°"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 太阳方位角度控制
+                    Text {
+                        text: "太阳方位角度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyNodeSunAzimuthAngleSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 2 * Math.PI
+                        value: 40.0 * Math.PI / 180.0  // 初始化为40度
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeAtmosphereParameters(
+                                skyNodeTurbiditySlider.value, 
+                                skyNodeRayleighSlider.value, 
+                                skyNodeMieCoefficientSlider.value, 
+                                skyNodeMieDirectionalGSlider.value,
+                                skyNodeSunZenithAngleSlider.value,
+                                value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "角度: " + (skyNodeSunAzimuthAngleSlider.value * 180 / Math.PI).toFixed(1) + "°"
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter

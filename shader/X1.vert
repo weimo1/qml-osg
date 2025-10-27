@@ -6,6 +6,8 @@ uniform float rayleigh;
 uniform float turbidity;
 uniform float mieCoefficient;
 uniform vec3 up;
+uniform float sunZenithAngle;  // 添加太阳天顶角度uniform
+uniform float sunAzimuthAngle;  // 添加太阳方位角度uniform
 
 uniform mat4 viewInverse;
 uniform mat4 osg_ProjectionMatrix;
@@ -56,19 +58,32 @@ vec3 totalMie(float T){
 
 void main() 
 {
-	mat4 modelMatrix = viewInverse * osg_ModelViewMatrix;
+    mat4 modelMatrix = viewInverse * osg_ModelViewMatrix;
 
-	vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
+    vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
     vWorldPosition = worldPosition.xyz;
 
-    gl_Position = osg_ProjectionMatrix * osg_ModelViewMatrix * vec4(aPos,1);
+    // 处理投影和视图矩阵以解决坐标系问题
+    gl_Position = osg_ProjectionMatrix * osg_ModelViewMatrix * vec4(aPos, 1.0);
+    
+    // 翻转Y轴以匹配Qt坐标系
+    gl_Position.y = -gl_Position.y;
+    
     gl_Position.z = gl_Position.w; // set z to camera.far
 
-    vSunDirection = normalize(sunPosition);
+    // 根据太阳天顶角度和方位角计算太阳方向
+    vec3 computedSunDirection = vec3(
+        sin(sunZenithAngle) * cos(sunAzimuthAngle),
+        sin(sunZenithAngle) * sin(sunAzimuthAngle),
+        cos(sunZenithAngle)
+    );
+    
+    // 使用计算出的太阳方向
+    vSunDirection = normalize(computedSunDirection);
 
     vSunE = sunIntensity(dot(vSunDirection, up));
 
-    vSunfade = 1.0 - clamp(1.0 - exp((sunPosition.y / 450000.0)), 0.0, 1.0);
+    vSunfade = 1.0 - clamp(1.0 - exp((computedSunDirection.z / 450000.0)), 0.0, 1.0);
 
     float rayleighCoefficient = rayleigh - (1.0 * (1.0 - vSunfade));
 

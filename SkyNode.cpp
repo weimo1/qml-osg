@@ -23,12 +23,24 @@ public:
 	{
 		if (pCamera_)
 		{
+			// osg::Vec3f eye, center, up;
+			// pCamera_->getViewMatrixAsLookAt(eye, center, up);
+			
+			// // 设置相机位置和方向
+			// ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);
+			// ss->getOrCreateUniform("cameraDirection", osg::Uniform::FLOAT_VEC3)->set(center - eye);
+			
+			// // 设置视图矩阵
+			// osg::Matrixf viewMat = pCamera_->getViewMatrix();
+			// osg::Matrixf viewInverse = osg::Matrixf::inverse(viewMat);
+			// ss->getOrCreateUniform("viewInverse", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
+			
 			osg::Vec3f eye, center, up;
 			pCamera_->getViewMatrixAsLookAt(eye, center, up);
 			ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);
 
 			osg::Matrixf vieMat = pCamera_->getViewMatrix();
-			osg::Matrixf viewInverse = osg::Matrixf::inverse(vieMat);
+			osg::Matrixf viewInverse = vieMat.inverse(vieMat);
 			ss->getOrCreateUniform("viewInverse", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
 		}
 	}
@@ -43,16 +55,18 @@ SkyBoxThree::SkyBoxThree()
 
 SkyBoxThree::SkyBoxThree(osg::Camera * pCamera)
 {
+	// 使用绝对参考框架，使天空盒不受场景变换影响
 	setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 
 	setCullingActive(false);
 
 	osg::StateSet* ss = getOrCreateStateSet();
 	ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0f, 1.0f));
+	ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
 
 	ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 	ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-	ss->setRenderBinDetails(-2, "RenderBin");
+	ss->setRenderBinDetails(0, "RenderBin");
 
 	//add
 	initUniforms();
@@ -72,20 +86,24 @@ SkyBoxThree::SkyBoxThree(osg::Camera * pCamera)
 	ss->addUniform(_mieDirectionalG.get());
 	ss->addUniform(_sunPosition.get());
 	ss->addUniform(_up.get());
+	ss->addUniform(_sunZenithAngle.get());  // 添加太阳天顶角度uniform
+    ss->addUniform(_sunAzimuthAngle.get());  // 添加太阳方位角度uniform
 
-	SkyCB* pCB = new SkyCB(pCamera);
-	ss->setUpdateCallback(pCB);
+    SkyCB* pCB = new SkyCB(pCamera);
+    ss->setUpdateCallback(pCB);
 
 }
 
 void SkyBoxThree::initUniforms()
 {
-	_turbidity = new osg::Uniform("turbidity", 2.0f);
-	_rayleigh = new osg::Uniform("rayleigh", 1.0f);
-	_mieCoefficient = new osg::Uniform("mieCoefficient", 0.005f);
-	_mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.8f);
-	_sunPosition = new osg::Uniform("sunPosition", osg::Vec3(0.0f, 0.1f, 0.3f));
-	_up = new osg::Uniform("up", osg::Vec3(0.0f, 1.0f,0.0f));
+    _turbidity = new osg::Uniform("turbidity", 2.0f);
+    _rayleigh = new osg::Uniform("rayleigh", 1.0f);
+    _mieCoefficient = new osg::Uniform("mieCoefficient", 0.005f);
+    _mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.8f);
+    _sunPosition = new osg::Uniform("sunPosition", osg::Vec3(0.0f, 0.7f, 0.8f));
+    _up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f,1.0f));
+    _sunZenithAngle = new osg::Uniform("sunZenithAngle", 68.0f * 3.14159f / 180.0f);  // 初始化太阳天顶角度为75度
+    _sunAzimuthAngle = new osg::Uniform("sunAzimuthAngle", 90.0f * 3.14159f / 180.0f);  // 初始化太阳方位角度为40度
 }
 
 
@@ -94,6 +112,7 @@ bool SkyBoxThree::computeLocalToWorldMatrix(osg::Matrix& matrix, osg::NodeVisito
 	if (nv && nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
 	{
 		osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+		// 使天空盒始终中心在相机位置，不会因相机旋转而旋转
 		matrix.preMult(osg::Matrix::translate(cv->getEyeLocal()));
 		return true;
 	}
@@ -106,9 +125,26 @@ bool SkyBoxThree::computeWorldToLocalMatrix(osg::Matrix& matrix, osg::NodeVisito
 	if (nv && nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
 	{
 		osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+		// 使天空盒始终中心在相机位置，不会因相机旋转而旋转
 		matrix.postMult(osg::Matrix::translate(-cv->getEyeLocal()));
 		return true;
 	}
 	else
 		return osg::Transform::computeWorldToLocalMatrix(matrix, nv);
+}
+
+// 新增：设置太阳天顶角度的方法实现
+void SkyBoxThree::setSunZenithAngle(float angle)
+{
+    if (_sunZenithAngle.valid()) {
+        _sunZenithAngle->set(angle);
+    }
+}
+
+// 新增：设置太阳方位角度的方法实现
+void SkyBoxThree::setSunAzimuthAngle(float angle)
+{
+    if (_sunAzimuthAngle.valid()) {
+        _sunAzimuthAngle->set(angle);
+    }
 }

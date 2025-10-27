@@ -238,10 +238,10 @@ void UIHandler::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Grou
         }
         
         // 设置默认的视图参数
-        // 调整摄像机位置，使其更适合观察天空盒和大气效果
-        osg::Vec3d eye(0.0, 0.0, 2.0);  // 将摄像机位置调整为更靠近原点，Z轴稍高
-        osg::Vec3d center(0.0, 0.0, 0.0);
-        osg::Vec3d up(0.0, 0.0, 1.0);
+        // 调整摄像机位置和视角，使其更适合观察球体的中间部分
+        osg::Vec3d eye(0.0, 0.0, 0.0);  // 将摄像机放在原点
+        osg::Vec3d center(0.0, -1.0, 0.0);  // 朝向负Y轴方向
+        osg::Vec3d up(0.0, 0.0, 1.0);  // Z轴向上
         m_viewManager.setViewParameters(eye, center, up);
         
         // 设置相机背景色为深蓝色
@@ -281,10 +281,10 @@ void UIHandler::createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer, os
         }
         
         // 设置默认的视图参数
-        // 调整摄像机位置，使其更适合观察天空盒和大气效果
-        osg::Vec3d eye(0.0, 0.0, 0.0);  // 将摄像机位置调整为更靠近原点，Z轴稍高
-        osg::Vec3d center(0.0, 0.0, 0.0);
-        osg::Vec3d up(0.0, 0.0, 1.0);
+        // 调整摄像机位置和视角，使其更适合观察球体的中间部分
+        osg::Vec3d eye(0.0, 0.0, 0.0);  // 将摄像机放在原点
+        osg::Vec3d center(0.0, -1.0, 0.0);  // 朝向负Y轴方向
+        osg::Vec3d up(0.0, 0.0, 1.0);  // Z轴向上
         m_viewManager.setViewParameters(eye, center, up);
         
         // 设置相机背景色为深蓝色

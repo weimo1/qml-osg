@@ -11,6 +11,8 @@ out vec4 color;
 uniform float mieDirectionalG;
 uniform vec3 up;
 uniform vec3 cameraPosition;
+uniform float sunZenithAngle;  // 新增：太阳天顶角度
+uniform float sunAzimuthAngle;  // 新增：太阳方位角度
 
 // constants for atmospheric scattering
 const float pi = 3.141592653589793238462643383279502884197169;
@@ -44,8 +46,8 @@ float hgPhase(float cosTheta, float g)
 void main() 
 {
     vec3 direction = normalize(vWorldPosition - cameraPosition);
-    
-    // 调整坐标系以匹配OpenGL/OSG的约定
+
+    // 处理Y轴翻转问题
     direction.y = -direction.y;
     vec3 sunDir = vSunDirection;
     sunDir.y = -sunDir.y;

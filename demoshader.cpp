@@ -240,9 +240,17 @@ osg::Node* DemoShader::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer)
     
     // 创建天空盒
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    // 减小天空盒球体的大小，避免覆盖其他物体
-    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 100.0)));
+    // 调整球体参数，使用更合适的半径
+    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 100.0);
+    osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
+    
+    // 设置球体的细节级别，使其渲染更平滑
+    drawable->setUseDisplayList(false);
+    drawable->setUseVertexBufferObjects(true);
+    
+    geode->addDrawable(drawable);
     geode->setCullingActive(false);
+    
     osg::ref_ptr<SkyBoxThree> skybox = new SkyBoxThree(viewer->getCamera());
     skybox->setName("skybox");
     skybox->addChild(geode.get());
@@ -269,8 +277,15 @@ osg::Node* DemoShader::createImprovedAtmosphereScene(osgViewer::Viewer* viewer)
     
     // 创建一个球体几何体作为天空盒
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    // 使用较大的球体以包围整个场景
-    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 1000.0)));
+    // 调整球体参数，使用更合适的半径
+    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 1000.0);
+    osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
+    
+    // 设置球体的细节级别，使其渲染更平滑
+    drawable->setUseDisplayList(false);
+    drawable->setUseVertexBufferObjects(true);
+    
+    geode->addDrawable(drawable);
     geode->setCullingActive(false);
     
     // 创建SkyBoxThree对象
@@ -486,13 +501,15 @@ osg::Node* DemoShader::createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* vie
 
 // 新增：更新SkyNode大气参数的方法
 void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
-                                               float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG)
+                                               float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
+                                               float sunZenithAngle, float sunAzimuthAngle)
 {
     if (!viewer || !rootNode) return;
     
     std::cout << "Updating SkyNode atmosphere parameters..." << std::endl;
     std::cout << "  Turbidity: " << turbidity << ", Rayleigh: " << rayleigh 
-              << ", Mie Coefficient: " << mieCoefficient << ", Mie Directional G: " << mieDirectionalG << std::endl;
+              << ", Mie Coefficient: " << mieCoefficient << ", Mie Directional G: " << mieDirectionalG 
+              << ", Sun Zenith Angle: " << sunZenithAngle << ", Sun Azimuth Angle: " << sunAzimuthAngle << std::endl;
     
     // 查找场景中的SkyBoxThree节点
     osg::Node* skyboxNode = nullptr;
@@ -583,6 +600,24 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
                 std::cout << "Mie Directional G uniform updated to: " << mieDirectionalG << std::endl;
             } else {
                 std::cout << "Mie Directional G uniform not found" << std::endl;
+            }
+            
+            // 新增：更新太阳天顶角度uniform
+            osg::Uniform* sunZenithAngleUniform = stateset->getUniform("sunZenithAngle");
+            if (sunZenithAngleUniform) {
+                sunZenithAngleUniform->set(sunZenithAngle);
+                std::cout << "Sun Zenith Angle uniform updated to: " << sunZenithAngle << std::endl;
+            } else {
+                std::cout << "Sun Zenith Angle uniform not found" << std::endl;
+            }
+            
+            // 新增：更新太阳方位角度uniform
+            osg::Uniform* sunAzimuthAngleUniform = stateset->getUniform("sunAzimuthAngle");
+            if (sunAzimuthAngleUniform) {
+                sunAzimuthAngleUniform->set(sunAzimuthAngle);
+                std::cout << "Sun Azimuth Angle uniform updated to: " << sunAzimuthAngle << std::endl;
+            } else {
+                std::cout << "Sun Azimuth Angle uniform not found" << std::endl;
             }
         }
     } else {
@@ -874,27 +909,35 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
     
     // 添加更多大气散射相关的uniform变量
     // 瑞利散射系数
-    osg::Uniform* rayleighScatteringUniform = stateset->getUniform("rayleigh");
+    osg::Uniform* rayleighScatteringUniform = stateset->getUniform("rayleighScattering");
     if (rayleighScatteringUniform) {
         rayleighScatteringUniform->set(_rayleighScattering);
     } else {
-        stateset->addUniform(new osg::Uniform("rayleigh", _rayleighScattering));
+        stateset->addUniform(new osg::Uniform("rayleighScattering", _rayleighScattering));
     }
     
     // 大气密度 (turbidity)
-    osg::Uniform* atmosphereDensityUniform = stateset->getUniform("turbidity");
+    osg::Uniform* atmosphereDensityUniform = stateset->getUniform("atmosphereDensity");
     if (atmosphereDensityUniform) {
         atmosphereDensityUniform->set(_atmosphereDensity);
     } else {
-        stateset->addUniform(new osg::Uniform("turbidity", _atmosphereDensity));
+        stateset->addUniform(new osg::Uniform("atmosphereDensity", _atmosphereDensity));
     }
     
     // 米氏散射系数
-    osg::Uniform* mieScatteringUniform = stateset->getUniform("mieCoefficient");
+    osg::Uniform* mieScatteringUniform = stateset->getUniform("mieScattering");
     if (mieScatteringUniform) {
         mieScatteringUniform->set(_mieScattering);
     } else {
-        stateset->addUniform(new osg::Uniform("mieCoefficient", _mieScattering));
+        stateset->addUniform(new osg::Uniform("mieScattering", _mieScattering));
+    }
+    
+    // 太阳强度
+    osg::Uniform* sunIntensityUniform = stateset->getUniform("sunIntensity");
+    if (sunIntensityUniform) {
+        sunIntensityUniform->set(_sunIntensity);
+    } else {
+        stateset->addUniform(new osg::Uniform("sunIntensity", _sunIntensity));
     }
     
     // 米氏散射方向性参数
@@ -921,12 +964,12 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
         stateset->addUniform(new osg::Uniform("cameraPosition", osg::Vec3(0.0f, 0.0f, 0.0f)));
     }
     
-    // 太阳强度（这个uniform在天空盒着色器中可能不使用，但保留以备将来使用）
-    osg::Uniform* sunIntensityUniform = stateset->getUniform("sunIntensity");
-    if (sunIntensityUniform) {
-        sunIntensityUniform->set(_sunIntensity);
+    // 视图逆矩阵（单位矩阵作为默认值）
+    osg::Uniform* viewInverseUniform = stateset->getUniform("viewInverse");
+    if (viewInverseUniform) {
+        viewInverseUniform->set(osg::Matrix::identity());
     } else {
-        stateset->addUniform(new osg::Uniform("sunIntensity", _sunIntensity));
+        stateset->addUniform(new osg::Uniform("viewInverse", osg::Matrix::identity()));
     }
     
     std::cout << "Updated atmosphere uniforms:" << std::endl;

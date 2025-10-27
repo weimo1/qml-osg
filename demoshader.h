@@ -106,7 +106,8 @@ public:
     
     // 新增：更新SkyNode大气参数的方法
     void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
-                                        float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
+                                        float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
+                                        float sunZenithAngle, float sunAzimuthAngle);
     
     // 辅助函数：递归查找SkyBoxThree节点
     osg::Node* findSkyBoxThreeNode(osg::Node* node);
