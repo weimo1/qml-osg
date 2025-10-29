@@ -43,7 +43,7 @@ osg::Matrixd SkyBoxManipulator::getMatrix() const
 {
     // 使用ViewManager兼容的方式设置相机
     // 相机位置在Y轴负方向，看向原点，Z轴向上（与ViewManager的FrontView一致）
-    osg::Vec3d eye(0.0, _distance, 0.0);   // 相机位置（Y轴负方向）
+    osg::Vec3d eye(0.0, _distance, -20.0);   // 相机位置（Y轴负方向）
     osg::Vec3d center(0.0, 0.0, 0.0);       // 目标点（天空盒中心）
     osg::Vec3d up(0.0, 0.0, 1.0);           // 上方向向量（Z轴向上）
     
