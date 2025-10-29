@@ -60,6 +60,8 @@ add_executable(${PROJECT_NAME}
     demoshader.h
     SkyNode.cpp
     SkyNode.h
+    skyboxmanipulator.cpp
+    skyboxmanipulator.h
     qml.qrc
 )
 

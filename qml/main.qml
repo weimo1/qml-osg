@@ -875,8 +875,9 @@ ApplicationWindow {
                         id: skyNodeRayleighSlider
                         width: parent.width
                         from: 0.1
-                        to: 5.0
+                        to: 20.0  // 改为20.0
                         value: 1.0
+                        stepSize: 0.1
                         onValueChanged: {
                             osgViewer.updateSkyNodeAtmosphereParameters(
                                 skyNodeTurbiditySlider.value, 
@@ -890,7 +891,7 @@ ApplicationWindow {
                     }
                     
                     Text {
-                        text: "系数: " + skyNodeRayleighSlider.value.toFixed(1)
+                        text: "系数: " + skyNodeRayleighSlider.value.toFixed(2)  // 改为2位小数
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -996,7 +997,7 @@ ApplicationWindow {
                         width: parent.width
                         from: 0.0
                         to: Math.PI
-                        value: 75.0 * Math.PI / 180.0  // 初始化为75度
+                        value: 85.0 * Math.PI / 180.0  // 初始化为75度
                         onValueChanged: {
                             osgViewer.updateSkyNodeAtmosphereParameters(
                                 skyNodeTurbiditySlider.value, 
@@ -1036,7 +1037,7 @@ ApplicationWindow {
                         width: parent.width
                         from: 0.0
                         to: 2 * Math.PI
-                        value: 40.0 * Math.PI / 180.0  // 初始化为40度
+                        value: 270.0 * Math.PI / 180.0  // 初始化为40度
                         onValueChanged: {
                             osgViewer.updateSkyNodeAtmosphereParameters(
                                 skyNodeTurbiditySlider.value, 

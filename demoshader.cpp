@@ -22,9 +22,10 @@
 // 常量定义
 const float DemoShader::kSunAngularRadius = 0.00935f / 2.0f;
 const float DemoShader::kLengthUnitInMeters = 1000.0f;
-#include"SkyNode.h"
+#include "SkyNode.h"
 #include "shaderpbr.h"  // 添加PBR头文件
 #include "shadercube.h"
+#include "skyboxmanipulator.h"  // 添加SkyBoxManipulator头文件
 DemoShader::DemoShader()
     : _viewDistanceMeters(5000.0f)  // 初始观察距离5km，更接近地球表面
     , _viewZenithAngleRadians(0.0f)  // 初始视角天顶角，从地面向上看
@@ -263,7 +264,13 @@ osg::Node* DemoShader::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer)
         return nullptr;
     }
     
+    // 只在大气渲染的天空盒上使用SkyBoxManipulator
+    // 为viewer设置自定义的SkyBoxManipulator操纵器
+    osg::ref_ptr<SkyBoxManipulator> manipulator = new SkyBoxManipulator();
+    viewer->setCameraManipulator(manipulator.get());
+    
     std::cout << "Skybox atmosphere scene created successfully" << std::endl;
+    std::cout << "SkyBoxManipulator enabled for atmosphere skybox" << std::endl;
     
     return root.release();
 }
@@ -948,12 +955,12 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
         stateset->addUniform(new osg::Uniform("mieDirectionalG", 0.8f));
     }
     
-    // 上方向
-    osg::Uniform* upUniform = stateset->getUniform("up");
-    if (upUniform) {
-        upUniform->set(osg::Vec3(0.0f, 1.0f, 0.0f));
+    // 设置up向量uniform - 使用Z轴向上以匹配OSG坐标系
+    osg::ref_ptr<osg::Uniform> upUniform = stateset->getUniform("up");
+    if (upUniform.valid()) {
+        upUniform->set(osg::Vec3(0.0f, 0.0f, 1.0f));
     } else {
-        stateset->addUniform(new osg::Uniform("up", osg::Vec3(0.0f, 1.0f, 0.0f)));
+        stateset->addUniform(new osg::Uniform("up", osg::Vec3(0.0f, 0.0f, 1.0f)));
     }
     
     // 相机位置（使用默认值）

@@ -46,8 +46,7 @@ float hgPhase(float cosTheta, float g)
 void main() 
 {
     vec3 direction = normalize(vWorldPosition - cameraPosition);
-
-    // 保持坐标系一致性，不再翻转Y轴
+  
     vec3 sunDir = vSunDirection;
 
     // optical length

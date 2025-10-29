@@ -23,24 +23,13 @@ public:
 	{
 		if (pCamera_)
 		{
-			// osg::Vec3f eye, center, up;
-			// pCamera_->getViewMatrixAsLookAt(eye, center, up);
-			
-			// // 设置相机位置和方向
-			// ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);
-			// ss->getOrCreateUniform("cameraDirection", osg::Uniform::FLOAT_VEC3)->set(center - eye);
-			
-			// // 设置视图矩阵
-			// osg::Matrixf viewMat = pCamera_->getViewMatrix();
-			// osg::Matrixf viewInverse = osg::Matrixf::inverse(viewMat);
-			// ss->getOrCreateUniform("viewInverse", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
-			
 			osg::Vec3f eye, center, up;
 			pCamera_->getViewMatrixAsLookAt(eye, center, up);
 			ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);
 
-			osg::Matrixf vieMat = pCamera_->getViewMatrix();
-			osg::Matrixf viewInverse = vieMat.inverse(vieMat);
+			// 修复视图矩阵逆矩阵计算
+			osg::Matrixf viewMat = pCamera_->getViewMatrix();
+			osg::Matrixf viewInverse = osg::Matrixf::inverse(viewMat);
 			ss->getOrCreateUniform("viewInverse", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
 		}
 	}
@@ -101,9 +90,9 @@ void SkyBoxThree::initUniforms()
     _mieCoefficient = new osg::Uniform("mieCoefficient", 0.005f);
     _mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.8f);
     _sunPosition = new osg::Uniform("sunPosition", osg::Vec3(0.0f, 0.7f, 0.8f));
-    _up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f,1.0f));
-    _sunZenithAngle = new osg::Uniform("sunZenithAngle", 68.0f * 3.14159f / 180.0f);  // 初始化太阳天顶角度为75度
-    _sunAzimuthAngle = new osg::Uniform("sunAzimuthAngle", 90.0f * 3.14159f / 180.0f);  // 初始化太阳方位角度为40度
+    _up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f, 1.0f));  // 使用Z轴向上
+    _sunZenithAngle = new osg::Uniform("sunZenithAngle", 80.0f * 3.14159f / 180.0f);  // 初始化太阳天顶角度为68度
+    _sunAzimuthAngle = new osg::Uniform("sunAzimuthAngle", 270.0f * 3.14159f / 180.0f);  // 初始化太阳方位角度为90度
 }
 
 
