@@ -66,9 +66,6 @@ void main()
     // 处理投影和视图矩阵以解决坐标系问题
     gl_Position = osg_ProjectionMatrix * osg_ModelViewMatrix * vec4(aPos, 1.0);
     
-    // 翻转Y轴以匹配Qt坐标系
-    gl_Position.y = -gl_Position.y;
-    
     gl_Position.z = gl_Position.w; // set z to camera.far
 
     // 根据太阳天顶角度和方位角计算太阳方向
@@ -94,8 +91,5 @@ void main()
     // mie coefficients
     vBetaM = totalMie(turbidity) * mieCoefficient;
     
-    // 调整坐标系以匹配OpenGL/OSG的约定
-    // 在OpenGL中，Y轴向上为正，但可能需要根据具体实现调整
-    vWorldPosition.y = -vWorldPosition.y;
-    vSunDirection.y = -vSunDirection.y;
+    // 不再需要翻转Y轴，保持与OSG坐标系一致
 }

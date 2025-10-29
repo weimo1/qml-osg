@@ -47,10 +47,8 @@ void main()
 {
     vec3 direction = normalize(vWorldPosition - cameraPosition);
 
-    // 处理Y轴翻转问题
-    direction.y = -direction.y;
+    // 保持坐标系一致性，不再翻转Y轴
     vec3 sunDir = vSunDirection;
-    sunDir.y = -sunDir.y;
 
     // optical length
     // cutoff angle at 90 to avoid singularity in next formula.

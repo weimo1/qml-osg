@@ -14,6 +14,7 @@ SimpleOSGViewer::SimpleOSGViewer(QQuickItem *parent)
     : QQuickFramebufferObject(parent), m_renderer(nullptr), m_viewType(MainView), m_mouseX(0), m_mouseY(0), m_cameraX(0.0), m_cameraY(0.0), m_cameraZ(0.0)
 {
     setTextureFollowsItemSize(true);
+    setMirrorVertically(true);
     setAcceptedMouseButtons(Qt::AllButtons);
     setAcceptHoverEvents(true);
     
