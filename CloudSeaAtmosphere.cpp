@@ -3,6 +3,8 @@
 #include <osgDB/ReadFile>
 #include <QDir>
 #include <osg/Depth>
+#include <osg/Texture2D>
+#include <chrono>
 
 class CloudSeaCB : public osg::StateSet::Callback
 {

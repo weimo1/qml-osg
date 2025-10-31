@@ -91,3 +91,9 @@ target_link_libraries(${PROJECT_NAME}
     ${OSG_LIBRARIES}
     opengl32
 )
+
+# 添加资源文件
+set(RESOURCE_FILES
+    shader/VolumeCloud.vert
+    shader/VolumeCloud.frag
+)

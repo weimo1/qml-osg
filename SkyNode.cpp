@@ -6,35 +6,44 @@
 #include "skyNode.h"
 #include "osgDB/ReadFile"
 #include<Qdir>
+#include "osg/Texture2D"  // 添加纹理头文件
+#include <chrono>         // 添加时间头文件
 
 class SkyCB : public osg::StateSet::Callback
 {
-public:
-	explicit SkyCB(osg::Camera * camera) : pCamera_(camera)
-	{
-	}
-
-	virtual void operator()(osg::StateSet* ss, osg::NodeVisitor* nv)
-	{
-		preocess(ss);
-	}
-
-	void preocess(osg::StateSet* ss)
-	{
-		if (pCamera_)
-		{
-			osg::Vec3f eye, center, up;
-			pCamera_->getViewMatrixAsLookAt(eye, center, up);
-			ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);
-
-			// 修复视图矩阵逆矩阵计算
-			osg::Matrixf viewMat = pCamera_->getViewMatrix();
-			osg::Matrixf viewInverse = osg::Matrixf::inverse(viewMat);
-			ss->getOrCreateUniform("viewInverse", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
-		}
-	}
 private:
-	osg::Camera * pCamera_ = nullptr;
+    osg::Camera * pCamera_ = nullptr;
+    std::chrono::high_resolution_clock::time_point _startTime;  // 添加时间变量
+
+public:
+    explicit SkyCB(osg::Camera * camera) : pCamera_(camera), _startTime(std::chrono::high_resolution_clock::now())
+    {
+    }
+
+    virtual void operator()(osg::StateSet* ss, osg::NodeVisitor* nv)
+    {
+        preocess(ss);
+    }
+
+    void preocess(osg::StateSet* ss)
+    {
+        if (pCamera_)
+        {
+            osg::Vec3f eye, center, up;
+            pCamera_->getViewMatrixAsLookAt(eye, center, up);
+            ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);
+
+            // 修复视图矩阵逆矩阵计算
+            osg::Matrixf viewMat = pCamera_->getViewMatrix();
+            osg::Matrixf viewInverse = osg::Matrixf::inverse(viewMat);
+            ss->getOrCreateUniform("viewInverse", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
+            
+            // 更新时间uniform
+            auto now = std::chrono::high_resolution_clock::now();
+            float elapsed = std::chrono::duration<float>(now - _startTime).count();
+            ss->getOrCreateUniform("iTime", osg::Uniform::FLOAT)->set(elapsed);
+        }
+    }
 };
 
 SkyBoxThree::SkyBoxThree()
@@ -44,39 +53,69 @@ SkyBoxThree::SkyBoxThree()
 
 SkyBoxThree::SkyBoxThree(osg::Camera * pCamera)
 {
-	// 使用绝对参考框架，使天空盒不受场景变换影响
-	setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+    // 使用绝对参考框架，使天空盒不受场景变换影响
+    setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 
-	setCullingActive(false);
+    setCullingActive(false);
 
-	osg::StateSet* ss = getOrCreateStateSet();
-	ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0f, 1.0f));
-	ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0f, 1.0f));
+    ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
 
-	ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-	ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-	ss->setRenderBinDetails(0, "RenderBin");
+    ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+    ss->setRenderBinDetails(0, "RenderBin");
 
-	//add
-	initUniforms();
-	osg::ref_ptr<osg::Program> program = new osg::Program;
-	std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader/";
-	osg::Shader* pV = osgDB::readShaderFile(osg::Shader::VERTEX, resourcePath + "X1.vert");
-	pV->setName("X1.vert");
-	osg::Shader* pF = osgDB::readShaderFile(osg::Shader::FRAGMENT, resourcePath + "X1.frag");
-	pF->setName("X1.frag");
-	program->addShader(pV);
-	program->addShader(pF);
-	ss->setAttributeAndModes(program.get(), osg::StateAttribute::ON);
+    //add
+    initUniforms();
+    osg::ref_ptr<osg::Program> program = new osg::Program;
+    std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader/";
+    osg::Shader* pV = osgDB::readShaderFile(osg::Shader::VERTEX, resourcePath + "X1.vert");
+    pV->setName("X1.vert");
+    osg::Shader* pF = osgDB::readShaderFile(osg::Shader::FRAGMENT, resourcePath + "X1.frag");
+    pF->setName("X1.frag");
+    program->addShader(pV);
+    program->addShader(pF);
+    ss->setAttributeAndModes(program.get(), osg::StateAttribute::ON);
 
-	ss->addUniform(_turbidity.get());
-	ss->addUniform(_rayleigh.get());
-	ss->addUniform(_mieCoefficient.get());
-	ss->addUniform(_mieDirectionalG.get());
-	ss->addUniform(_sunPosition.get());
-	ss->addUniform(_up.get());
-	ss->addUniform(_sunZenithAngle.get());  // 添加太阳天顶角度uniform
+    ss->addUniform(_turbidity.get());
+    ss->addUniform(_rayleigh.get());
+    ss->addUniform(_mieCoefficient.get());
+    ss->addUniform(_mieDirectionalG.get());
+    ss->addUniform(_sunPosition.get());
+    ss->addUniform(_up.get());
+    ss->addUniform(_sunZenithAngle.get());  // 添加太阳天顶角度uniform
     ss->addUniform(_sunAzimuthAngle.get());  // 添加太阳方位角度uniform
+    ss->addUniform(new osg::Uniform("cloudDensity", 3.0f));  // 添加云密度uniform
+    ss->addUniform(new osg::Uniform("cloudHeight", 1000.0f));  // 添加云高度uniform
+    ss->addUniform(new osg::Uniform("iTime", 0.0f));  // 添加时间uniform
+
+    // 加载噪声贴图
+    osg::ref_ptr<osg::Image> noiseImage = osgDB::readImageFile("E:/f.png");
+    if (noiseImage.valid()) {
+        osg::ref_ptr<osg::Texture2D> noiseTexture = new osg::Texture2D();
+        noiseTexture->setImage(noiseImage.get());
+        noiseTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+        noiseTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+        noiseTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        noiseTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        ss->setTextureAttributeAndModes(0, noiseTexture, osg::StateAttribute::ON);
+        ss->addUniform(new osg::Uniform("iChannel0", 0));
+    } else {
+        // 如果无法加载噪声贴图，创建一个默认的白色纹理
+        osg::ref_ptr<osg::Image> defaultImage = new osg::Image();
+        unsigned char* data = new unsigned char[4];
+        data[0] = data[1] = data[2] = 255; data[3] = 255; // 白色
+        defaultImage->setImage(1, 1, 1, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, data, osg::Image::USE_NEW_DELETE);
+        osg::ref_ptr<osg::Texture2D> defaultTexture = new osg::Texture2D();
+        defaultTexture->setImage(defaultImage.get());
+        defaultTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+        defaultTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+        defaultTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        defaultTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        ss->setTextureAttributeAndModes(0, defaultTexture, osg::StateAttribute::ON);
+        ss->addUniform(new osg::Uniform("iChannel0", 0));
+    }
 
     SkyCB* pCB = new SkyCB(pCamera);
     ss->setUpdateCallback(pCB);

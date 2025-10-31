@@ -623,4 +623,5 @@ void UIHandler::updateCloudSeaAtmosphereParameters(osgViewer::Viewer* viewer, os
     }
 }
 
-// 更新SkyNode中的大气参数
+
+

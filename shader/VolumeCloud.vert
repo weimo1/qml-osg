@@ -15,10 +15,10 @@ uniform float mieCoefficient;
 uniform vec3 up;
 uniform float sunZenithAngle;
 uniform float sunAzimuthAngle;
-uniform float cloudDensity;  // 云密度
-uniform float cloudHeight;   // 云高度
+uniform float cloudDensity;
+uniform float cloudHeight;
 
-// 新增：噪声纹理和时间变量
+// 噪声纹理和时间变量
 uniform sampler2D iChannel0;
 uniform float iTime;
 

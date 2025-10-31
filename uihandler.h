@@ -13,9 +13,9 @@
 #include "demoshader.h"  // 添加DemoShader头文件
 #include "viewmanager.h"
 
-class SkyNode;
-class UIHandler
+class UIHandler : public QObject
 {
+    Q_OBJECT
 public:
     UIHandler();
     ~UIHandler();
@@ -68,10 +68,17 @@ public:
     // 注意：updateSkyNodeAtmosphereParameters方法已移至DemoShader类中实现
     // void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
     //                                    float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);
-    
+
+    // 新增：创建云彩场景
+    void createCloudScene(osgViewer::Viewer* viewer, osg::Group* rootNode);
+
+    // 新增：更新云彩参数
+    void updateCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                              float cloudDensity, float cloudHeight);
+
 private:
     ViewManager m_viewManager;
-    osg::ref_ptr<DemoShader> m_demoShader;  // 保存DemoShader引用
+    osg::ref_ptr<DemoShader> m_demoShader;
 };
 
 #endif // UIHANDLER_H

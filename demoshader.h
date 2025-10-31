@@ -84,8 +84,6 @@ public:
     // 新增：创建结合天空盒纹理和大气渲染的场景
     osg::Node* createTexturedAtmosphereScene();
     
-    // 新增：加载大气纹理
-    void loadAtmosphereTextures(osg::StateSet* stateset);
     
     // 新增：更新大气场景uniform变量
     void updateAtmosphereSceneUniforms(osg::StateSet* stateset);
@@ -174,9 +172,6 @@ private:
     // 云海大气对象引用
     osg::ref_ptr<CloudSeaAtmosphere> _cloudSeaAtmosphere;
     
-    // 新增：从文件加载纹理的辅助函数
-    osg::Texture2D* loadTexture2DFromFile(const std::string& filename, int width, int height);
-    osg::Texture3D* loadTexture3DFromFile(const std::string& filename, int width, int height, int depth);
     
     // 云海大气参数
     float _cloudSeaDensity;

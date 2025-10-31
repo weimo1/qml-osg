@@ -142,8 +142,7 @@ osg::Node* DemoShader::createTexturedAtmosphereScene()
     osg::StateSet* stateset = geode->getOrCreateStateSet();
     stateset->setAttributeAndModes(atmosphereProgram, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     
-    // 加载预计算的纹理数据
-    loadAtmosphereTextures(stateset);
+   
     
     // 保存状态集引用，以便后续更新
     _atmosphereStateSet = stateset;
@@ -684,142 +683,8 @@ osg::Node* DemoShader::findSkyBoxThreeNode(osg::Node* node)
     return nullptr;
 }
 
-void DemoShader::loadAtmosphereTextures(osg::StateSet* stateset)
-{
-    if (!stateset) return;
-    
-    // 获取资源路径
-    std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
-    
-    // 加载透射率纹理数据
-    std::string transmittancePath = resourcePath + "/transmittance.dat";
-    osg::ref_ptr<osg::Texture2D> transmittanceTexture = loadTexture2DFromFile(transmittancePath, 
-        TRANSMITTANCE_TEXTURE_WIDTH, TRANSMITTANCE_TEXTURE_HEIGHT);
-    
-    // 加载散射纹理数据
-    std::string scatteringPath = resourcePath + "/scattering.dat";
-    osg::ref_ptr<osg::Texture3D> scatteringTexture = loadTexture3DFromFile(scatteringPath,
-        SCATTERING_TEXTURE_WIDTH, SCATTERING_TEXTURE_HEIGHT, SCATTERING_TEXTURE_DEPTH);
-    
-    // 加载辐照度纹理数据
-    std::string irradiancePath = resourcePath + "/irradiance.dat";
-    osg::ref_ptr<osg::Texture2D> irradianceTexture = loadTexture2DFromFile(irradiancePath,
-        IRRADIANCE_TEXTURE_WIDTH, IRRADIANCE_TEXTURE_HEIGHT);
-    
-    if (!transmittanceTexture || !scatteringTexture || !irradianceTexture) {
-        std::cerr << "Failed to load atmosphere textures" << std::endl;
-        return;
-    }
-    
-    // 设置纹理单元
-    stateset->setTextureAttributeAndModes(0, transmittanceTexture, osg::StateAttribute::ON);
-    stateset->setTextureAttributeAndModes(1, scatteringTexture, osg::StateAttribute::ON);
-    stateset->setTextureAttributeAndModes(2, irradianceTexture, osg::StateAttribute::ON);
-    
-    // 设置uniform变量
-    stateset->addUniform(new osg::Uniform("transmittance_texture", 0));
-    stateset->addUniform(new osg::Uniform("scattering_texture", 1));
-    stateset->addUniform(new osg::Uniform("irradiance_texture", 2));
-    
-    // 保存纹理引用
-    _transmittanceTexture = transmittanceTexture;
-    _scatteringTexture = scatteringTexture;
-    _irradianceTexture = irradianceTexture;
-    
-    std::cout << "Atmosphere textures loaded successfully" << std::endl;
-    std::cout << "  Transmittance texture: " << transmittancePath << std::endl;
-    std::cout << "  Scattering texture: " << scatteringPath << std::endl;
-    std::cout << "  Irradiance texture: " << irradiancePath << std::endl;
-}
 
-osg::Texture2D* DemoShader::loadTexture2DFromFile(const std::string& filename, int width, int height)
-{
-    // 打开文件
-    FILE* file = fopen(filename.c_str(), "rb");
-    if (!file) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return nullptr;
-    }
-    
-    // 计算数据大小 (RGBA格式，每个分量是float)
-    size_t dataSize = width * height * 4 * sizeof(float);
-    std::vector<float> data(width * height * 4);
-    
-    // 读取数据
-    size_t readSize = fread(data.data(), 1, dataSize, file);
-    fclose(file);
-    
-    if (readSize != dataSize) {
-        std::cerr << "Failed to read complete texture data from: " << filename << std::endl;
-        return nullptr;
-    }
-    
-    // 创建图像
-    osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->allocateImage(width, height, 1, GL_RGBA, GL_FLOAT);
-    
-    // 复制数据
-    float* imageData = (float*)image->data();
-    for (int i = 0; i < width * height * 4; ++i) {
-        imageData[i] = data[i];
-    }
-    
-    // 创建纹理
-    osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D;
-    texture->setImage(image);
-    texture->setInternalFormat(GL_RGBA32F_ARB);
-    texture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
-    texture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
-    texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-    
-    return texture.release();
-}
 
-osg::Texture3D* DemoShader::loadTexture3DFromFile(const std::string& filename, int width, int height, int depth)
-{
-    // 打开文件
-    FILE* file = fopen(filename.c_str(), "rb");
-    if (!file) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return nullptr;
-    }
-    
-    // 计算数据大小 (RGBA格式，每个分量是float)
-    size_t dataSize = width * height * depth * 4 * sizeof(float);
-    std::vector<float> data(width * height * depth * 4);
-    
-    // 读取数据
-    size_t readSize = fread(data.data(), 1, dataSize, file);
-    fclose(file);
-    
-    if (readSize != dataSize) {
-        std::cerr << "Failed to read complete texture data from: " << filename << std::endl;
-        return nullptr;
-    }
-    
-    // 创建图像
-    osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->allocateImage(width, height, depth, GL_RGBA, GL_FLOAT);
-    
-    // 复制数据
-    float* imageData = (float*)image->data();
-    for (int i = 0; i < width * height * depth * 4; ++i) {
-        imageData[i] = data[i];
-    }
-    
-    // 创建纹理
-    osg::ref_ptr<osg::Texture3D> texture = new osg::Texture3D;
-    texture->setImage(image);
-    texture->setInternalFormat(GL_RGBA32F_ARB);
-    texture->setFilter(osg::Texture3D::MIN_FILTER, osg::Texture3D::LINEAR);
-    texture->setFilter(osg::Texture3D::MAG_FILTER, osg::Texture3D::LINEAR);
-    texture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE);
-    
-    return texture.release();
-}
 
 void DemoShader::updateAtmosphereSceneUniforms(osg::StateSet* stateset)
 {
