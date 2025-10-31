@@ -313,35 +313,7 @@ void UIHandler::updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group
     }
 }
 
-void UIHandler::updateTexturedAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
-                                                float sunZenithAngle, float sunAzimuthAngle,
-                                                float exposure)
-{
-    if (m_demoShader.valid()) {
-        // 更新DemoShader中的参数
-        m_demoShader->setSunZenithAngle(sunZenithAngle);
-        m_demoShader->setSunAzimuthAngle(sunAzimuthAngle);
-        m_demoShader->setExposure(exposure);
-        
-        qDebug() << "Updating Textured Atmosphere Parameters:";
-        qDebug() << "  Sun Zenith Angle:" << sunZenithAngle;
-        qDebug() << "  Sun Azimuth Angle:" << sunAzimuthAngle;
-        qDebug() << "  Exposure:" << exposure;
-        
-        // 调用DemoShader的更新函数来更新uniform变量
-        osg::StateSet* atmosphereStateSet = m_demoShader->getAtmosphereStateSet();
-        if (atmosphereStateSet) {
-            // 对于Textured Atmosphere场景，使用updateAtmosphereSceneUniforms
-            m_demoShader->updateAtmosphereSceneUniforms(atmosphereStateSet);
-        }
-        
-        // 强制更新视图
-        if (viewer) {
-            viewer->advance();
-            viewer->requestRedraw();
-        }
-    }
-}
+
 
 // 添加更新大气密度和太阳强度的方法
 void UIHandler::updateAtmosphereDensityAndIntensity(osgViewer::Viewer* viewer, osg::Group* rootNode, 
@@ -595,6 +567,60 @@ void UIHandler::setupCameraForView(osgViewer::Viewer* viewer, osg::Group* rootNo
 void UIHandler::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType)
 {
     m_viewManager.setViewType(viewer, rootNode, viewType);
+}
+
+// 添加\uff1a创建云海大气效果场景
+void UIHandler::createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (viewer && rootNode) {
+        // 清除现有的场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        
+        // 如果DemoShader还没有创建，则创建它
+        if (!m_demoShader.valid()) {
+            m_demoShader = new DemoShader();
+        }
+        
+        // 使用DemoShader创建云海大气效果场景
+        osg::ref_ptr<osg::Node> cloudSeaAtmosphereScene = m_demoShader->createCloudSeaAtmosphereScene(viewer);
+        
+        // 将场景添加到根节点
+        if (cloudSeaAtmosphereScene.valid()) {
+            rootNode->addChild(cloudSeaAtmosphereScene);
+        } else {
+            qDebug() << "Failed to create cloud sea atmosphere scene";
+            return;
+        }
+        
+        // 不需要设置默认视图参数，因为SkyBoxManipulator会处理
+        // 设置相机背景色为深蓝色
+        if (viewer->getCamera()) {
+            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.2f, 1.0f));
+        }
+        
+        // 强制更新视图
+        viewer->advance();
+        viewer->requestRedraw();
+        
+        qDebug() << "Cloud sea atmosphere scene created successfully";
+    }
+}
+
+// 添加：更新云海大气参数
+void UIHandler::updateCloudSeaAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                                  float sunZenithAngle, float sunAzimuthAngle,
+                                                  float cloudDensity, float cloudHeight)
+{
+    if (m_demoShader.valid()) {
+        // 使用DemoShader更新云海大气参数
+        m_demoShader->updateCloudSeaAtmosphereParameters(sunZenithAngle, sunAzimuthAngle,
+                                                        cloudDensity, cloudHeight);
+    }
+    
+    // 强制重绘
+    if (viewer) {
+        viewer->requestRedraw();
+    }
 }
 
 // 更新SkyNode中的大气参数

@@ -66,6 +66,8 @@ signals:
     void viewTypeChanged();
     void mousePositionChanged();
     void cameraPositionChanged();
+    void requestFileDialog();  // 通知QML打开文件对话框的信号
+    void fileSelected(const QString& fileName);  // 文件选择完成信号
     
 public slots:
     // 添加公共方法供QML调用
@@ -73,7 +75,7 @@ public slots:
     void createShapeWithNewSkybox();
     void createPBRScene();  // 添加PBR场景创建方法
     void createAtmosphereScene(); // 添加大气渲染场景创建方法
-    void createTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建方法
+    void createTexturedAtmosphereScene(); // 添加云海大气效果场景创建方法
     void createSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建方法
     void createSkyboxAtmosphereWithPBRScene(); // 添加结合天空盒大气和PBR立方体的场景创建方法
     void resetView();
@@ -100,15 +102,16 @@ public slots:
     // 添加更新SkyNode大气参数的方法
     void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
     
-    // 添加更新Textured Atmosphere参数的方法
-    void updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);
+    // 添加更新云海大气参数的方法
+    void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                          float cloudDensity, float cloudHeight);
     
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
     void invokeCreateShapeWithNewSkybox();
     void invokeCreatePBRScene();  // 添加PBR场景创建的槽函数
     void invokeCreateAtmosphereScene(); // 添加大气渲染场景创建的槽函数
-    void invokeCreateTexturedAtmosphereScene(); // 添加结合纹理和大气渲染的场景创建的槽函数
+    void invokeCreateTexturedAtmosphereScene(); // 添加云海大气效果场景创建的槽函数
     void invokeCreateSkyboxAtmosphereScene(); // 添加结合天空盒和大气渲染的场景创建的槽函数
     void invokeCreateSkyboxAtmosphereWithPBRScene(); // 添加结合天空盒大气和PBR立方体的场景创建的槽函数
     void invokeResetView();
@@ -132,13 +135,9 @@ public slots:
     // 添加更新SkyNode大气参数的槽函数声明
     void invokeUpdateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
     
-    // 添加更新Textured Atmosphere参数的槽函数声明
-    void invokeUpdateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);
-
-signals:
-    // 添加信号，用于通知QML打开文件对话框
-    void requestFileDialog();
-    void fileSelected(const QString& fileName);  // 文件选择完成信号
+    // 添加更新云海大气参数的槽函数声明
+    void invokeUpdateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                float cloudDensity, float cloudHeight);
 
 private:
     mutable SimpleOSGRenderer* m_renderer;  // 保存渲染器引用

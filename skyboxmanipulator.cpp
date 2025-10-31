@@ -7,7 +7,7 @@
 SkyBoxManipulator::SkyBoxManipulator()
     : _center(0.0, 0.0, 0.0)
     , _rotation()
-    , _distance(5.0)  // 与ViewManager中的默认距离一致
+    , _distance(50.0)  // 与ViewManager中的默认距离一致，初始值设为30
     , _mousePressed(false)
     , _lastX(0.0f)
     , _lastY(0.0f)
@@ -43,9 +43,10 @@ osg::Matrixd SkyBoxManipulator::getMatrix() const
 {
     // 使用ViewManager兼容的方式设置相机
     // 相机位置在Y轴负方向，看向原点，Z轴向上（与ViewManager的FrontView一致）
-    osg::Vec3d eye(0.0, _distance, -20.0);   // 相机位置（Y轴负方向）
-    osg::Vec3d center(0.0, 0.0, 0.0);       // 目标点（天空盒中心）
-    osg::Vec3d up(0.0, 0.0, 1.0);           // 上方向向量（Z轴向上）
+    // Y轴固定在-30，Z轴随_distance变化
+    osg::Vec3d eye(0.0, 150.0, _distance);   // 相机位置（Y轴固定-30，Z轴随距离变化）
+    osg::Vec3d center(0.0, 0.0, 0.0);         // 目标点（天空盒中心）
+    osg::Vec3d up(0.0, 0.0, 1.0);             // 上方向向量（Z轴向上）
     
     // 创建lookAt矩阵
     osg::Matrixd viewMatrix;
@@ -111,7 +112,26 @@ bool SkyBoxManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
         }
         break;
         
-
+    case osgGA::GUIEventAdapter::SCROLL:
+        {
+            // 处理滚轮缩放
+            double scrollFactor = 0.1;
+            if (ea.getScrollingMotion() == osgGA::GUIEventAdapter::SCROLL_UP)
+            {
+                _distance *= (1.0 - scrollFactor);
+            }
+            else if (ea.getScrollingMotion() == osgGA::GUIEventAdapter::SCROLL_DOWN)
+            {
+                _distance *= (1.0 + scrollFactor);
+            }
+            
+            if (_distance < 1.0) _distance = 1.0;
+            if (_distance > 100.0) _distance = 100.0;
+            
+            us.requestRedraw();
+            return true;
+        }
+        break;
 
     case osgGA::GUIEventAdapter::FRAME:
         // 每帧更新
@@ -130,7 +150,7 @@ void SkyBoxManipulator::home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
 {
     _center.set(0.0, 0.0, 0.0);
     _rotation = osg::Quat(); // 使用默认构造函数初始化为单位四元数
-    _distance = 5.0;  // 设置默认距离为5
+    _distance = 30.0;  // 设置默认距离为30
     us.requestRedraw();
 }
 
@@ -138,5 +158,5 @@ void SkyBoxManipulator::home(double currentTime)
 {
     _center.set(0.0, 0.0, 0.0);
     _rotation = osg::Quat(); // 使用默认构造函数初始化为单位四元数
-    _distance = 5.0;  // 设置默认距离为5
+    _distance = 30.0;  // 设置默认距离为30
 }

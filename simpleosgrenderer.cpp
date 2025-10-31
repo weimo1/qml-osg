@@ -183,13 +183,12 @@ void SimpleOSGRenderer::createAtmosphereScene()
     }
 }
 
-// 新增：实现创建结合纹理和大气渲染的场景功能
+// 新增：实现创建云海大气效果场景功能
 void SimpleOSGRenderer::createTexturedAtmosphereScene()
 {
     if (m_viewer && m_rootNode) {
-        // 创建结合纹理和大气渲染的场景
-        // 使用空字符串作为纹理路径，因为纹理路径在UIHandler中设置
-        m_uiHandler->createTexturedAtmosphereScene(m_viewer, m_rootNode);
+        // 创建云海大气效果场景
+        m_uiHandler->createCloudSeaAtmosphereScene(m_viewer, m_rootNode);
     }
 }
 
@@ -754,10 +753,15 @@ void SimpleOSGRenderer::updateSkyNodeAtmosphereParameters(float turbidity, float
     }
 }
 
-// 添加更新Textured Atmosphere参数的方法
-void SimpleOSGRenderer::updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure)
+// 添加：更新云海大气参数
+void SimpleOSGRenderer::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                          float cloudDensity, float cloudHeight)
 {
-    if (m_rootNode.valid()) {
-        m_uiHandler->updateTexturedAtmosphereParameters(m_viewer, m_rootNode, sunZenithAngle, sunAzimuthAngle, exposure);
+    if (m_viewer && m_rootNode && m_uiHandler) {
+        m_uiHandler->updateCloudSeaAtmosphereParameters(m_viewer, m_rootNode,
+                                                       sunZenithAngle, sunAzimuthAngle,
+                                                       cloudDensity, cloudHeight);
     }
 }
+
+// 已详替换为DemoShader中的辧段 - updateTexturedAtmosphereParameters不再使用

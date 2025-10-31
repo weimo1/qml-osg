@@ -388,6 +388,7 @@ ApplicationWindow {
                             case "view": return "视图控制";
                             case "model": return "模型管理";
                             case "light": return "光照控制";
+                            case "particle": return "云海大气控制";
                             default: return "功能面板";
                             }
                         }
@@ -410,6 +411,7 @@ ApplicationWindow {
                             case "view": return viewControls;
                             case "model": return modelControls;
                             case "light": return lightControls;
+                            case "particle": return cloudSeaAtmosphereControls;
                             case "skynode": return skyNodeAtmosphereControls;
                             default: return defaultControls;
                             }
@@ -1052,6 +1054,192 @@ ApplicationWindow {
                     
                     Text {
                         text: "角度: " + (skyNodeSunAzimuthAngleSlider.value * 180 / Math.PI).toFixed(1) + "°"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
+            
+            // 云海大气控制组件
+            Component {
+                id: cloudSeaAtmosphereControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
+                    
+                    // 创建云海大气场景按钮
+                    Button {
+                        text: "创建云海大气场景"
+                        width: parent.width
+                        background: Rectangle {
+                            color: "#3498db"
+                            radius: 4
+                        }
+                        contentItem: Text {
+                            text: "创建云海大气场景"
+                            color: "white"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        onClicked: {
+                            console.log("Create Cloud Sea Atmosphere Scene button clicked")
+                            osgViewer.createTexturedAtmosphereScene()
+                        }
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 太阳天顶角度控制
+                    Text {
+                        text: "太阳天顶角度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaSunZenithAngleSlider
+                        width: parent.width
+                        from: 0.0
+                        to: Math.PI
+                        value: 75.0 * Math.PI / 180.0
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.updateCloudSeaAtmosphereParameters(
+                                value,
+                                cloudSeaSunAzimuthAngleSlider.value,
+                                cloudSeaCloudDensitySlider.value,
+                                cloudSeaCloudHeightSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "角度: " + (cloudSeaSunZenithAngleSlider.value * 180 / Math.PI).toFixed(1) + "°"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 太阳方位角度控制
+                    Text {
+                        text: "太阳方位角度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaSunAzimuthAngleSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 2 * Math.PI
+                        value: 40.0 * Math.PI / 180.0
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.updateCloudSeaAtmosphereParameters(
+                                cloudSeaSunZenithAngleSlider.value,
+                                value,
+                                cloudSeaCloudDensitySlider.value,
+                                cloudSeaCloudHeightSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "角度: " + (cloudSeaSunAzimuthAngleSlider.value * 180 / Math.PI).toFixed(1) + "°"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云密度控制
+                    Text {
+                        text: "云密度 (Cloud Density)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaCloudDensitySlider
+                        width: parent.width
+                        from: 0.0
+                        to: 2.0
+                        value: 0.8
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.updateCloudSeaAtmosphereParameters(
+                                cloudSeaSunZenithAngleSlider.value,
+                                cloudSeaSunAzimuthAngleSlider.value,
+                                value,
+                                cloudSeaCloudHeightSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "密度: " + cloudSeaCloudDensitySlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云高度控制
+                    Text {
+                        text: "云高度 (Cloud Height)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaCloudHeightSlider
+                        width: parent.width
+                        from: 500.0
+                        to: 5000.0
+                        value: 1000.0
+                        stepSize: 10.0
+                        onValueChanged: {
+                            osgViewer.updateCloudSeaAtmosphereParameters(
+                                cloudSeaSunZenithAngleSlider.value,
+                                cloudSeaSunAzimuthAngleSlider.value,
+                                cloudSeaCloudDensitySlider.value,
+                                value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "高度: " + cloudSeaCloudHeightSlider.value.toFixed(0) + " m"
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter

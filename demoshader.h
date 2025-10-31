@@ -21,6 +21,7 @@
 #include <QVector3D>
 #include <vector>
 #include <cmath>
+#include "CloudSeaAtmosphere.h"
 
 // 前向声明
 class SkyBoxThree;
@@ -104,6 +105,16 @@ public:
     // 新增：创建结合天空盒大气和PBR立方体的场景
     osg::Node* createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer);
     
+    // 新增：创建云海大气效果场景
+    osg::Node* createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer);
+    
+    // 新增：更新云海大气参数
+    void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                         float cloudDensity, float cloudHeight);
+    
+    // 获取CloudSeaAtmosphere引用
+    osg::ref_ptr<CloudSeaAtmosphere> getCloudSeaAtmosphere() { return _cloudSeaAtmosphere; }
+    
     // 新增：更新SkyNode大气参数的方法
     void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                         float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
@@ -160,9 +171,16 @@ private:
     // 大气场景的状态集（用于动态更新）
     osg::ref_ptr<osg::StateSet> _atmosphereStateSet;
     
+    // 云海大气对象引用
+    osg::ref_ptr<CloudSeaAtmosphere> _cloudSeaAtmosphere;
+    
     // 新增：从文件加载纹理的辅助函数
     osg::Texture2D* loadTexture2DFromFile(const std::string& filename, int width, int height);
     osg::Texture3D* loadTexture3DFromFile(const std::string& filename, int width, int height, int depth);
+    
+    // 云海大气参数
+    float _cloudSeaDensity;
+    float _cloudSeaHeight;
 
 };
 

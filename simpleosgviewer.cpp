@@ -473,25 +473,29 @@ void SimpleOSGViewer::invokeUpdateSkyNodeAtmosphereParameters(float turbidity, f
     }
 }
 
-// 添加更新Textured Atmosphere参数的方法
-void SimpleOSGViewer::updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure)
+// 添加：更新云海大气参数的方法
+void SimpleOSGViewer::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                        float cloudDensity, float cloudHeight)
 {
     // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeUpdateTexturedAtmosphereParameters", Qt::QueuedConnection,
-                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle), Q_ARG(float, exposure));
+        QMetaObject::invokeMethod(this, "invokeUpdateCloudSeaAtmosphereParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle),
+                                 Q_ARG(float, cloudDensity), Q_ARG(float, cloudHeight));
     }
 }
 
-// 实际调用渲染器更新Textured Atmosphere参数的方法
-void SimpleOSGViewer::invokeUpdateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure)
+// 实际调用渲染器更新云海大气参数的方法
+void SimpleOSGViewer::invokeUpdateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                              float cloudDensity, float cloudHeight)
 {
     if (m_renderer) {
-        m_renderer->updateTexturedAtmosphereParameters(sunZenithAngle, sunAzimuthAngle, exposure);
+        m_renderer->updateCloudSeaAtmosphereParameters(sunZenithAngle, sunAzimuthAngle,
+                                                      cloudDensity, cloudHeight);
     }
 }
 
-// 实际调用渲染器创建结合纹理和大气渲染的场景的方法
+// 实际调用渲染器创建云海大气效果场景的方法
 void SimpleOSGViewer::invokeCreateTexturedAtmosphereScene()
 {
     if (m_renderer) {

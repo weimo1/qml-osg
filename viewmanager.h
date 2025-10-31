@@ -30,8 +30,7 @@ public:
     // 设置特定视图类型
     void setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
     
-    // 更新投影（用于滚轮缩放）- 保持函数名但只处理透视投影
-    void updateOrthographicProjection(osgViewer::Viewer* viewer, int width, int height);
+   
     
 private:
     // 视图参数

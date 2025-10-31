@@ -37,6 +37,18 @@ void ViewManager::updateViewParametersFromManipulator(osgViewer::Viewer* viewer)
         // 从矩阵中提取eye, center, up参数
         matrix.getLookAt(m_eye, m_center, m_up);
     }
+    
+    // 确保设置透视投影矩阵
+    osg::Camera* camera = viewer->getCamera();
+    if (camera) {
+        // 获取当前视口大小
+        osg::Viewport* viewport = camera->getViewport();
+        if (viewport) {
+            double aspectRatio = static_cast<double>(viewport->width()) / static_cast<double>(viewport->height());
+            // 设置透视投影
+            camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 1.0, 10000.0);
+        }
+    }
 }
 
 // 根据视图类型设置相机
@@ -315,14 +327,4 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 确保深度测试正确配置
     osg::StateSet* stateset = camera->getOrCreateStateSet();
     stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
-}
-
-// 更新投影（用于滚轮缩放）- 现在只处理透视投影
-void ViewManager::updateOrthographicProjection(osgViewer::Viewer* viewer, int width, int height)
-{
-    if (!viewer) return;
-    
-    osg::Camera* camera = viewer->getCamera();
-    if (!camera) return;
-    
 }

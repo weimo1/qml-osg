@@ -62,6 +62,8 @@ add_executable(${PROJECT_NAME}
     SkyNode.h
     skyboxmanipulator.cpp
     skyboxmanipulator.h
+    CloudSeaAtmosphere.cpp
+    CloudSeaAtmosphere.h
     qml.qrc
 )
 

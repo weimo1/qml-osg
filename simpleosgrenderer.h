@@ -64,8 +64,9 @@ public:
     // 添加更新SkyNode大气参数的方法
     void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
     
-    // 添加更新Textured Atmosphere参数的方法
-    void updateTexturedAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle, float exposure);
+    // 添加更新云海大气参数的方法
+    void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                          float cloudDensity, float cloudHeight);
 
     // 添加模型选择相关方法
     void selectModel(int x, int y);

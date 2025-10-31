@@ -23,9 +23,10 @@
 const float DemoShader::kSunAngularRadius = 0.00935f / 2.0f;
 const float DemoShader::kLengthUnitInMeters = 1000.0f;
 #include "SkyNode.h"
-#include "shaderpbr.h"  // 添加PBR头文件
+#include "shaderpbr.h"
 #include "shadercube.h"
-#include "skyboxmanipulator.h"  // 添加SkyBoxManipulator头文件
+#include "skyboxmanipulator.h"
+#include "CloudSeaAtmosphere.h"
 DemoShader::DemoShader()
     : _viewDistanceMeters(5000.0f)  // 初始观察距离5km，更接近地球表面
     , _viewZenithAngleRadians(0.0f)  // 初始视角天顶角，从地面向上看
@@ -38,6 +39,8 @@ DemoShader::DemoShader()
     , _mieScattering(0.005f)  // 初始米氏散射系数
     , _rayleighScattering(1.0f)  // 初始瑞利散射系数
     , _texturesInitialized(false)
+    , _cloudSeaDensity(0.8f)  // 初始云密度
+    , _cloudSeaHeight(1000.0f)  // 初始云高度
 {
 }
 
@@ -309,7 +312,7 @@ osg::Node* DemoShader::createImprovedAtmosphereScene(osgViewer::Viewer* viewer)
     }
     
     std::cout << "Improved atmosphere scene created successfully" << std::endl;
-    
+     
     return root.release();
 }
 
@@ -500,7 +503,8 @@ osg::Node* DemoShader::createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* vie
     if (pbrCube.valid()) {
         root->addChild(pbrCube);
     }
-    
+    // osg::ref_ptr<SkyBoxManipulator> manipulator = new SkyBoxManipulator();
+    // viewer->setCameraManipulator(manipulator.get());
     std::cout << "Skybox atmosphere with PBR scene created successfully" << std::endl;
     
     return root.release();
@@ -990,4 +994,72 @@ void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
     
     // 添加额外的调试信息
     std::cout << "  Sun direction length: " << sunDirection.length() << std::endl;
+}
+
+// 新增：创建云海大气效果场景
+osg::Node* DemoShader::createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer)
+{
+    if (!viewer) return nullptr;
+    
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 创建一个球体几何体作为天空盒
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 1000.0);
+    osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
+    
+    drawable->setUseDisplayList(false);
+    drawable->setUseVertexBufferObjects(true);
+    
+    geode->addDrawable(drawable);
+    geode->setCullingActive(false);
+    
+    // 创建云海大气效果对象并保存引用
+    _cloudSeaAtmosphere = new CloudSeaAtmosphere(viewer->getCamera());
+    _cloudSeaAtmosphere->setName("cloud_sea_skybox");
+    _cloudSeaAtmosphere->addChild(geode.get());
+    
+    // 创建初始云海参数
+    _cloudSeaAtmosphere->setCloudDensity(_cloudSeaDensity);
+    _cloudSeaAtmosphere->setCloudHeight(_cloudSeaHeight);
+    
+    // 将天空盒添加到根节点
+    if (_cloudSeaAtmosphere.valid()) {
+        root->addChild(_cloudSeaAtmosphere.get());
+    } else {
+        std::cerr << "Failed to create cloud sea atmosphere" << std::endl;
+        return nullptr;
+    }
+    
+    // 仅在云海大气的天空盒上使用SkyBoxManipulator
+    osg::ref_ptr<SkyBoxManipulator> manipulator = new SkyBoxManipulator();
+    viewer->setCameraManipulator(manipulator.get());
+    
+    std::cout << "Cloud Sea Atmosphere scene created successfully" << std::endl;
+    std::cout << "SkyBoxManipulator enabled for cloud sea atmosphere" << std::endl;
+    
+    return root.release();
+}
+
+void DemoShader::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                   float cloudDensity, float cloudHeight)
+{
+    if (!_cloudSeaAtmosphere.valid()) {
+        std::cerr << "Cloud sea atmosphere is not initialized" << std::endl;
+        return;
+    }
+    
+    // 更新太阳角度
+    _cloudSeaAtmosphere->setSunZenithAngle(sunZenithAngle);
+    _cloudSeaAtmosphere->setSunAzimuthAngle(sunAzimuthAngle);
+    
+    // 更新云海参数
+    _cloudSeaAtmosphere->setCloudDensity(cloudDensity);
+    _cloudSeaAtmosphere->setCloudHeight(cloudHeight);
+    
+    // 保存到成员变量
+    _cloudSeaDensity = cloudDensity;
+    _cloudSeaHeight = cloudHeight;
+    _sunZenithAngleRadians = sunZenithAngle;
+    _sunAzimuthAngleRadians = sunAzimuthAngle;
 }

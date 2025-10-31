@@ -27,6 +27,7 @@ public:
     void createTexturedAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合纹理和大气渲染的场景创建函数
     void createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合天空盒和大气渲染的场景创建函数
     void createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合天空盒大气和PBR立方体的场景创建函数
+    void createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加云海大气效果场景创建函数
     void resetView(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
     void resetToHomeView(osgViewer::Viewer* viewer, osg::Group* rootNode);
     void loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName);
@@ -58,6 +59,11 @@ public:
     
     // 获取DemoShader引用
     osg::ref_ptr<DemoShader> getDemoShader() { return m_demoShader; }
+    
+    // 更新云海大气参数
+    void updateCloudSeaAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                          float sunZenithAngle, float sunAzimuthAngle,
+                                          float cloudDensity, float cloudHeight);
     
     // 注意：updateSkyNodeAtmosphereParameters方法已移至DemoShader类中实现
     // void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
