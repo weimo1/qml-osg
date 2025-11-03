@@ -16,6 +16,13 @@ uniform float sunAzimuthAngle;  // 新增：太阳方位角度
 uniform sampler2D iChannel0;   // 新增：噪声纹理
 uniform float iTime;           // 新增：时间变量
 
+// 新增：云海参数uniform变量
+uniform float cloudDensity;    // 云密度
+uniform float cloudHeight;     // 云厚度
+uniform float cloudBaseHeight; // 云层底部高度
+uniform float cloudRangeMin;   // 云层近裁剪距离
+uniform float cloudRangeMax;   // 云层远裁剪距离
+
 // constants for atmospheric scattering
 const float pi = 3.141592653589793238462643383279502884197169;
 
@@ -142,16 +149,12 @@ void main()
 
     retColor*=0.2;
 
-    // 只在太阳以上的位置生成云朵
-    // 计算太阳的仰角
-    float sunElevation = sunDir.y; // 太阳的y分量表示其仰角
+    // 简化云彩实现 - 使用云层参数控制云的生成
+    // 计算当前点相对于云层底部的高度
+    float heightAboveBase = worldPos.y - cloudBaseHeight;
     
-    // 只在高于太阳仰角的位置生成云朵
-    if (direction.y > sunElevation - 0.1) { // 稍微放宽一点条件，让云朵可以在太阳附近生成
-        // 根据与太阳仰角的差值调整云朵密度
-        float elevationDiff = direction.y - (sunElevation - 0.1);
-        float cloudFactor = smoothstep(0.0, 0.3, elevationDiff);
-        
+    // 检查是否在云层范围内
+    if (heightAboveBase > 0.0 && heightAboveBase < cloudHeight) {
         // 添加云彩效果
         // 计算片段坐标（模拟全屏效果）
         vec2 fragCoord = worldPos.xz;
@@ -159,12 +162,13 @@ void main()
         vec2 p = fragCoord.xy / iResolution.xy;
         vec2 uv_cloud = p * vec2(iResolution.x / iResolution.y, 1.0);    
         
-        float time = iTime * speed;
-        float q = fbm(uv_cloud * cloudscale * 0.5);
+        // 使用时间参数控制云的动画
+        float time = iTime * 0.03;
+        float q = fbm(uv_cloud * 1.1 * 0.5);
         
         // ridged noise shape
         float r = 0.0;
-        uv_cloud *= cloudscale;
+        uv_cloud *= 1.1;
         uv_cloud -= q - time;
         float weight = 0.8;
         for (int i = 0; i < 8; i++) {
@@ -176,7 +180,7 @@ void main()
         // noise shape
         float f = 0.0;
         uv_cloud = p * vec2(iResolution.x / iResolution.y, 1.0);
-        uv_cloud *= cloudscale;
+        uv_cloud *= 1.1;
         uv_cloud -= q - time;
         weight = 0.7;
         for (int i = 0; i < 8; i++) {
@@ -189,9 +193,9 @@ void main()
         
         // noise colour
         float c = 0.0;
-        time = iTime * speed * 2.0;
+        time = iTime * 0.03 * 2.0;
         uv_cloud = p * vec2(iResolution.x / iResolution.y, 1.0);
-        uv_cloud *= cloudscale * 2.0;
+        uv_cloud *= 1.1 * 2.0;
         uv_cloud -= q - time;
         weight = 0.4;
         for (int i = 0; i < 7; i++) {
@@ -202,9 +206,9 @@ void main()
         
         // noise ridge colour
         float c1 = 0.0;
-        time = iTime * speed * 3.0;
+        time = iTime * 0.03 * 3.0;
         uv_cloud = p * vec2(iResolution.x / iResolution.y, 1.0);
-        uv_cloud *= cloudscale * 3.0;
+        uv_cloud *= 1.1 * 3.0;
         uv_cloud -= q - time;
         weight = 0.4;
         for (int i = 0; i < 7; i++) {
@@ -215,19 +219,23 @@ void main()
         
         c += c1;
         
-        vec3 skycolour = mix(skycolour2, skycolour1, p.y);
-        vec3 cloudcolour = cloudcolourBase * clamp((clouddark + cloudlight * c), 0.0, 1.0);
+        vec3 skycolour = mix(vec3(0.4, 0.7, 1.0), vec3(0.2, 0.4, 0.6), p.y);
+        vec3 cloudcolour = vec3(1.3, 1.3, 1.2) * clamp((0.6 + 0.6 * c), 0.0, 1.0);
        
-        f = cloudcover + cloudalpha * f * r;
+        // 使用uniform变量调整云密度
+        f = cloudcover + cloudDensity * f * r;
         
         // 限制云的覆盖范围并调整密度
-        f = clamp(f + c, 0.0, 1.0) * 0.9;  // 增加云层密度但保持透明度
+        f = clamp(f + c, 0.0, 1.0);
         
-        // 根据与太阳位置的关系调整云朵密度
-        f *= cloudFactor;
+        // 根据高度调整云密度（使用云厚度参数创建垂直密度分布）
+        // 在云层中心密度最高，向边缘递减
+        float normalizedHeight = heightAboveBase / cloudHeight;
+        float verticalDensity = 1.0 - abs(normalizedHeight - 0.5) * 2.0;
+        f *= verticalDensity;
         
-        // 混合天空和云，使用适中的混合方式
-        vec3 result = mix(retColor, clamp(skytint * retColor + cloudcolour, 0.0, 1.0), f * 0.85);  // 适中的云层混合强度
+        // 混合天空和云
+        vec3 result = mix(retColor, clamp(0.8 * retColor + cloudcolour, 0.0, 1.0), f);
 
         color = vec4(result, 1.0);
     } else {

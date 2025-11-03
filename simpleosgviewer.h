@@ -102,9 +102,15 @@ public slots:
     // 添加更新SkyNode大气参数的方法
     void updateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
     
+    // 添加更新SkyNode云海大气参数的方法
+    void updateSkyNodeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                   float cloudDensity, float cloudHeight,
+                                   float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+    
     // 添加更新云海大气参数的方法
     void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                          float cloudDensity, float cloudHeight);
+                                          float cloudDensity, float cloudHeight,
+                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
     
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
@@ -135,9 +141,15 @@ public slots:
     // 添加更新SkyNode大气参数的槽函数声明
     void invokeUpdateSkyNodeAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
     
+    // 添加更新SkyNode云海大气参数的槽函数声明
+    void invokeUpdateSkyNodeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                         float cloudDensity, float cloudHeight,
+                                         float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+    
     // 添加更新云海大气参数的槽函数声明
     void invokeUpdateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                                float cloudDensity, float cloudHeight);
+                                                float cloudDensity, float cloudHeight,
+                                                float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
 
 private:
     mutable SimpleOSGRenderer* m_renderer;  // 保存渲染器引用

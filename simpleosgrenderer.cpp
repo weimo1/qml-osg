@@ -753,14 +753,32 @@ void SimpleOSGRenderer::updateSkyNodeAtmosphereParameters(float turbidity, float
     }
 }
 
-// 添加：更新云海大气参数
-void SimpleOSGRenderer::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                                          float cloudDensity, float cloudHeight)
+// 添加更新SkyNode云海大气参数的方法
+void SimpleOSGRenderer::updateSkyNodeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                  float cloudDensity, float cloudHeight,
+                                                  float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
 {
     if (m_viewer && m_rootNode && m_uiHandler) {
-        m_uiHandler->updateCloudSeaAtmosphereParameters(m_viewer, m_rootNode,
-                                                       sunZenithAngle, sunAzimuthAngle,
-                                                       cloudDensity, cloudHeight);
+        // 使用DemoShader中的新方法来更新SkyNode云海大气参数
+        if (m_uiHandler->getDemoShader() && m_uiHandler->getDemoShader()) {
+            m_uiHandler->getDemoShader()->updateSkyNodeCloudParameters(m_viewer, m_rootNode, 
+                                                                    sunZenithAngle, sunAzimuthAngle,
+                                                                    cloudDensity, cloudHeight,
+                                                                    cloudBaseHeight, cloudRangeMin, cloudRangeMax);
+        }
+    }
+}
+
+// 添加：更新云海大气参数
+void SimpleOSGRenderer::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                         float cloudDensity, float cloudHeight,
+                                                         float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+{
+    if (m_uiHandler && m_viewer.valid() && m_rootNode.valid()) {
+        m_uiHandler->updateCloudSeaAtmosphereParameters(m_viewer.get(), m_rootNode.get(),
+                                                      sunZenithAngle, sunAzimuthAngle,
+                                                      cloudDensity, cloudHeight,
+                                                      cloudBaseHeight, cloudRangeMin, cloudRangeMax);
     }
 }
 

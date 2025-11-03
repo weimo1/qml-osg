@@ -63,8 +63,9 @@ public:
     // 更新云海大气参数
     void updateCloudSeaAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                           float sunZenithAngle, float sunAzimuthAngle,
-                                          float cloudDensity, float cloudHeight);
-    
+                                          float cloudDensity, float cloudHeight,
+                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+
     // 注意：updateSkyNodeAtmosphereParameters方法已移至DemoShader类中实现
     // void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
     //                                    float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG);

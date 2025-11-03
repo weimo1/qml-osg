@@ -609,12 +609,14 @@ void UIHandler::createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer, osg::Gr
 // 添加：更新云海大气参数
 void UIHandler::updateCloudSeaAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                                   float sunZenithAngle, float sunAzimuthAngle,
-                                                  float cloudDensity, float cloudHeight)
+                                                  float cloudDensity, float cloudHeight,
+                                                  float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
 {
     if (m_demoShader.valid()) {
         // 使用DemoShader更新云海大气参数
         m_demoShader->updateCloudSeaAtmosphereParameters(sunZenithAngle, sunAzimuthAngle,
-                                                        cloudDensity, cloudHeight);
+                                                        cloudDensity, cloudHeight,
+                                                        cloudBaseHeight, cloudRangeMin, cloudRangeMax);
     }
     
     // 强制重绘

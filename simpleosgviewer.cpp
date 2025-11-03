@@ -473,25 +473,57 @@ void SimpleOSGViewer::invokeUpdateSkyNodeAtmosphereParameters(float turbidity, f
     }
 }
 
+// 添加更新SkyNode云海大气参数的方法
+void SimpleOSGViewer::updateSkyNodeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                float cloudDensity, float cloudHeight,
+                                                float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateSkyNodeCloudParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle),
+                                 Q_ARG(float, cloudDensity), Q_ARG(float, cloudHeight),
+                                 Q_ARG(float, cloudBaseHeight), Q_ARG(float, cloudRangeMin),
+                                 Q_ARG(float, cloudRangeMax));
+    }
+}
+
+// 实际调用渲染器更新SkyNode云海大气参数的方法
+void SimpleOSGViewer::invokeUpdateSkyNodeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                      float cloudDensity, float cloudHeight,
+                                                      float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+{
+    if (m_renderer) {
+        m_renderer->updateSkyNodeCloudParameters(sunZenithAngle, sunAzimuthAngle,
+                                              cloudDensity, cloudHeight,
+                                              cloudBaseHeight, cloudRangeMin, cloudRangeMax);
+    }
+}
+
 // 添加：更新云海大气参数的方法
 void SimpleOSGViewer::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                                        float cloudDensity, float cloudHeight)
+                                                        float cloudDensity, float cloudHeight,
+                                                        float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
 {
     // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
         QMetaObject::invokeMethod(this, "invokeUpdateCloudSeaAtmosphereParameters", Qt::QueuedConnection,
                                  Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle),
-                                 Q_ARG(float, cloudDensity), Q_ARG(float, cloudHeight));
+                                 Q_ARG(float, cloudDensity), Q_ARG(float, cloudHeight),
+                                 Q_ARG(float, cloudBaseHeight), Q_ARG(float, cloudRangeMin),
+                                 Q_ARG(float, cloudRangeMax));
     }
 }
 
 // 实际调用渲染器更新云海大气参数的方法
 void SimpleOSGViewer::invokeUpdateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                                              float cloudDensity, float cloudHeight)
+                                                              float cloudDensity, float cloudHeight,
+                                                              float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
 {
     if (m_renderer) {
         m_renderer->updateCloudSeaAtmosphereParameters(sunZenithAngle, sunAzimuthAngle,
-                                                      cloudDensity, cloudHeight);
+                                                      cloudDensity, cloudHeight,
+                                                      cloudBaseHeight, cloudRangeMin, cloudRangeMax);
     }
 }
 

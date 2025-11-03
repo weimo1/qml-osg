@@ -108,8 +108,9 @@ public:
     
     // 新增：更新云海大气参数
     void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                         float cloudDensity, float cloudHeight);
-    
+                                         float cloudDensity, float cloudHeight,
+                                         float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+
     // 获取CloudSeaAtmosphere引用
     osg::ref_ptr<CloudSeaAtmosphere> getCloudSeaAtmosphere() { return _cloudSeaAtmosphere; }
     
@@ -117,6 +118,12 @@ public:
     void updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                         float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
                                         float sunZenithAngle, float sunAzimuthAngle);
+    
+    // 新增：更新SkyNode云海大气参数的方法
+    void updateSkyNodeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                   float sunZenithAngle, float sunAzimuthAngle,
+                                   float cloudDensity, float cloudHeight,
+                                   float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
     
     // 辅助函数：递归查找SkyBoxThree节点
     osg::Node* findSkyBoxThreeNode(osg::Node* node);

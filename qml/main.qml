@@ -998,7 +998,7 @@ ApplicationWindow {
                         id: skyNodeSunZenithAngleSlider
                         width: parent.width
                         from: 0.0
-                        to: Math.PI
+                        to: 2 * Math.PI  // 改为2 * Math.PI，即360度
                         value: 85.0 * Math.PI / 180.0  // 初始化为75度
                         onValueChanged: {
                             osgViewer.updateSkyNodeAtmosphereParameters(
@@ -1069,33 +1069,6 @@ ApplicationWindow {
                     width: parent.width
                     spacing: 15
                     
-                    // 创建云海大气场景按钮
-                    Button {
-                        text: "创建云海大气场景"
-                        width: parent.width
-                        background: Rectangle {
-                            color: "#3498db"
-                            radius: 4
-                        }
-                        contentItem: Text {
-                            text: "创建云海大气场景"
-                            color: "white"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        onClicked: {
-                            console.log("Create Cloud Sea Atmosphere Scene button clicked")
-                            osgViewer.createTexturedAtmosphereScene()
-                        }
-                    }
-                    
-                    // 分隔线
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: "#bdc3c7"
-                    }
-                    
                     // 太阳天顶角度控制
                     Text {
                         text: "太阳天顶角度"
@@ -1108,15 +1081,18 @@ ApplicationWindow {
                         id: cloudSeaSunZenithAngleSlider
                         width: parent.width
                         from: 0.0
-                        to: Math.PI
+                        to: 2 * Math.PI  // 改为2 * Math.PI，即360度
                         value: 75.0 * Math.PI / 180.0
                         stepSize: 0.01
                         onValueChanged: {
-                            osgViewer.updateCloudSeaAtmosphereParameters(
+                            osgViewer.updateSkyNodeCloudParameters(
                                 value,
                                 cloudSeaSunAzimuthAngleSlider.value,
                                 cloudSeaCloudDensitySlider.value,
-                                cloudSeaCloudHeightSlider.value
+                                cloudSeaCloudHeightSlider.value,
+                                cloudSeaCloudBaseHeightSlider.value,
+                                cloudSeaCloudRangeMinSlider.value,
+                                cloudSeaCloudRangeMaxSlider.value
                             );
                         }
                     }
@@ -1151,11 +1127,14 @@ ApplicationWindow {
                         value: 40.0 * Math.PI / 180.0
                         stepSize: 0.01
                         onValueChanged: {
-                            osgViewer.updateCloudSeaAtmosphereParameters(
+                            osgViewer.updateSkyNodeCloudParameters(
                                 cloudSeaSunZenithAngleSlider.value,
                                 value,
                                 cloudSeaCloudDensitySlider.value,
-                                cloudSeaCloudHeightSlider.value
+                                cloudSeaCloudHeightSlider.value,
+                                cloudSeaCloudBaseHeightSlider.value,
+                                cloudSeaCloudRangeMinSlider.value,
+                                cloudSeaCloudRangeMaxSlider.value
                             );
                         }
                     }
@@ -1186,15 +1165,18 @@ ApplicationWindow {
                         id: cloudSeaCloudDensitySlider
                         width: parent.width
                         from: 0.0
-                        to: 2.0
-                        value: 0.8
-                        stepSize: 0.01
+                        to: 10.0
+                        value: 5.0
+                        stepSize: 0.1
                         onValueChanged: {
-                            osgViewer.updateCloudSeaAtmosphereParameters(
+                            osgViewer.updateSkyNodeCloudParameters(
                                 cloudSeaSunZenithAngleSlider.value,
                                 cloudSeaSunAzimuthAngleSlider.value,
                                 value,
-                                cloudSeaCloudHeightSlider.value
+                                cloudSeaCloudHeightSlider.value,
+                                cloudSeaCloudBaseHeightSlider.value,
+                                cloudSeaCloudRangeMinSlider.value,
+                                cloudSeaCloudRangeMaxSlider.value
                             );
                         }
                     }
@@ -1215,7 +1197,7 @@ ApplicationWindow {
                     
                     // 云高度控制
                     Text {
-                        text: "云高度 (Cloud Height)"
+                        text: "云厚度 (Cloud Height)"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
@@ -1224,22 +1206,151 @@ ApplicationWindow {
                     Slider {
                         id: cloudSeaCloudHeightSlider
                         width: parent.width
-                        from: 500.0
+                        from: 100.0
                         to: 5000.0
-                        value: 1000.0
+                        value: 800.0
                         stepSize: 10.0
                         onValueChanged: {
-                            osgViewer.updateCloudSeaAtmosphereParameters(
+                            osgViewer.updateSkyNodeCloudParameters(
                                 cloudSeaSunZenithAngleSlider.value,
                                 cloudSeaSunAzimuthAngleSlider.value,
                                 cloudSeaCloudDensitySlider.value,
+                                value,
+                                cloudSeaCloudBaseHeightSlider.value,
+                                cloudSeaCloudRangeMinSlider.value,
+                                cloudSeaCloudRangeMaxSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "厚度: " + cloudSeaCloudHeightSlider.value.toFixed(0) + " m"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云层底部高度控制
+                    Text {
+                        text: "云层底部高度 (Cloud Base Height)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaCloudBaseHeightSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 10000.0
+                        value: 1500.0
+                        stepSize: 10.0
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeCloudParameters(
+                                cloudSeaSunZenithAngleSlider.value,
+                                cloudSeaSunAzimuthAngleSlider.value,
+                                cloudSeaCloudDensitySlider.value,
+                                cloudSeaCloudHeightSlider.value,
+                                value,
+                                cloudSeaCloudRangeMinSlider.value,
+                                cloudSeaCloudRangeMaxSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "底部高度: " + cloudSeaCloudBaseHeightSlider.value.toFixed(0) + " m"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云层近裁剪距离控制
+                    Text {
+                        text: "云层近裁剪距离 (Cloud Range Min)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaCloudRangeMinSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 10000.0
+                        value: 0.0
+                        stepSize: 10.0
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeCloudParameters(
+                                cloudSeaSunZenithAngleSlider.value,
+                                cloudSeaSunAzimuthAngleSlider.value,
+                                cloudSeaCloudDensitySlider.value,
+                                cloudSeaCloudHeightSlider.value,
+                                cloudSeaCloudBaseHeightSlider.value,
+                                value,
+                                cloudSeaCloudRangeMaxSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "近裁剪: " + cloudSeaCloudRangeMinSlider.value.toFixed(0) + " m"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云层远裁剪距离控制
+                    Text {
+                        text: "云层远裁剪距离 (Cloud Range Max)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: cloudSeaCloudRangeMaxSlider
+                        width: parent.width
+                        from: 10000.0
+                        to: 100000.0
+                        value: 50000.0
+                        stepSize: 100.0
+                        onValueChanged: {
+                            osgViewer.updateSkyNodeCloudParameters(
+                                cloudSeaSunZenithAngleSlider.value,
+                                cloudSeaSunAzimuthAngleSlider.value,
+                                cloudSeaCloudDensitySlider.value,
+                                cloudSeaCloudHeightSlider.value,
+                                cloudSeaCloudBaseHeightSlider.value,
+                                cloudSeaCloudRangeMinSlider.value,
                                 value
                             );
                         }
                     }
                     
                     Text {
-                        text: "高度: " + cloudSeaCloudHeightSlider.value.toFixed(0) + " m"
+                        text: "远裁剪: " + cloudSeaCloudRangeMaxSlider.value.toFixed(0) + " m"
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter

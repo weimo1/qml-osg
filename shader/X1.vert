@@ -71,10 +71,11 @@ void main()
     gl_Position.z = gl_Position.w; // set z to camera.far
 
     // 根据太阳天顶角度和方位角计算太阳方向
+    // 修正坐标系：使用正确的坐标转换
     vec3 computedSunDirection = vec3(
-        sin(sunZenithAngle) * cos(sunAzimuthAngle),
-        sin(sunZenithAngle) * sin(sunAzimuthAngle),
-        cos(sunZenithAngle)
+        cos(sunZenithAngle) * cos(sunAzimuthAngle),
+        sin(sunZenithAngle),
+        cos(sunZenithAngle) * sin(sunAzimuthAngle)
     );
     
     // 使用计算出的太阳方向
@@ -93,5 +94,4 @@ void main()
     // mie coefficients
     vBetaM = totalMie(turbidity) * mieCoefficient;
     
-   
 }

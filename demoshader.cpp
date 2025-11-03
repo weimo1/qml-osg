@@ -661,6 +661,166 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
     }
 }
 
+// 新增：更新SkyNode云海大气参数的方法
+void DemoShader::updateSkyNodeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                           float sunZenithAngle, float sunAzimuthAngle,
+                                           float cloudDensity, float cloudHeight,
+                                           float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+{
+    if (!viewer || !rootNode) return;
+    
+    std::cout << "Updating SkyNode cloud parameters..." << std::endl;
+    std::cout << "  Sun Zenith Angle: " << sunZenithAngle << ", Sun Azimuth Angle: " << sunAzimuthAngle 
+              << ", Cloud Density: " << cloudDensity << ", Cloud Height: " << cloudHeight
+              << ", Cloud Base Height: " << cloudBaseHeight << ", Cloud Range Min: " << cloudRangeMin
+              << ", Cloud Range Max: " << cloudRangeMax << std::endl;
+    
+    // 查找场景中的SkyBoxThree节点
+    osg::Node* skyboxNode = nullptr;
+    
+    // 遍历根节点的所有子节点
+    for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+        osg::Node* child = rootNode->getChild(i);
+        if (!child) continue;
+        
+        // 首先检查当前子节点是否为SkyBoxThree
+        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)) {
+            skyboxNode = child;
+            std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
+            break;
+        }
+        
+        // 如果当前子节点是Group，继续在其子节点中查找
+        osg::Group* group = child->asGroup();
+        if (group) {
+            for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
+                osg::Node* grandChild = group->getChild(j);
+                if (!grandChild) continue;
+                
+                // 检查孙节点是否为SkyBoxThree
+                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)) {
+                    skyboxNode = grandChild;
+                    std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
+                    break;
+                }
+            }
+            
+            // 如果找到了就退出外层循环
+            if (skyboxNode) break;
+        }
+    }
+    
+    // 如果还是没有找到，尝试更广泛的搜索
+    if (!skyboxNode) {
+        std::cout << "Performing extensive search for SkyBoxThree nodes..." << std::endl;
+        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+            osg::Node* child = rootNode->getChild(i);
+            if (!child) continue;
+            
+            // 递归搜索所有子节点
+            skyboxNode = findSkyBoxThreeNode(child);
+            if (skyboxNode) {
+                std::cout << "Found SkyBoxThree node through recursive search: " << skyboxNode->getName() << std::endl;
+                break;
+            }
+        }
+    }
+    
+    if (skyboxNode) {
+        // 获取SkyBoxThree节点的状态集
+        osg::StateSet* stateset = skyboxNode->getOrCreateStateSet();
+        if (stateset) {
+            std::cout << "StateSet acquired successfully" << std::endl;
+            
+            // 更新太阳角度uniform变量
+            osg::Uniform* sunZenithAngleUniform = stateset->getUniform("sunZenithAngle");
+            if (sunZenithAngleUniform) {
+                sunZenithAngleUniform->set(sunZenithAngle);
+                std::cout << "Sun Zenith Angle uniform updated to: " << sunZenithAngle << std::endl;
+            } else {
+                std::cout << "Sun Zenith Angle uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* sunAzimuthAngleUniform = stateset->getUniform("sunAzimuthAngle");
+            if (sunAzimuthAngleUniform) {
+                sunAzimuthAngleUniform->set(sunAzimuthAngle);
+                std::cout << "Sun Azimuth Angle uniform updated to: " << sunAzimuthAngle << std::endl;
+            } else {
+                std::cout << "Sun Azimuth Angle uniform not found" << std::endl;
+            }
+            
+            // 更新云海参数uniform变量
+            osg::Uniform* cloudDensityUniform = stateset->getUniform("cloudDensity");
+            if (cloudDensityUniform) {
+                cloudDensityUniform->set(cloudDensity);
+                std::cout << "Cloud Density uniform updated to: " << cloudDensity << std::endl;
+            } else {
+                std::cout << "Cloud Density uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* cloudHeightUniform = stateset->getUniform("cloudHeight");
+            if (cloudHeightUniform) {
+                cloudHeightUniform->set(cloudHeight);
+                std::cout << "Cloud Height uniform updated to: " << cloudHeight << std::endl;
+            } else {
+                std::cout << "Cloud Height uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* cloudBaseHeightUniform = stateset->getUniform("cloudBaseHeight");
+            if (cloudBaseHeightUniform) {
+                cloudBaseHeightUniform->set(cloudBaseHeight);
+                std::cout << "Cloud Base Height uniform updated to: " << cloudBaseHeight << std::endl;
+            } else {
+                std::cout << "Cloud Base Height uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* cloudRangeMinUniform = stateset->getUniform("cloudRangeMin");
+            if (cloudRangeMinUniform) {
+                cloudRangeMinUniform->set(cloudRangeMin);
+                std::cout << "Cloud Range Min uniform updated to: " << cloudRangeMin << std::endl;
+            } else {
+                std::cout << "Cloud Range Min uniform not found" << std::endl;
+            }
+            
+            osg::Uniform* cloudRangeMaxUniform = stateset->getUniform("cloudRangeMax");
+            if (cloudRangeMaxUniform) {
+                cloudRangeMaxUniform->set(cloudRangeMax);
+                std::cout << "Cloud Range Max uniform updated to: " << cloudRangeMax << std::endl;
+            } else {
+                std::cout << "Cloud Range Max uniform not found" << std::endl;
+            }
+        }
+    } else {
+        std::cerr << "Failed to find SkyBoxThree node in the scene" << std::endl;
+        // 打印所有子节点的信息以便调试
+        std::cout << "Scene children count: " << rootNode->getNumChildren() << std::endl;
+        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+            osg::Node* child = rootNode->getChild(i);
+            if (child) {
+                std::cout << "  Child " << i << ": " << child->getName() << " (class: " << child->className() << ")" << std::endl;
+                // 如果是Group，打印其子节点
+                osg::Group* group = child->asGroup();
+                if (group) {
+                    std::cout << "    Group children count: " << group->getNumChildren() << std::endl;
+                    for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
+                        osg::Node* grandChild = group->getChild(j);
+                        if (grandChild) {
+                            std::cout << "      Grandchild " << j << ": " << grandChild->getName() << " (class: " << grandChild->className() << ")" << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 强制更新视图
+    if (viewer) {
+        std::cout << "Requesting redraw..." << std::endl;
+        viewer->advance();
+        viewer->requestRedraw();
+    }
+}
+
 // 辅助函数：递归查找SkyBoxThree节点
 osg::Node* DemoShader::findSkyBoxThreeNode(osg::Node* node)
 {
@@ -907,7 +1067,8 @@ osg::Node* DemoShader::createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer)
 }
 
 void DemoShader::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
-                                                   float cloudDensity, float cloudHeight)
+                                                   float cloudDensity, float cloudHeight,
+                                                   float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
 {
     if (!_cloudSeaAtmosphere.valid()) {
         std::cerr << "Cloud sea atmosphere is not initialized" << std::endl;
@@ -921,6 +1082,8 @@ void DemoShader::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float 
     // 更新云海参数
     _cloudSeaAtmosphere->setCloudDensity(cloudDensity);
     _cloudSeaAtmosphere->setCloudHeight(cloudHeight);
+    // 注意：CloudSeaAtmosphere类目前不支持cloudBaseHeight, cloudRangeMin, cloudRangeMax参数
+    // 这些参数将在SkyNode中使用
     
     // 保存到成员变量
     _cloudSeaDensity = cloudDensity;
