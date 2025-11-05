@@ -191,11 +191,11 @@ void VolumeCloudSky::initUniforms()
     _mieDirectionalG = mieDirectionalG;
     _up = up;
     
-    // 初始化新的云层控制参数
-    _densityThreshold = new osg::Uniform("densityThreshold", 0.3f);
-    _contrast = new osg::Uniform("contrast", 2.5f);
-    _densityFactor = new osg::Uniform("densityFactor", 0.01f);
-    _stepSize = new osg::Uniform("stepSize", 3.0f);
+    // 初始化新的云层控制参数 - 调整参数以减少噪点
+    _densityThreshold = new osg::Uniform("densityThreshold", 0.2f);  // 降低密度阈值
+    _contrast = new osg::Uniform("contrast", 2.0f);                 // 调整对比度
+    _densityFactor = new osg::Uniform("densityFactor", 1.0f);       // 调整密度因子
+    _stepSize = new osg::Uniform("stepSize", 2.5f);                 // 调整步长
     _maxSteps = new osg::Uniform("maxSteps", 200);
 }
 

@@ -614,7 +614,7 @@ ApplicationWindow {
                 }
             }
             
-            // 光照控制组件
+            // 云层参数控制组件
             Component {
                 id: lightControls
                 
@@ -622,28 +622,33 @@ ApplicationWindow {
                     width: parent.width
                     spacing: 15
                     
-                    // 太阳天顶角控制
+                    // 云密度控制
                     Text {
-                        text: "太阳天顶角"
+                        text: "云密度 (Cloud Density)"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
                     }
                     
                     Slider {
-                        id: sunZenithSlider
+                        id: cloudDensitySlider
                         width: parent.width
-                        from: 0
-                        to: Math.PI
-                        value: sunZenithAngle
+                        from: 0.0
+                        to: 10.0
+                        value: 5.0
+                        stepSize: 0.1
                         onValueChanged: {
-                            sunZenithAngle = value;
-                            osgViewer.updateAtmosphereParameters(sunZenithAngle, sunAzimuthAngle);
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
                         }
                     }
                     
                     Text {
-                        text: "角度: " + (sunZenithAngle * 180 / Math.PI).toFixed(1) + "°"
+                        text: "密度: " + cloudDensitySlider.value.toFixed(2)
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -656,28 +661,33 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 太阳方位角控制
+                    // 云高度控制
                     Text {
-                        text: "太阳方位角"
+                        text: "云厚度 (Cloud Height)"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
                     }
                     
                     Slider {
-                        id: sunAzimuthSlider
+                        id: cloudHeightSlider
                         width: parent.width
-                        from: 0
-                        to: 2 * Math.PI
-                        value: sunAzimuthAngle
+                        from: 100.0
+                        to: 5000.0
+                        value: 800.0
+                        stepSize: 10.0
                         onValueChanged: {
-                            sunAzimuthAngle = value;
-                            osgViewer.updateAtmosphereParameters(sunZenithAngle, sunAzimuthAngle);
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
                         }
                     }
                     
                     Text {
-                        text: "角度: " + (sunAzimuthAngle * 180 / Math.PI).toFixed(1) + "°"
+                        text: "厚度: " + cloudHeightSlider.value.toFixed(0) + " m"
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -690,27 +700,146 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 大气密度控制 (对应turbidity)
+                    // 云层密度阈值控制
                     Text {
-                        text: "大气密度 (Turbidity)"
+                        text: "云层密度阈值"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
                     }
                     
                     Slider {
-                        id: atmosphereDensitySlider
+                        id: densityThresholdSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 0.5
+                        value: 0.3
+                        onValueChanged: {
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "阈值: " + densityThresholdSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云层对比度控制
+                    Text {
+                        text: "云层对比度"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: contrastSlider
+                        width: parent.width
+                        from: 1.0
+                        to: 3.0
+                        value: 2.5
+                        onValueChanged: {
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "对比度: " + contrastSlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云层密度因子控制
+                    Text {
+                        text: "云层密度因子"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: densityFactorSlider
+                        width: parent.width
+                        from: 0.5
+                        to: 3.0
+                        value: 1.5
+                        onValueChanged: {
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "因子: " + densityFactorSlider.value.toFixed(1)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云层步长控制
+                    Text {
+                        text: "云层步长"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: stepSizeSlider
                         width: parent.width
                         from: 1.0
                         to: 10.0
-                        value: 2.0
+                        value: 3.0
                         onValueChanged: {
-                            osgViewer.updateAtmosphereDensityAndIntensity(value, sunIntensitySlider.value);
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
                         }
                     }
                     
                     Text {
-                        text: "密度: " + atmosphereDensitySlider.value.toFixed(1)
+                        text: "步长: " + stepSizeSlider.value.toFixed(1)
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -723,93 +852,33 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 太阳强度控制
+                    // 云层最大步数控制
                     Text {
-                        text: "太阳强度"
+                        text: "云层最大步数"
                         font.pixelSize: 14
                         font.bold: true
                         color: "#34495e"
                     }
                     
                     Slider {
-                        id: sunIntensitySlider
+                        id: maxStepsSlider
                         width: parent.width
-                        from: 5.0
-                        to: 50.0
-                        value: 20.0
+                        from: 50
+                        to: 500
+                        value: 200
+                        stepSize: 10
                         onValueChanged: {
-                            osgViewer.updateAtmosphereDensityAndIntensity(atmosphereDensitySlider.value, value);
+                            osgViewer.updateVolumeCloudParameters(
+                                sunZenithAngle, sunAzimuthAngle,
+                                cloudDensitySlider.value, cloudHeightSlider.value,
+                                densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+                                stepSizeSlider.value, maxStepsSlider.value
+                            );
                         }
                     }
                     
                     Text {
-                        text: "强度: " + sunIntensitySlider.value.toFixed(1)
-                        font.pixelSize: 12
-                        color: "#7f8c8d"
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                    
-                    // 分隔线
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: "#bdc3c7"
-                    }
-                    
-                    // 米氏散射控制 (对应mieCoefficient)
-                    Text {
-                        text: "米氏散射 (Mie Coefficient)"
-                        font.pixelSize: 14
-                        font.bold: true
-                        color: "#34495e"
-                    }
-                    
-                    Slider {
-                        id: mieScatteringSlider
-                        width: parent.width
-                        from: 0.001
-                        to: 0.1
-                        value: 0.005
-                        onValueChanged: {
-                            osgViewer.updateAtmosphereScattering(value, rayleighScatteringSlider.value);
-                        }
-                    }
-                    
-                    Text {
-                        text: "系数: " + mieScatteringSlider.value.toFixed(3)
-                        font.pixelSize: 12
-                        color: "#7f8c8d"
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                    
-                    // 分隔线
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: "#bdc3c7"
-                    }
-                    
-                    // 瑞利散射控制 (对应rayleigh)
-                    Text {
-                        text: "瑞利散射 (Rayleigh)"
-                        font.pixelSize: 14
-                        font.bold: true
-                        color: "#34495e"
-                    }
-                    
-                    Slider {
-                        id: rayleighScatteringSlider
-                        width: parent.width
-                        from: 0.1
-                        to: 5.0
-                        value: 1.0
-                        onValueChanged: {
-                            osgViewer.updateAtmosphereScattering(mieScatteringSlider.value, value);
-                        }
-                    }
-                    
-                    Text {
-                        text: "系数: " + rayleighScatteringSlider.value.toFixed(1)
+                        text: "最大步数: " + maxStepsSlider.value.toFixed(0)
                         font.pixelSize: 12
                         color: "#7f8c8d"
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -1542,5 +1611,75 @@ ApplicationWindow {
         case SimpleOSGViewer.TopView: return "俯视图";
         default: return "未知视图";
         }
+    }
+    
+    // 添加更新云密度的函数
+    function updateCloudDensity(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
+    }
+    
+    // 添加更新云高度的函数
+    function updateCloudHeight(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
+    }
+    
+    // 添加更新云层密度阈值的函数
+    function updateCloudDensityThreshold(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
+    }
+    
+    // 添加更新云层对比度的函数
+    function updateCloudContrast(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
+    }
+    
+    // 添加更新云层密度因子的函数
+    function updateCloudDensityFactor(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
+    }
+    
+    // 添加更新云层步长的函数
+    function updateCloudStepSize(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
+    }
+    
+    // 添加更新云层最大步数的函数
+    function updateCloudMaxSteps(value) {
+        osgViewer.updateVolumeCloudParameters(
+            sunZenithAngle, sunAzimuthAngle,
+            cloudDensitySlider.value, cloudHeightSlider.value,
+            densityThresholdSlider.value, contrastSlider.value, densityFactorSlider.value,
+            stepSizeSlider.value, maxStepsSlider.value
+        );
     }
 }
