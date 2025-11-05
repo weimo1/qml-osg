@@ -774,11 +774,26 @@ void SimpleOSGRenderer::updateCloudSeaAtmosphereParameters(float sunZenithAngle,
                                                          float cloudDensity, float cloudHeight,
                                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
 {
-    if (m_uiHandler && m_viewer.valid() && m_rootNode.valid()) {
+    if (m_uiHandler) {
         m_uiHandler->updateCloudSeaAtmosphereParameters(m_viewer.get(), m_rootNode.get(),
                                                       sunZenithAngle, sunAzimuthAngle,
                                                       cloudDensity, cloudHeight,
                                                       cloudBaseHeight, cloudRangeMin, cloudRangeMax);
+    }
+}
+
+// 添加更新体积云参数的方法
+void SimpleOSGRenderer::updateVolumeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                               float cloudDensity, float cloudHeight,
+                                               float densityThreshold, float contrast, float densityFactor,
+                                               float stepSize, float maxSteps)
+{
+    if (m_uiHandler ) {
+        m_uiHandler->updateVolumeCloudParameters(m_viewer.get(), m_rootNode.get(),
+                                                sunZenithAngle, sunAzimuthAngle,
+                                                cloudDensity, cloudHeight,
+                                                densityThreshold, contrast, densityFactor,
+                                                stepSize, maxSteps);
     }
 }
 

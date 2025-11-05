@@ -81,7 +81,8 @@ public:
     void updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                   float sunZenithAngle, float sunAzimuthAngle,
                                   float cloudDensity, float cloudHeight,
-                                  float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+                                  float densityThreshold, float contrast, float densityFactor,
+                                  float stepSize, float maxSteps);
 
 private:
     ViewManager m_viewManager;

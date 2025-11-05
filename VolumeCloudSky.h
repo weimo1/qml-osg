@@ -20,6 +20,13 @@ public:
     
     // 设置云参数
     void setCloudDensity(float density);
+    
+    // 新增的云层控制参数setter方法
+    void setDensityThreshold(float threshold);
+    void setContrast(float contrast);
+    void setDensityFactor(float factor);
+    void setStepSize(float size);
+    void setMaxSteps(int steps);
 
     META_Node(osg, VolumeCloudSky);
 
@@ -39,4 +46,11 @@ private:
     osg::ref_ptr<osg::Uniform> _mieCoefficient;
     osg::ref_ptr<osg::Uniform> _mieDirectionalG;
     osg::ref_ptr<osg::Uniform> _up;
+    
+    // 新增的云层控制参数uniforms
+    osg::ref_ptr<osg::Uniform> _densityThreshold;
+    osg::ref_ptr<osg::Uniform> _contrast;
+    osg::ref_ptr<osg::Uniform> _densityFactor;
+    osg::ref_ptr<osg::Uniform> _stepSize;
+    osg::ref_ptr<osg::Uniform> _maxSteps;
 };

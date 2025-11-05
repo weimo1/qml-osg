@@ -111,6 +111,10 @@ public slots:
     void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
                                           float cloudDensity, float cloudHeight,
                                           float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+    Q_INVOKABLE void updateVolumeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                    float cloudDensity, float cloudHeight,
+                                    float densityThreshold, float contrast, float densityFactor,
+                                    float stepSize, float maxSteps);
     
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
@@ -150,6 +154,12 @@ public slots:
     void invokeUpdateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
                                                 float cloudDensity, float cloudHeight,
                                                 float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+                                                
+    // 添加更新体积云参数的槽函数声明
+    void invokeUpdateVolumeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                         float cloudDensity, float cloudHeight,
+                                         float densityThreshold, float contrast, float densityFactor,
+                                         float stepSize, float maxSteps);
 
 private:
     mutable SimpleOSGRenderer* m_renderer;  // 保存渲染器引用

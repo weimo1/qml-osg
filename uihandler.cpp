@@ -317,14 +317,16 @@ void UIHandler::updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group
 void UIHandler::updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                           float sunZenithAngle, float sunAzimuthAngle,
                                           float cloudDensity, float cloudHeight,
-                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+                                          float densityThreshold, float contrast, float densityFactor,
+                                          float stepSize, float maxSteps)
 {
     if (m_demoShader.valid()) {
         // 使用DemoShader更新体积云参数
         m_demoShader->updateVolumeCloudParameters(viewer, rootNode,
                                                  sunZenithAngle, sunAzimuthAngle,
                                                  cloudDensity, cloudHeight,
-                                                 cloudBaseHeight, cloudRangeMin, cloudRangeMax);
+                                                 densityThreshold, contrast, densityFactor,
+                                                 stepSize, maxSteps);
     }
     
     // 强制重绘

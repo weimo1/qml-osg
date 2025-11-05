@@ -527,6 +527,37 @@ void SimpleOSGViewer::invokeUpdateCloudSeaAtmosphereParameters(float sunZenithAn
     }
 }
 
+// 添加更新体积云参数的方法
+void SimpleOSGViewer::updateVolumeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                float cloudDensity, float cloudHeight,
+                                                float densityThreshold, float contrast, float densityFactor,
+                                                float stepSize, float maxSteps)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateVolumeCloudParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, sunZenithAngle), Q_ARG(float, sunAzimuthAngle),
+                                 Q_ARG(float, cloudDensity), Q_ARG(float, cloudHeight),
+                                 Q_ARG(float, densityThreshold), Q_ARG(float, contrast),
+                                 Q_ARG(float, densityFactor), Q_ARG(float, stepSize),
+                                 Q_ARG(float, maxSteps));
+    }
+}
+
+// 实际调用渲染器更新体积云参数的方法
+void SimpleOSGViewer::invokeUpdateVolumeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                                       float cloudDensity, float cloudHeight,
+                                                       float densityThreshold, float contrast, float densityFactor,
+                                                       float stepSize, float maxSteps)
+{
+    if (m_renderer) {
+        m_renderer->updateVolumeCloudParameters(sunZenithAngle, sunAzimuthAngle,
+                                               cloudDensity, cloudHeight,
+                                               densityThreshold, contrast, densityFactor,
+                                               stepSize, maxSteps);
+    }
+}
+
 // 实际调用渲染器创建云海大气效果场景的方法
 void SimpleOSGViewer::invokeCreateTexturedAtmosphereScene()
 {

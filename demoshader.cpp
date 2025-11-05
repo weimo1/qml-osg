@@ -1132,15 +1132,17 @@ void DemoShader::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float 
 void DemoShader::updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                           float sunZenithAngle, float sunAzimuthAngle,
                                           float cloudDensity, float cloudHeight,
-                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+                                          float densityThreshold, float contrast, float densityFactor,
+                                          float stepSize, float maxSteps)
 {
     if (!viewer || !rootNode) return;
     
     std::cout << "Updating Volume Cloud parameters..." << std::endl;
     std::cout << "  Sun Zenith Angle: " << sunZenithAngle << ", Sun Azimuth Angle: " << sunAzimuthAngle 
               << ", Cloud Density: " << cloudDensity << ", Cloud Height: " << cloudHeight
-              << ", Cloud Base Height: " << cloudBaseHeight << ", Cloud Range Min: " << cloudRangeMin
-              << ", Cloud Range Max: " << cloudRangeMax << std::endl;
+              << ", Density Threshold: " << densityThreshold << ", Contrast: " << contrast
+              << ", Density Factor: " << densityFactor << ", Step Size: " << stepSize
+              << ", Max Steps: " << maxSteps << std::endl;
     
     // 查找场景中的VolumeCloudSky节点
     osg::Node* volumeCloudNode = nullptr;
@@ -1200,6 +1202,11 @@ void DemoShader::updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Gro
             volumeCloudSky->setSunZenithAngle(sunZenithAngle);
             volumeCloudSky->setSunAzimuthAngle(sunAzimuthAngle);
             volumeCloudSky->setCloudDensity(cloudDensity);
+            volumeCloudSky->setDensityThreshold(densityThreshold);
+            volumeCloudSky->setContrast(contrast);
+            volumeCloudSky->setDensityFactor(densityFactor);
+            volumeCloudSky->setStepSize(stepSize);
+            volumeCloudSky->setMaxSteps((int)maxSteps);
             std::cout << "Volume Cloud parameters updated successfully" << std::endl;
         } else {
             std::cerr << "Failed to cast node to VolumeCloudSky" << std::endl;

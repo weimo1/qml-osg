@@ -73,6 +73,12 @@ public:
     void updateCloudSeaAtmosphereParameters(float sunZenithAngle, float sunAzimuthAngle,
                                           float cloudDensity, float cloudHeight,
                                           float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+                                          
+    // 添加更新体积云参数的方法
+    void updateVolumeCloudParameters(float sunZenithAngle, float sunAzimuthAngle,
+                                   float cloudDensity, float cloudHeight,
+                                   float densityThreshold, float contrast, float densityFactor,
+                                   float stepSize, float maxSteps);
 
     // 添加模型选择相关方法
     void selectModel(int x, int y);

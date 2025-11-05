@@ -8,6 +8,7 @@
 #include <osg/Geometry>
 #include <osg/Geode>
 
+
 class VolumeCloudCB : public osg::StateSet::Callback
 {
 private:
@@ -74,7 +75,7 @@ VolumeCloudSky::VolumeCloudSky(osg::Camera* camera)
     // 深度测试设置
     ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0f, 1.0f));
     // 确保天空盒在最远深度渲染
-    ss->setRenderBinDetails(1000, "RenderBin");
+    ss->setRenderBinDetails(10000, "RenderBin");
     ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 
@@ -101,10 +102,15 @@ VolumeCloudSky::VolumeCloudSky(osg::Camera* camera)
     ss->addUniform(_mieCoefficient.get());
     ss->addUniform(_mieDirectionalG.get());
     ss->addUniform(_up.get());
+    ss->addUniform(_densityThreshold.get());
+    ss->addUniform(_contrast.get());
+    ss->addUniform(_densityFactor.get());
+    ss->addUniform(_stepSize.get());
+    ss->addUniform(_maxSteps.get());
     ss->addUniform(new osg::Uniform("iTime", 0.0f));
 
     // 加载2D噪声贴图 - 定义云的分布区域
-    osg::ref_ptr<osg::Image> cloudMapImage = osgDB::readImageFile("E:/a.png");
+    osg::ref_ptr<osg::Image> cloudMapImage = osgDB::readImageFile("E:/s.png");
     if (cloudMapImage.valid()) {
         osg::ref_ptr<osg::Texture2D> cloudMapTexture = new osg::Texture2D();
         cloudMapTexture->setImage(cloudMapImage.get());
@@ -184,6 +190,13 @@ void VolumeCloudSky::initUniforms()
     _mieCoefficient = mieCoefficient;
     _mieDirectionalG = mieDirectionalG;
     _up = up;
+    
+    // 初始化新的云层控制参数
+    _densityThreshold = new osg::Uniform("densityThreshold", 0.3f);
+    _contrast = new osg::Uniform("contrast", 2.5f);
+    _densityFactor = new osg::Uniform("densityFactor", 0.01f);
+    _stepSize = new osg::Uniform("stepSize", 3.0f);
+    _maxSteps = new osg::Uniform("maxSteps", 200);
 }
 
 bool VolumeCloudSky::computeLocalToWorldMatrix(osg::Matrix& matrix, osg::NodeVisitor* nv) const
@@ -232,4 +245,39 @@ void VolumeCloudSky::setCloudDensity(float density)
     if (_cloudDensity.valid()) {
         _cloudDensity->set(density);
     }
+}
+
+// 设置密度阈值
+void VolumeCloudSky::setDensityThreshold(float threshold)
+{
+    if (_densityThreshold.valid())
+        _densityThreshold->set(threshold);
+}
+
+// 设置对比度
+void VolumeCloudSky::setContrast(float contrast)
+{
+    if (_contrast.valid())
+        _contrast->set(contrast);
+}
+
+// 设置密度因子
+void VolumeCloudSky::setDensityFactor(float factor)
+{
+    if (_densityFactor.valid())
+        _densityFactor->set(factor);
+}
+
+// 设置步长
+void VolumeCloudSky::setStepSize(float size)
+{
+    if (_stepSize.valid())
+        _stepSize->set(size);
+}
+
+// 设置最大步数
+void VolumeCloudSky::setMaxSteps(int steps)
+{
+    if (_maxSteps.valid())
+        _maxSteps->set(steps);
 }
