@@ -3,6 +3,8 @@ in vec3 vWorldPosition;
 in vec3 cameraPosition;
 
 uniform sampler2D cloudMap;  // 噪声纹理
+uniform sampler2D blueNoise; // 蓝噪声纹理
+uniform float iTime;         // 时间变量
 
 out vec4 color;
 
@@ -18,8 +20,10 @@ float getDensity(vec3 pos) {
     float weight = 1.0 - 2.0 * abs(mid - pos.y) / h;
     weight = pow(max(weight, 0.0), 0.5);  // 开根号使过渡更平滑
 
+    // 添加时间驱动的云层移动效果
+    vec2 offset = vec2(iTime * 0.005, iTime * 0.002);
     
-    vec2  coord1 = pos.xz * 0.0025;
+    vec2  coord1 = pos.xz * 0.0025 + offset;
     float noise = texture2D(cloudMap, coord1).x;
     noise += texture2D(cloudMap, coord1 * 3.5).x/3.5;
     noise += texture2D(cloudMap, coord1 * 7.0).x/7.0;
@@ -44,6 +48,12 @@ vec4 getCloud(vec3 worldPos, vec3 cameraPos) {
     vec4 colorSum = vec4(0);        // 积累的颜色
     vec3 point = cameraPos;         // 从相机出发开始测试
 
+    // 计算屏幕UV坐标用于蓝噪声采样
+    vec2 screenUV = gl_FragCoord.xy / vec2(1920.0, 1080.0);  // 假设屏幕分辨率为1920x1080
+    
+    // 采样蓝噪声纹理
+    float blueNoiseValue = texture2D(blueNoise, screenUV).r;
+
     // 如果相机在云层下，将测试起始点移动到云层底部
     if(point.y < bottom) {
         point += direction * (abs(bottom - cameraPos.y) / abs(direction.y));
@@ -59,6 +69,9 @@ vec4 getCloud(vec3 worldPos, vec3 cameraPos) {
     if(len2 < len1) {
         return vec4(0);
     }
+
+    // 使用蓝噪声对步进起始点做偏移，解决分层问题
+    point += step * blueNoiseValue * 0.5;
 
     // ray marching
     for(int i=0; i<300; i++) {

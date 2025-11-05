@@ -23,6 +23,12 @@ uniform sampler2D blueNoise;   // 蓝噪声纹理
 uniform sampler2D cloudMap;    // 云噪声纹理
 uniform vec3 sunDirection;     // 太阳方向
 
+// 新增的云层控制参数uniforms
+uniform float densityThreshold;
+uniform float contrast;
+uniform float densityFactor;
+uniform float stepSize;
+
 // 基础颜色和光照颜色定义
 #define baseBright  vec3(1.26,1.25,1.29)    // 基础颜色 -- 亮部
 #define baseDark    vec3(0.31,0.31,0.32)    // 基础颜色 -- 暗部
@@ -58,13 +64,16 @@ float getDensity(vec3 pos) {
 
     noise *= weight;
 
-    // 截断 - 只有密度大于阈值的部分才显示为云
-    if(noise < 0.25) {  // 降低阈值使更多细节可见
+    // 使用uniform参数控制密度阈值
+    if(noise < densityThreshold) {
         noise = 0.0;
     } else {
-        // 增强对比度
-        noise = pow(noise, 2.2);  // 增加对比度使云朵边缘更清晰
+        // 使用uniform参数控制对比度
+        noise = pow(noise, contrast);
     }
+
+    // 使用uniform参数控制密度因子
+    noise *= densityFactor;
 
     return noise;
 }
@@ -116,7 +125,8 @@ vec3 calculateAtmosphericLight(vec3 direction)
 // 获取体积云颜色
 vec4 getCloud(vec3 worldPos, vec3 cameraPos, vec3 lightPos) {
     vec3 direction = normalize(worldPos - cameraPos);   // 视线射线方向
-    vec3 step = direction * 5.0;   // 减小步长以提高精度
+    // 使用uniform参数控制步长
+    vec3 step = direction * stepSize;
     vec4 colorSum = vec4(0);        // 积累的颜色
     vec3 point = cameraPos;         // 从相机出发开始测试
 
@@ -146,7 +156,7 @@ vec4 getCloud(vec3 worldPos, vec3 cameraPos, vec3 lightPos) {
     point += step * blueNoiseValue * 0.5;
 
     // ray marching
-    for(int i=0; i<300; i++) {  // 增加循环次数以提高精度
+    for(int i=0; i<300; i++) {  // 使用固定步数
         point += step;
         if(bottom>point.y || point.y>top || -width>point.x || point.x>width || -width>point.z || point.z>width) {
             break;
@@ -162,13 +172,19 @@ vec4 getCloud(vec3 worldPos, vec3 cameraPos, vec3 lightPos) {
         density *= distanceFactor;
 
         // 控制透明度
-        density *= 1.0;  // 调整密度
+        density *= cloudDensity;  // 使用cloudDensity uniform控制密度
 
-        // 颜色计算 - 仅使用基础颜色，不添加光照
+        // 简单的光照模型
+        vec3 lightDir = normalize(sunDirection);
+        vec3 normal = normalize(point - cameraPos);
+        float NdotL = max(0.0, dot(normal, lightDir));
+        
+        // 颜色计算 - 使用基础颜色和光照
         vec3 baseColor = mix(baseBright, baseDark, density) * density * 0.7;   // 基础颜色
+        vec3 litColor = baseColor * (0.5 + 0.5 * NdotL);  // 简单的光照计算
 
         // 混合
-        vec4 color = vec4(baseColor, density);                     // 当前点的最终颜色
+        vec4 color = vec4(litColor, density);                     // 当前点的最终颜色
         colorSum = color * (1.0 - colorSum.a) + colorSum;           // 与累积的颜色混合
     }
 
@@ -181,19 +197,15 @@ void main()
     // 使用归一化的世界坐标方向来采样天空盒
     vec3 direction = normalize(worldPos);
 
-    // 计算大气天空盒颜色
-    vec3 skyColor = calculateAtmosphericLight(direction) * 2.0;
-    vec3 retColor = pow(skyColor, vec3(1.0 / (1.2 + (1.2 * vSunfade))));
-    retColor *= 0.2;  // 降低背景亮度，使云层更突出
-
     // 获取体积云颜色
     vec4 cloud = getCloud(worldPos, cameraPosition, sunDirection * 1000.0);
     
     // 简单的降噪处理 - 平滑颜色
     cloud.rgb = mix(cloud.rgb, vec3(0.5), 0.1);
     
-    // 混合大气背景和云层
-    vec3 finalColor = retColor * (1.0 - cloud.a) + cloud.rgb;
+    // 使用深蓝色背景
+    vec3 backgroundColor = vec3(0.1, 0.1, 0.3);
+    vec3 finalColor = mix(backgroundColor, cloud.rgb, cloud.a);
     
     color = vec4(finalColor, 1.0);
 }
