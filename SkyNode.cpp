@@ -70,9 +70,9 @@ SkyBoxThree::SkyBoxThree(osg::Camera * pCamera)
     initUniforms();
     osg::ref_ptr<osg::Program> program = new osg::Program;
     std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader/";
-    osg::Shader* pV = osgDB::readShaderFile(osg::Shader::VERTEX, resourcePath + "X1.vert");
+    osg::Shader* pV = osgDB::readShaderFile(osg::Shader::VERTEX, resourcePath + "x1.vert");
     pV->setName("X1.vert");
-    osg::Shader* pF = osgDB::readShaderFile(osg::Shader::FRAGMENT, resourcePath + "X1.frag");
+    osg::Shader* pF = osgDB::readShaderFile(osg::Shader::FRAGMENT, resourcePath + "x1.frag");
     pF->setName("X1.frag");
     program->addShader(pV);
     program->addShader(pF);
@@ -93,8 +93,8 @@ SkyBoxThree::SkyBoxThree(osg::Camera * pCamera)
     ss->addUniform(_cloudRangeMax.get());  // 添加云层远裁剪距离uniform
     ss->addUniform(new osg::Uniform("iTime", 0.0f));  // 添加时间uniform
 
-    // 加载噪声贴图
-    osg::ref_ptr<osg::Image> noiseImage = osgDB::readImageFile("E:/qt test/qml-osg/resource/f.png");
+    
+    osg::ref_ptr<osg::Image> noiseImage = osgDB::readImageFile("E:/a.png");
     if (noiseImage.valid()) {
         osg::ref_ptr<osg::Texture2D> noiseTexture = new osg::Texture2D();
         noiseTexture->setImage(noiseImage.get());
@@ -120,19 +120,6 @@ SkyBoxThree::SkyBoxThree(osg::Camera * pCamera)
         ss->addUniform(new osg::Uniform("iChannel0", 0));
     }
 
-    // 创建一个简单的天气纹理（纯白色，表示均匀的云分布）
-    osg::ref_ptr<osg::Image> weatherImage = new osg::Image();
-    unsigned char* weatherData = new unsigned char[4];
-    weatherData[0] = weatherData[1] = 200; weatherData[2] = 0; weatherData[3] = 255; // RG=0.8, B=0, A=1.0
-    weatherImage->setImage(1, 1, 1, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, weatherData, osg::Image::USE_NEW_DELETE);
-    osg::ref_ptr<osg::Texture2D> weatherTexture = new osg::Texture2D();
-    weatherTexture->setImage(weatherImage.get());
-    weatherTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
-    weatherTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
-    weatherTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-    weatherTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-    ss->setTextureAttributeAndModes(1, weatherTexture, osg::StateAttribute::ON);
-    ss->addUniform(new osg::Uniform("weatherTexture", 1));
 
     SkyCB* pCB = new SkyCB(pCamera);
     ss->setUpdateCallback(pCB);
@@ -147,9 +134,9 @@ void SkyBoxThree::initUniforms()
     _mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.8f);
     _sunPosition = new osg::Uniform("sunPosition", osg::Vec3(0.0f, 0.7f, 0.8f));
     _up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f, 1.0f));  // 使用Z轴向上
-    _sunZenithAngle = new osg::Uniform("sunZenithAngle", 80.0f * 3.14159f / 180.0f);  // 初始化太阳天顶角度为68度
+    _sunZenithAngle = new osg::Uniform("sunZenithAngle", 45.0f * 3.14159f / 180.0f);  // 调整太阳天顶角度为45度（更高）
     _sunAzimuthAngle = new osg::Uniform("sunAzimuthAngle", 270.0f * 3.14159f / 180.0f);  // 初始化太阳方位角度为90度
-    _cloudDensity = new osg::Uniform("cloudDensity", 5.0f);  // 初始化云密度
+    _cloudDensity = new osg::Uniform("cloudDensity", 3.0f);  // 降低初始云密度
     _cloudHeight = new osg::Uniform("cloudHeight", 800.0f);  // 初始化云厚度
     _cloudBaseHeight = new osg::Uniform("cloudBaseHeight", 1500.0f);  // 初始化云层底部高度
     _cloudRangeMin = new osg::Uniform("cloudRangeMin", 0.0f);  // 初始化云层近裁剪距离

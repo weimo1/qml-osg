@@ -52,7 +52,6 @@ CloudSeaAtmosphere::CloudSeaAtmosphere(osg::Camera* pCamera)
     ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
     ss->setRenderBinDetails(0, "RenderBin");
-
     initUniforms();
     
     osg::ref_ptr<osg::Program> program = new osg::Program;

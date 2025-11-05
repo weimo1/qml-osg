@@ -13,7 +13,7 @@ uniform vec3 up;
 uniform vec3 cameraPosition;
 uniform float sunZenithAngle;  // 新增：太阳天顶角度
 uniform float sunAzimuthAngle;  // 新增：太阳方位角度
-uniform sampler2D iChannel0;   // 新增：噪声纹理
+// uniform sampler2D iChannel0;   // 新增：噪声纹理
 uniform float iTime;           // 新增：时间变量
 
 // 新增：云海参数uniform变量

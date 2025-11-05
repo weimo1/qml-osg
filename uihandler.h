@@ -77,6 +77,12 @@ public:
     void updateCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                               float cloudDensity, float cloudHeight);
 
+    // 添加：更新体积云参数
+    void updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                  float sunZenithAngle, float sunAzimuthAngle,
+                                  float cloudDensity, float cloudHeight,
+                                  float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+
 private:
     ViewManager m_viewManager;
     osg::ref_ptr<DemoShader> m_demoShader;

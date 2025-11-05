@@ -27,6 +27,7 @@ const float DemoShader::kLengthUnitInMeters = 1000.0f;
 #include "shadercube.h"
 #include "skyboxmanipulator.h"
 #include "CloudSeaAtmosphere.h"
+#include "VolumeCloudSky.h"
 DemoShader::DemoShader()
     : _viewDistanceMeters(5000.0f)  // 初始观察距离5km，更接近地球表面
     , _viewZenithAngleRadians(0.0f)  // 初始视角天顶角，从地面向上看
@@ -843,8 +844,41 @@ osg::Node* DemoShader::findSkyBoxThreeNode(osg::Node* node)
     return nullptr;
 }
 
-
-
+// 新增：创建体积云天空盒场景
+osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
+{
+    if (!viewer) return nullptr;
+    
+    osg::ref_ptr<osg::Group> root = new osg::Group;
+    
+    // 创建一个球体几何体作为天空盒
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 5000.0);  // 调整球体半径为1000.0
+    osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
+    
+    drawable->setUseDisplayList(false);
+    drawable->setUseVertexBufferObjects(true);
+    
+    geode->addDrawable(drawable);
+    geode->setCullingActive(false);
+    
+    // 创建体积云天空盒对象
+    osg::ref_ptr<VolumeCloudSky> volumeCloudSky = new VolumeCloudSky(viewer->getCamera());
+    volumeCloudSky->setName("volume_cloud_sky");
+    volumeCloudSky->addChild(geode.get());
+    
+    // 将天空盒添加到根节点
+    if (volumeCloudSky.valid()) {
+        root->addChild(volumeCloudSky);
+    } else {
+        std::cerr << "Failed to create volume cloud sky" << std::endl;
+        return nullptr;
+    }
+    
+    std::cout << "Volume Cloud Sky scene created successfully" << std::endl;
+    
+    return root.release();
+}
 
 void DemoShader::updateAtmosphereSceneUniforms(osg::StateSet* stateset)
 {
@@ -1090,4 +1124,135 @@ void DemoShader::updateCloudSeaAtmosphereParameters(float sunZenithAngle, float 
     _cloudSeaHeight = cloudHeight;
     _sunZenithAngleRadians = sunZenithAngle;
     _sunAzimuthAngleRadians = sunAzimuthAngle;
+}
+
+// 新增：创建使用CloudVolume着色器的云海大气场景
+
+// 新增：更新体积云参数
+void DemoShader::updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                          float sunZenithAngle, float sunAzimuthAngle,
+                                          float cloudDensity, float cloudHeight,
+                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+{
+    if (!viewer || !rootNode) return;
+    
+    std::cout << "Updating Volume Cloud parameters..." << std::endl;
+    std::cout << "  Sun Zenith Angle: " << sunZenithAngle << ", Sun Azimuth Angle: " << sunAzimuthAngle 
+              << ", Cloud Density: " << cloudDensity << ", Cloud Height: " << cloudHeight
+              << ", Cloud Base Height: " << cloudBaseHeight << ", Cloud Range Min: " << cloudRangeMin
+              << ", Cloud Range Max: " << cloudRangeMax << std::endl;
+    
+    // 查找场景中的VolumeCloudSky节点
+    osg::Node* volumeCloudNode = nullptr;
+    
+    // 遍历根节点的所有子节点
+    for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+        osg::Node* child = rootNode->getChild(i);
+        if (!child) continue;
+        
+        // 首先检查当前子节点是否为VolumeCloudSky
+        if (child->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(child)) {
+            volumeCloudNode = child;
+            std::cout << "Found VolumeCloudSky node at root level: " << child->getName() << std::endl;
+            break;
+        }
+        
+        // 如果当前子节点是Group，继续在其子节点中查找
+        osg::Group* group = child->asGroup();
+        if (group) {
+            for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
+                osg::Node* grandChild = group->getChild(j);
+                if (!grandChild) continue;
+                
+                // 检查孙节点是否为VolumeCloudSky
+                if (grandChild->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(grandChild)) {
+                    volumeCloudNode = grandChild;
+                    std::cout << "Found VolumeCloudSky node nested in group: " << grandChild->getName() << std::endl;
+                    break;
+                }
+            }
+            
+            // 如果找到了就退出外层循环
+            if (volumeCloudNode) break;
+        }
+    }
+    
+    // 如果还是没有找到，尝试更广泛的搜索
+    if (!volumeCloudNode) {
+        std::cout << "Performing extensive search for VolumeCloudSky nodes..." << std::endl;
+        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+            osg::Node* child = rootNode->getChild(i);
+            if (!child) continue;
+            
+            // 递归搜索所有子节点
+            volumeCloudNode = findVolumeCloudSkyNode(child);
+            if (volumeCloudNode) {
+                std::cout << "Found VolumeCloudSky node through recursive search: " << volumeCloudNode->getName() << std::endl;
+                break;
+            }
+        }
+    }
+    
+    if (volumeCloudNode) {
+        // 将节点转换为VolumeCloudSky类型并更新参数
+        VolumeCloudSky* volumeCloudSky = dynamic_cast<VolumeCloudSky*>(volumeCloudNode);
+        if (volumeCloudSky) {
+            volumeCloudSky->setSunZenithAngle(sunZenithAngle);
+            volumeCloudSky->setSunAzimuthAngle(sunAzimuthAngle);
+            volumeCloudSky->setCloudDensity(cloudDensity);
+            std::cout << "Volume Cloud parameters updated successfully" << std::endl;
+        } else {
+            std::cerr << "Failed to cast node to VolumeCloudSky" << std::endl;
+        }
+    } else {
+        std::cerr << "Failed to find VolumeCloudSky node in the scene" << std::endl;
+        // 打印所有子节点的信息以便调试
+        std::cout << "Scene children count: " << rootNode->getNumChildren() << std::endl;
+        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+            osg::Node* child = rootNode->getChild(i);
+            if (child) {
+                std::cout << "  Child " << i << ": " << child->getName() << " (class: " << child->className() << ")" << std::endl;
+                // 如果是Group，打印其子节点
+                osg::Group* group = child->asGroup();
+                if (group) {
+                    std::cout << "    Group children count: " << group->getNumChildren() << std::endl;
+                    for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
+                        osg::Node* grandChild = group->getChild(j);
+                        if (grandChild) {
+                            std::cout << "      Grandchild " << j << ": " << grandChild->getName() << " (class: " << grandChild->className() << ")" << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 强制更新视图
+    if (viewer) {
+        std::cout << "Requesting redraw..." << std::endl;
+        viewer->advance();
+        viewer->requestRedraw();
+    }
+}
+
+// 辅助函数：递归查找VolumeCloudSky节点
+osg::Node* DemoShader::findVolumeCloudSkyNode(osg::Node* node)
+{
+    if (!node) return nullptr;
+    
+    // 检查当前节点是否为VolumeCloudSky
+    if (node->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(node)) {
+        return node;
+    }
+    
+    // 如果是Group，递归检查子节点
+    osg::Group* group = node->asGroup();
+    if (group) {
+        for (unsigned int i = 0; i < group->getNumChildren(); ++i) {
+            osg::Node* found = findVolumeCloudSkyNode(group->getChild(i));
+            if (found) return found;
+        }
+    }
+    
+    return nullptr;
 }

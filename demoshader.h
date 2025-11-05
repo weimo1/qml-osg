@@ -25,7 +25,7 @@
 
 // 前向声明
 class SkyBoxThree;
-
+class VolumeCloudSky;
 class DemoShader : public osg::Referenced
 {
 public:
@@ -127,6 +127,18 @@ public:
     
     // 辅助函数：递归查找SkyBoxThree节点
     osg::Node* findSkyBoxThreeNode(osg::Node* node);
+
+    // 新增：创建体积云天空盒场景
+    osg::Node* createVolumeCloudSkyScene(osgViewer::Viewer* viewer);
+
+    // 添加：更新体积云参数
+    void updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                  float sunZenithAngle, float sunAzimuthAngle,
+                                  float cloudDensity, float cloudHeight,
+                                  float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax);
+
+    // 辅助函数：递归查找VolumeCloudSky节点
+    osg::Node* findVolumeCloudSkyNode(osg::Node* node);
 
 private:
     // 着色器程序

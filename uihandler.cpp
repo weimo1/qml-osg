@@ -141,14 +141,14 @@ void UIHandler::createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* roo
         }
         
         
-        // 创建大气渲染场景（使用全屏四边形）
-        osg::ref_ptr<osg::Node> atmosphereScene = m_demoShader->createAtmosphereScene();
+        // 创建体积云天空盒场景
+        osg::ref_ptr<osg::Node> atmosphereScene = m_demoShader->createVolumeCloudSkyScene(viewer);
         
         // 将大气渲染场景添加到根节点
         if (atmosphereScene.valid()) {
             rootNode->addChild(atmosphereScene);
         } else {
-            qDebug() << "Failed to create atmosphere scene";
+            qDebug() << "Failed to create volume cloud sky scene";
             return;
         }
         
@@ -167,7 +167,7 @@ void UIHandler::createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* roo
         viewer->advance();
         viewer->requestRedraw();
         
-        qDebug() << "Atmosphere scene created successfully";
+        qDebug() << "Volume Cloud Sky scene created successfully";
     }
 }
 
@@ -313,7 +313,25 @@ void UIHandler::updateAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group
     }
 }
 
-
+// 添加更新体积云参数
+void UIHandler::updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                          float sunZenithAngle, float sunAzimuthAngle,
+                                          float cloudDensity, float cloudHeight,
+                                          float cloudBaseHeight, float cloudRangeMin, float cloudRangeMax)
+{
+    if (m_demoShader.valid()) {
+        // 使用DemoShader更新体积云参数
+        m_demoShader->updateVolumeCloudParameters(viewer, rootNode,
+                                                 sunZenithAngle, sunAzimuthAngle,
+                                                 cloudDensity, cloudHeight,
+                                                 cloudBaseHeight, cloudRangeMin, cloudRangeMax);
+    }
+    
+    // 强制重绘
+    if (viewer) {
+        viewer->requestRedraw();
+    }
+}
 
 // 添加更新大气密度和太阳强度的方法
 void UIHandler::updateAtmosphereDensityAndIntensity(osgViewer::Viewer* viewer, osg::Group* rootNode, 
