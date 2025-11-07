@@ -110,7 +110,7 @@ VolumeCloudSky::VolumeCloudSky(osg::Camera* camera)
     ss->addUniform(new osg::Uniform("iTime", 0.0f));
 
     // 加载2D噪声贴图 - 定义云的分布区域
-    osg::ref_ptr<osg::Image> cloudMapImage = osgDB::readImageFile("E:/s.png");
+    osg::ref_ptr<osg::Image> cloudMapImage = osgDB::readImageFile("E:/a.png");
     if (cloudMapImage.valid()) {
         osg::ref_ptr<osg::Texture2D> cloudMapTexture = new osg::Texture2D();
         cloudMapTexture->setImage(cloudMapImage.get());
@@ -194,7 +194,7 @@ void VolumeCloudSky::initUniforms()
     // 初始化新的云层控制参数 - 调整参数以减少噪点
     _densityThreshold = new osg::Uniform("densityThreshold", 0.2f);  // 降低密度阈值
     _contrast = new osg::Uniform("contrast", 2.0f);                 // 调整对比度
-    _densityFactor = new osg::Uniform("densityFactor", 1.0f);       // 调整密度因子
+    _densityFactor = new osg::Uniform("densityFactor", 0.01f);       // 调整密度因子
     _stepSize = new osg::Uniform("stepSize", 2.5f);                 // 调整步长
     _maxSteps = new osg::Uniform("maxSteps", 200);
 }

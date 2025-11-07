@@ -1,22 +1,10 @@
 #version 330
 in vec3 vWorldPosition;
-in vec3 vSunDirection;
-in float vSunfade;
-in vec3 vBetaR;
-in vec3 vBetaM;
-in float vSunE;
 in vec3 cameraPosition;
 
 out vec4 color;
 
-uniform float mieDirectionalG;
-uniform vec3 up;
-uniform float sunZenithAngle;
-uniform float sunAzimuthAngle;
 uniform float cloudDensity;
-uniform float cloudHeight;
-uniform vec3 atmosphereColor;
-uniform float iTime;           // 时间变量
 uniform sampler2D blueNoise;   // 蓝噪声纹理
 
 // 体积云uniforms
@@ -32,19 +20,35 @@ uniform float stepSize;
 // 基础颜色和光照颜色定义
 #define baseBright  vec3(1.26,1.25,1.29)    // 基础颜色 -- 亮部
 #define baseDark    vec3(0.31,0.31,0.32)    // 基础颜色 -- 暗部
-#define lightBright vec3(1.29, 1.17, 1.05)  // 光照颜色 -- 亮部
-#define lightDark   vec3(0.7,0.75,0.8)      // 光照颜色 -- 暗部
-
-const float pi = 3.141592653589793238462643383279502884197169;
-const float rayleighZenithLength = 8.4E3;
-const float mieZenithLength = 1.25E3;
-const float sunAngularDiameterCos = 0.999956676946448443553574619906976478926848692873900859324;
-const float THREE_OVER_SIXTEENPI = 0.05968310365946075;
-const float ONE_OVER_FOURPI = 0.07957747154594767;
 
 #define bottom 130  // 云层底部
 #define top 200     // 云层顶部
 #define width 400    // 云层 xz 坐标范围 [-width, width]
+
+// 光线与包围盒相交函数
+vec2 rayBoxDst(vec3 boundsMin, vec3 boundsMax, vec3 rayOrigin, vec3 invRaydir) {
+    vec3 t0 = (boundsMin - rayOrigin) * invRaydir;
+    vec3 t1 = (boundsMax - rayOrigin) * invRaydir;
+    vec3 tmin = min(t0, t1);
+    vec3 tmax = max(t0, t1);
+
+    float dstA = max(max(tmin.x, tmin.y), tmin.z); // 进入点
+    float dstB = min(tmax.x, min(tmax.y, tmax.z)); // 出去点
+
+    float dstToBox = max(0.0, dstA);
+    float dstInsideBox = max(0.0, dstB - dstToBox);
+    
+    return vec2(dstToBox, dstInsideBox);
+}
+
+// 改进的噪声采样函数，使用插值减少噪点
+float sampleCloudMap(vec2 coord) {
+    // 使用fract确保纹理坐标在[0,1]范围内
+    vec2 clampedCoord = fract(coord);
+    
+    // 使用线性插值采样以减少锯齿
+    return texture2D(cloudMap, clampedCoord).x;
+}
 
 // 计算 pos 点的云密度
 float getDensity(vec3 pos) {
@@ -54,111 +58,104 @@ float getDensity(vec3 pos) {
     float weight = 1.0 - 2.0 * abs(mid - pos.y) / h;
     weight = pow(max(weight, 0.0), 0.5);  // 开根号使过渡更平滑
 
-    vec2  coord1 = pos.xz * 0.00025;
-    float noise = texture2D(cloudMap, coord1).x * 0.5;
-    noise += texture2D(cloudMap, coord1 * 2.0).x * 0.25;
-    noise += texture2D(cloudMap, coord1 * 4.0).x * 0.125;
-    noise += texture2D(cloudMap, coord1 * 8.0).x * 0.0625;
-    noise += texture2D(cloudMap, coord1 * 16.0).x * 0.03125;
-    noise += texture2D(cloudMap, coord1 * 32.0).x * 0.015625;
+    // 改进的纹理坐标计算，确保在整个四边形上正确映射噪声纹理
+    // 使用世界坐标并进行适当的缩放，同时添加偏移避免重复模式
+    vec2 coord1 = (pos.xz + vec2(500.0, 500.0)) * 0.00025;  // 调整偏移量
+    
+    // 使用不同的偏移量来避免重复模式
+    vec2 coord2 = (pos.xz + vec2(1500.0, 2500.0)) * 0.0005;  // 不同的缩放和偏移
+    
+    // 确保纹理坐标在[0,1]范围内
+    coord1 = fract(coord1);
+    coord2 = fract(coord2);
+    
+    // 使用改进的采样函数，添加clamp确保噪声值在合理范围内
+    // 降低各层噪声的权重，使云层更稀疏
+    float noise = clamp(sampleCloudMap(coord1), 0.0, 1.0) * 0.3;       // 降低权重 0.5->0.3
+    noise += clamp(sampleCloudMap(coord1 * 2.0), 0.0, 1.0) * 0.15;     // 降低权重 0.25->0.15
+    noise += clamp(sampleCloudMap(coord1 * 4.0), 0.0, 1.0) * 0.075;    // 降低权重 0.125->0.075
+    noise += clamp(sampleCloudMap(coord2), 0.0, 1.0) * 0.0375;         // 使用不同的坐标
+    noise += clamp(sampleCloudMap(coord2 * 2.0), 0.0, 1.0) * 0.01875;  // 使用不同的坐标
+    noise += clamp(sampleCloudMap(coord2 * 4.0), 0.0, 1.0) * 0.009375; // 使用不同的坐标
 
     noise *= weight;
 
-    // 使用uniform参数控制密度阈值
-    if(noise < densityThreshold) {
+    // 使用uniform参数控制密度阈值，提高阈值使云层更稀疏
+    if(noise < densityThreshold * 1.5) {  // 提高阈值倍数 1.0->1.5
         noise = 0.0;
     } else {
-        // 使用uniform参数控制对比度
-        noise = pow(noise, contrast);
+        // 使用uniform参数控制对比度，但限制范围防止过度对比
+        noise = pow(noise, clamp(contrast, 0.5, 3.0));
     }
 
-    // 使用uniform参数控制密度因子
-    noise *= densityFactor;
+    // 使用uniform参数控制密度因子，降低密度因子使云层更稀疏
+    noise *= densityFactor * 0.7;  // 降低密度因子 1.0->0.7
+    
+    // 确保最终噪声值在合理范围内，防止负值导致黑点
+    noise = clamp(noise, 0.0, 1.0);
 
     return noise;
 }
 
-float rayleighPhase(float cosTheta) 
-{
-    return THREE_OVER_SIXTEENPI * (1.0 + pow(cosTheta, 2.0));
-}
-
-float hgPhase(float cosTheta, float g) 
-{
-    float g2 = pow(g, 2.0);
-    float inverse = 1.0 / pow(1.0 - 2.0 * g * cosTheta + g2, 1.5);
-    return ONE_OVER_FOURPI * ((1.0 - g2) * inverse);
-}
-
-// 计算大气散射光照
-vec3 calculateAtmosphericLight(vec3 direction)
-{
-    vec3 sunDir = vSunDirection;
-    
-    float zenithAngle = acos(max(0.0, dot(up, direction)));
-    float inverse = 1.0 / (cos(zenithAngle) + 0.15 * pow(93.885 - ((zenithAngle * 180.0) / pi), -1.253));
-    float sR = rayleighZenithLength * inverse;
-    float sM = mieZenithLength * inverse;
-    
-    vec3 Fex = exp(-(vBetaR * sR + vBetaM * sM));
-    
-    float cosTheta = dot(direction, sunDir);
-    
-    float rPhase = rayleighPhase(cosTheta * 0.5 + 0.5);
-    vec3 betaRTheta = vBetaR * rPhase;
-    
-    float mPhase = hgPhase(cosTheta, mieDirectionalG);
-    vec3 betaMTheta = vBetaM * mPhase;
-    
-    vec3 Lin = pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * (1.0 - Fex), vec3(1.5));
-    Lin *= mix(vec3(1.0), pow(vSunE * ((betaRTheta + betaMTheta) / (vBetaR + vBetaM)) * Fex, vec3(1.0 / 2.0)), 
-               clamp(pow(1.0 - dot(up, sunDir), 5.0), 0.0, 1.0));
-    
-    vec3 L0 = vec3(0.1) * Fex;
-    
-    float sundisk = smoothstep(sunAngularDiameterCos, sunAngularDiameterCos + 0.00002, cosTheta);
-    L0 += (vSunE * 19000.0 * Fex) * sundisk;
-    
-    return (Lin + L0) * 0.04 + vec3(0.0, 0.0003, 0.00075);
-}
-
-// 获取体积云颜色
+// 获取体积云颜色（无光照版本）
 vec4 getCloud(vec3 worldPos, vec3 cameraPos, vec3 lightPos) {
-    vec3 direction = normalize(worldPos - cameraPos);   // 视线射线方向
-    // 使用uniform参数控制步长
-    vec3 step = direction * stepSize;
-    vec4 colorSum = vec4(0);        // 积累的颜色
-    vec3 point = cameraPos;         // 从相机出发开始测试
-
+    // 定义云盒的边界
+    vec3 boundsMin = vec3(-width, bottom, -width);
+    vec3 boundsMax = vec3(width, top, width);
+    
+    // 光线方向
+    vec3 rayDir = normalize(worldPos - cameraPos);
+    vec3 invRayDir = 1.0 / rayDir;
+    
+    // 计算光线与云盒的相交点
+    vec2 rayDist = rayBoxDst(boundsMin, boundsMax, cameraPos, invRayDir);
+    
+    // 如果没有相交，返回透明
+    if(rayDist.y <= 0.0) {
+        return vec4(0.0, 0.0, 0.0, 0.0);
+    }
+    
+    // 起始点和结束点
+    vec3 rayStart = cameraPos + rayDir * rayDist.x;
+    vec3 rayEnd = cameraPos + rayDir * (rayDist.x + rayDist.y);
+    
+    // 计算步长，增加步长使云层更稀疏
+    float stepLength = stepSize * 1.5;  // 增加步长 1.0->1.5
+    vec3 step = rayDir * stepLength;
+    int maxStepCount = int(rayDist.y / stepLength);
+    
+    // 限制最大步数为200，减少步数使云层更稀疏
+    maxStepCount = min(maxStepCount, 200);  // 降低最大步数 300->200
+    
+    // 初始化颜色累积器
+    vec4 colorSum = vec4(0.0, 0.0, 0.0, 0.0);
+    vec3 point = rayStart;
+    
     // 计算屏幕UV坐标用于蓝噪声采样
+    // 使用更准确的屏幕坐标计算
     vec2 screenUV = gl_FragCoord.xy / vec2(1920.0, 1080.0);  // 假设屏幕分辨率为1920x1080
     
-    // 采样蓝噪声纹理
+    // 采样蓝噪声纹理，使用不同的噪声通道减少相关性
     float blueNoiseValue = texture2D(blueNoise, screenUV).r;
-
-    // 如果相机在云层下，将测试起始点移动到云层底部
-    if(point.y < bottom) {
-        point += direction * (abs(bottom - cameraPos.y) / abs(direction.y));
-    }
-    // 如果相机在云层上，将测试起始点移动到云层顶部
-    if(top < point.y) {
-        point += direction * (abs(cameraPos.y - top) / abs(direction.y));
-    }
-
-    // 如果目标像素遮挡了云层则放弃测试
-    float len1 = length(point - cameraPos);     // 云层到眼距离
-    float len2 = length(worldPos - cameraPos);  // 目标像素到眼距离
-    if(len2 < len1) {
-        return vec4(0);
-    }
-
+    float blueNoiseValue2 = texture2D(blueNoise, screenUV * 2.0).g; // 使用不同的UV和通道
+    
     // 使用蓝噪声对步进起始点做偏移，解决分层问题
-    point += step * blueNoiseValue * 0.5;
+    // 使用两个噪声值来减少相关性
+    point += step * (blueNoiseValue * 0.5 + blueNoiseValue2 * 0.3);
+    
+    // 添加基于世界坐标的噪声偏移，进一步减少层纹
+    // 使用点坐标计算更稳定的噪声偏移
+    vec3 worldNoiseOffset = vec3(
+        fract(sin(dot(point * 0.01, vec3(12.9898, 78.233, 45.164))) * 43758.5453),
+        fract(sin(dot(point * 0.01, vec3(39.346, 25.132, 89.754))) * 43758.5453),
+        fract(sin(dot(point * 0.01, vec3(67.842, 12.453, 34.901))) * 43758.5453)
+    );
+    point += step * worldNoiseOffset * 0.1;
 
     // ray marching
-    for(int i=0; i<300; i++) {  // 使用固定步数
-        point += step;
-        if(bottom>point.y || point.y>top || -width>point.x || point.x>width || -width>point.z || point.z>width) {
+    for(int i = 0; i < maxStepCount; i++) {
+        // 检查是否超出云盒范围
+        if(any(lessThan(point, boundsMin)) || any(greaterThan(point, boundsMax))) {
             break;
         }
         
@@ -171,41 +168,85 @@ vec4 getCloud(vec3 worldPos, vec3 cameraPos, vec3 lightPos) {
         float distanceFactor = max(0.0, 1.0 - distanceToCamera / maxDistance);
         density *= distanceFactor;
 
-        // 控制透明度
-        density *= cloudDensity;  // 使用cloudDensity uniform控制密度
-
-        // 简单的光照模型
-        vec3 lightDir = normalize(sunDirection);
-        vec3 normal = normalize(point - cameraPos);
-        float NdotL = max(0.0, dot(normal, lightDir));
+        // 控制透明度，降低密度使云层更透明
+        density *= cloudDensity * 0.7;  // 降低密度 1.0->0.7
         
-        // 颜色计算 - 使用基础颜色和光照
-        vec3 baseColor = mix(baseBright, baseDark, density) * density * 0.7;   // 基础颜色
-        vec3 litColor = baseColor * (0.5 + 0.5 * NdotL);  // 简单的光照计算
+        // 确保密度在合理范围内
+        density = clamp(density, 0.0, 1.0);
 
-        // 混合
-        vec4 color = vec4(litColor, density);                     // 当前点的最终颜色
-        colorSum = color * (1.0 - colorSum.a) + colorSum;           // 与累积的颜色混合
+        // 无光照版本 - 直接使用基础颜色
+        vec3 baseColor = mix(baseBright, baseDark, density);   // 基础颜色
+        
+        // 确保基础颜色值在合理范围内
+        baseColor = max(baseColor, vec3(0.0));
+        
+        // 混合 - 使用标准的alpha混合公式
+        float stepAlpha = density * stepLength;
+        // 限制步长alpha在合理范围内
+        stepAlpha = clamp(stepAlpha, 0.0, 1.0);
+        
+        vec4 currentColor = vec4(baseColor, stepAlpha);
+        // 使用更稳定的alpha混合公式
+        colorSum.rgb = colorSum.rgb + currentColor.rgb * currentColor.a * (1.0 - colorSum.a);
+        colorSum.a = colorSum.a + currentColor.a * (1.0 - colorSum.a);
+        
+        // 确保累积颜色和alpha在合理范围内
+        colorSum.rgb = max(colorSum.rgb, vec3(0.0));
+        colorSum.a = clamp(colorSum.a, 0.0, 1.0);
+        
+        // 如果累积alpha接近1，可以提前退出循环
+        if(colorSum.a >= 0.95) {  // 降低alpha阈值 0.99->0.95
+            colorSum.a = 1.0;
+            break;
+        }
+        
+        // 更新点位置
+        point += step;
     }
-
+    
+    // 确保最终返回的颜色值在合理范围内
+    colorSum.rgb = max(colorSum.rgb, vec3(0.0));
+    colorSum.a = clamp(colorSum.a, 0.0, 1.0);
+    
     return colorSum;
+}
+
+// 简单的降噪函数
+vec3 simpleDenoise(vec3 color, float alpha) {
+    // 使用更高级的降噪技术，减少视觉噪点
+    // 1. 向中灰色混合，减少极端颜色值
+    vec3 denoised = mix(color, vec3(0.5), 0.03);  // 降低降噪强度 0.05->0.03
+    
+    // 2. 确保颜色不会过暗或过亮
+    denoised = clamp(denoised, vec3(0.02), vec3(0.98));
+    
+    // 3. 基于alpha值调整降噪强度
+    // 低alpha值时降噪更强，高alpha值时保持更多细节
+    float denoiseStrength = 0.05 * (1.0 - alpha);  // 降低降噪强度 0.1->0.05
+    denoised = mix(color, denoised, denoiseStrength);
+    
+    return denoised;
 }
 
 void main() 
 {
     vec3 worldPos = vWorldPosition;
-    // 使用归一化的世界坐标方向来采样天空盒
-    vec3 direction = normalize(worldPos);
 
-    // 获取体积云颜色
+    // 获取体积云颜色（无光照版本）
     vec4 cloud = getCloud(worldPos, cameraPosition, sunDirection * 1000.0);
     
-    // 简单的降噪处理 - 平滑颜色
-    cloud.rgb = mix(cloud.rgb, vec3(0.5), 0.1);
+    // 确保alpha值在合理范围内
+    cloud.a = clamp(cloud.a, 0.0, 1.0);
     
-    // 使用深蓝色背景
-    vec3 backgroundColor = vec3(0.1, 0.1, 0.3);
+    // 应用降噪处理，减少噪点
+    cloud.rgb = simpleDenoise(cloud.rgb, cloud.a);
+    
+    // 使用深色背景
+    vec3 backgroundColor = vec3(0.05, 0.05, 0.1);
     vec3 finalColor = mix(backgroundColor, cloud.rgb, cloud.a);
+    
+    // 最终颜色范围检查
+    finalColor = clamp(finalColor, vec3(0.0), vec3(1.0));
     
     color = vec4(finalColor, 1.0);
 }
