@@ -21,12 +21,31 @@ public:
     // 设置云参数
     void setCloudDensity(float density);
     
+    // 光照参数setter方法
+    void setLightColor(const osg::Vec3& color);
+    void setSpecularStrength(float strength);
+    void setShininess(float shininess);
+    
     // 新增的云层控制参数setter方法
     void setDensityThreshold(float threshold);
     void setContrast(float contrast);
     void setDensityFactor(float factor);
     void setStepSize(float size);
     void setMaxSteps(int steps);
+    
+    // 新增：与SkyNode兼容的参数设置方法
+    void setAtmosphereParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, float sunZenithAngle, float sunAzimuthAngle);
+    void setCloudParameters(float density, float densityThreshold, float contrast, float densityFactor, float stepSize, int maxSteps);
+    
+    // 新增：直接从SkyNode参数更新VolumeCloudSky
+    void updateFromSkyNodeParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, 
+                                   float sunZenithAngle, float sunAzimuthAngle, float cloudDensity);
+                                   
+    // 新增：设置所有参数的函数
+    void setAllParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
+                        float sunZenithAngle, float sunAzimuthAngle, float cloudDensity,
+                        float densityThreshold, float contrast, float densityFactor,
+                        float stepSize, int maxSteps);
 
     META_Node(osg, VolumeCloudSky);
 

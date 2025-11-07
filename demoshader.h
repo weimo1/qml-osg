@@ -137,6 +137,11 @@ public:
                                   float cloudDensity, float cloudHeight,
                                   float densityThreshold, float contrast, float densityFactor,
                                   float stepSize, float maxSteps);
+                                  
+    // 新增：直接使用SkyNode参数更新体积云
+    void updateVolumeCloudWithSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                                        float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
+                                                        float sunZenithAngle, float sunAzimuthAngle);
 
     // 辅助函数：递归查找VolumeCloudSky节点
     osg::Node* findVolumeCloudSkyNode(osg::Node* node);

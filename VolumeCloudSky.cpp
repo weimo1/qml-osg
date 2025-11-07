@@ -191,11 +191,11 @@ void VolumeCloudSky::initUniforms()
     _mieDirectionalG = mieDirectionalG;
     _up = up;
     
-    // 初始化新的云层控制参数 - 调整参数以减少噪点
-    _densityThreshold = new osg::Uniform("densityThreshold", 0.2f);  // 降低密度阈值
-    _contrast = new osg::Uniform("contrast", 2.0f);                 // 调整对比度
-    _densityFactor = new osg::Uniform("densityFactor", 0.01f);       // 调整密度因子
-    _stepSize = new osg::Uniform("stepSize", 2.5f);                 // 调整步长
+    // 初始化新的云层控制参数
+    _densityThreshold = new osg::Uniform("densityThreshold", 0.3f);
+    _contrast = new osg::Uniform("contrast", 2.5f);
+    _densityFactor = new osg::Uniform("densityFactor", 0.01f);
+    _stepSize = new osg::Uniform("stepSize", 3.0f);
     _maxSteps = new osg::Uniform("maxSteps", 200);
 }
 
@@ -280,4 +280,43 @@ void VolumeCloudSky::setMaxSteps(int steps)
 {
     if (_maxSteps.valid())
         _maxSteps->set(steps);
+}
+
+// 新增：直接从SkyNode参数更新VolumeCloudSky
+void VolumeCloudSky::updateFromSkyNodeParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, 
+                                               float sunZenithAngle, float sunAzimuthAngle, float cloudDensity)
+{
+    // 更新大气参数
+    if (_turbidity.valid()) _turbidity->set(turbidity);
+    if (_rayleigh.valid()) _rayleigh->set(rayleigh);
+    if (_mieCoefficient.valid()) _mieCoefficient->set(mieCoefficient);
+    if (_mieDirectionalG.valid()) _mieDirectionalG->set(mieDirectionalG);
+    if (_sunZenithAngle.valid()) _sunZenithAngle->set(sunZenithAngle);
+    if (_sunAzimuthAngle.valid()) _sunAzimuthAngle->set(sunAzimuthAngle);
+    
+    // 更新云层参数
+    if (_cloudDensity.valid()) _cloudDensity->set(cloudDensity);
+}
+
+// 新增：设置所有参数的函数
+void VolumeCloudSky::setAllParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
+                                    float sunZenithAngle, float sunAzimuthAngle, float cloudDensity,
+                                    float densityThreshold, float contrast, float densityFactor,
+                                    float stepSize, int maxSteps)
+{
+    // 更新大气参数
+    if (_turbidity.valid()) _turbidity->set(turbidity);
+    if (_rayleigh.valid()) _rayleigh->set(rayleigh);
+    if (_mieCoefficient.valid()) _mieCoefficient->set(mieCoefficient);
+    if (_mieDirectionalG.valid()) _mieDirectionalG->set(mieDirectionalG);
+    if (_sunZenithAngle.valid()) _sunZenithAngle->set(sunZenithAngle);
+    if (_sunAzimuthAngle.valid()) _sunAzimuthAngle->set(sunAzimuthAngle);
+    
+    // 更新云层参数
+    if (_cloudDensity.valid()) _cloudDensity->set(cloudDensity);
+    if (_densityThreshold.valid()) _densityThreshold->set(densityThreshold);
+    if (_contrast.valid()) _contrast->set(contrast);
+    if (_densityFactor.valid()) _densityFactor->set(densityFactor);
+    if (_stepSize.valid()) _stepSize->set(stepSize);
+    if (_maxSteps.valid()) _maxSteps->set(maxSteps);
 }

@@ -525,16 +525,23 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
     // 查找场景中的SkyBoxThree节点
     osg::Node* skyboxNode = nullptr;
     
+    // 查找场景中的VolumeCloudSky节点
+    osg::Node* volumeCloudNode = nullptr;
+    
     // 遍历根节点的所有子节点
     for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
         osg::Node* child = rootNode->getChild(i);
         if (!child) continue;
         
         // 首先检查当前子节点是否为SkyBoxThree
-        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)) {
-            skyboxNode = child;
-            std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
-            break;
+        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)|| child->getName() == "volume_cloud_sky")  {
+            if (child->getName() == "volume_cloud_sky") {
+                volumeCloudNode = child;
+                std::cout << "Found VolumeCloudSky node at root level: " << child->getName() << std::endl;
+            } else {
+                skyboxNode = child;
+                std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
+            }
         }
         
         // 如果当前子节点是Group，继续在其子节点中查找
@@ -545,39 +552,48 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
                 if (!grandChild) continue;
                 
                 // 检查孙节点是否为SkyBoxThree
-                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)) {
-                    skyboxNode = grandChild;
-                    std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
-                    break;
+                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)|| grandChild->getName() == "volume_cloud_sky") {
+                    if (grandChild->getName() == "volume_cloud_sky") {
+                        volumeCloudNode = grandChild;
+                        std::cout << "Found VolumeCloudSky node nested in group: " << grandChild->getName() << std::endl;
+                    } else {
+                        skyboxNode = grandChild;
+                        std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
+                    }
                 }
             }
-            
-            // 如果找到了就退出外层循环
-            if (skyboxNode) break;
         }
     }
     
     // 如果还是没有找到，尝试更广泛的搜索
-    if (!skyboxNode) {
-        std::cout << "Performing extensive search for SkyBoxThree nodes..." << std::endl;
+    if (!skyboxNode && !volumeCloudNode) {
+        std::cout << "Performing extensive search for SkyBoxThree and VolumeCloudSky nodes..." << std::endl;
         for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
             osg::Node* child = rootNode->getChild(i);
             if (!child) continue;
             
             // 递归搜索所有子节点
-            skyboxNode = findSkyBoxThreeNode(child);
-            if (skyboxNode) {
+            osg::Node* foundSkyboxNode = findSkyBoxThreeNode(child);
+            osg::Node* foundVolumeCloudNode = findVolumeCloudSkyNode(child);
+            
+            if (foundSkyboxNode && !skyboxNode) {
+                skyboxNode = foundSkyboxNode;
                 std::cout << "Found SkyBoxThree node through recursive search: " << skyboxNode->getName() << std::endl;
-                break;
+            }
+            
+            if (foundVolumeCloudNode && !volumeCloudNode) {
+                volumeCloudNode = foundVolumeCloudNode;
+                std::cout << "Found VolumeCloudSky node through recursive search: " << volumeCloudNode->getName() << std::endl;
             }
         }
     }
     
+    // 更新SkyBoxThree节点（如果找到）
     if (skyboxNode) {
         // 获取SkyBoxThree节点的状态集
         osg::StateSet* stateset = skyboxNode->getOrCreateStateSet();
         if (stateset) {
-            std::cout << "StateSet acquired successfully" << std::endl;
+            std::cout << "StateSet acquired successfully for SkyBoxThree" << std::endl;
             
             // 更新uniform变量
             // 注意：这里我们直接通过stateset来更新uniform，而不是通过SkyBoxThree的成员变量
@@ -632,8 +648,28 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
             }
         }
     } else {
-        std::cerr << "Failed to find SkyBoxThree node in the scene" << std::endl;
-        // 打印所有子节点的信息以便调试
+        std::cout << "SkyBoxThree node not found in the scene" << std::endl;
+    }
+    
+    // 更新VolumeCloudSky节点（如果找到）
+    if (volumeCloudNode) {
+        // 将节点转换为VolumeCloudSky类型并更新参数
+        VolumeCloudSky* volumeCloudSky = dynamic_cast<VolumeCloudSky*>(volumeCloudNode);
+        if (volumeCloudSky) {
+            // 使用新的函数设置所有参数
+            volumeCloudSky->setAllParameters(turbidity, rayleigh, mieCoefficient, mieDirectionalG, 
+                                           sunZenithAngle, sunAzimuthAngle, 30.0f,
+                                           0.25f, 2.0f, 0.8f, 2.5f, 150);
+            std::cout << "VolumeCloudSky parameters updated successfully with SkyNode parameters" << std::endl;
+        } else {
+            std::cerr << "Failed to cast node to VolumeCloudSky" << std::endl;
+        }
+    } else {
+        std::cout << "VolumeCloudSky node not found in the scene" << std::endl;
+    }
+    
+    // 如果都没有找到节点，打印所有子节点的信息以便调试
+    if (!skyboxNode && !volumeCloudNode) {
         std::cout << "Scene children count: " << rootNode->getNumChildren() << std::endl;
         for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
             osg::Node* child = rootNode->getChild(i);
@@ -685,7 +721,7 @@ void DemoShader::updateSkyNodeCloudParameters(osgViewer::Viewer* viewer, osg::Gr
         if (!child) continue;
         
         // 首先检查当前子节点是否为SkyBoxThree
-        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)) {
+        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)|| child->getName() == "volume_cloud_sky") {
             skyboxNode = child;
             std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
             break;
@@ -699,7 +735,7 @@ void DemoShader::updateSkyNodeCloudParameters(osgViewer::Viewer* viewer, osg::Gr
                 if (!grandChild) continue;
                 
                 // 检查孙节点是否为SkyBoxThree
-                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)) {
+                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)|| child->getName() == "volume_cloud_sky") {
                     skyboxNode = grandChild;
                     std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
                     break;
@@ -828,7 +864,7 @@ osg::Node* DemoShader::findSkyBoxThreeNode(osg::Node* node)
     if (!node) return nullptr;
     
     // 检查当前节点是否为SkyBoxThree
-    if (node->getName() == "skybox" || node->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(node)) {
+    if (node->getName() == "skybox" || node->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(node)|| node->getName() == "volume_cloud_sky") {
         return node;
     }
     
@@ -1240,6 +1276,15 @@ void DemoShader::updateVolumeCloudParameters(osgViewer::Viewer* viewer, osg::Gro
         viewer->advance();
         viewer->requestRedraw();
     }
+}
+
+// 新增：直接使用SkyNode参数更新体积云的函数
+void DemoShader::updateVolumeCloudWithSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                                                 float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
+                                                                 float sunZenithAngle, float sunAzimuthAngle)
+{
+    // 直接调用已有的SkyNode参数更新函数
+    updateSkyNodeAtmosphereParameters(viewer, rootNode, turbidity, rayleigh, mieCoefficient, mieDirectionalG, sunZenithAngle, sunAzimuthAngle);
 }
 
 // 辅助函数：递归查找VolumeCloudSky节点
