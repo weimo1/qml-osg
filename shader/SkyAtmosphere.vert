@@ -6,8 +6,7 @@ uniform float rayleigh;
 uniform float turbidity;
 uniform float mieCoefficient;
 uniform vec3 up;
-uniform float sunZenithAngle;  // 添加太阳天顶角度uniform
-uniform float sunAzimuthAngle;  // 添加太阳方位角度uniform
+
 
 // 云层uniforms
 uniform float cloudDensity;
@@ -77,18 +76,13 @@ void main()
     vWorldPosition = worldPosition.xyz;
 
     // 根据太阳天顶角度和方位角计算太阳方向
-    vec3 computedSunDirection = vec3(
-        cos(sunZenithAngle) * cos(sunAzimuthAngle),
-        sin(sunZenithAngle),
-        cos(sunZenithAngle) * sin(sunAzimuthAngle)
-    );
     
     // 使用计算出的太阳方向
-    vSunDirection = normalize(computedSunDirection);
+    vSunDirection = normalize(sunPosition);
 
     vSunE = sunIntensity(dot(vSunDirection, up));
 
-    vSunfade = 1.0 - clamp(1.0 - exp((computedSunDirection.z / 450000.0)), 0.0, 1.0);
+    vSunfade = 1.0 - clamp(1.0 - exp((sunPosition.z / 450000.0)), 0.0, 1.0);
 
     float rayleighCoefficient = rayleigh - (1.0 * (1.0 - vSunfade));
 

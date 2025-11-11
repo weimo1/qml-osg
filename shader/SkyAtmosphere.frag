@@ -12,13 +12,15 @@ out vec4 color;
 uniform float mieDirectionalG;
 uniform vec3 up;
 uniform vec3 cameraPosition;
+uniform float iTime;  // 添加时间uniform用于动画
 
 // 云层uniforms
 uniform float cloudDensity;
 uniform float cloudHeight;
 uniform float cloudBaseHeight;
-uniform sampler2D cloudMap;  // 云图纹理采样器
-uniform sampler2D blueNoise;   // 蓝噪声纹理采样器
+uniform sampler2D cloudMap;  // 主云图纹理采样器 (Worley噪声)
+uniform sampler2D detailMap; // 细节纹理采样器 (Perlin噪声)
+uniform sampler2D coverageMap; // 低频噪声纹理采样器 (覆盖遮罩)
 
 // constants for atmospheric scattering
 const float pi = 3.141592653589793238462643383279502884197169;
@@ -37,10 +39,6 @@ const float THREE_OVER_SIXTEENPI = 0.05968310365946075;
 // 1.0 / ( 4.0 * pi )
 const float ONE_OVER_FOURPI = 0.07957747154594767;
 
-// 云层参数 - 基于统一球体
-const float cloudMinHeight = 10.0;  // 云层最小高度
-const float cloudMaxHeight = 200.0;  // 云层最大高度
-
 float rayleighPhase(float cosTheta) 
 {
     return THREE_OVER_SIXTEENPI * (1.0 + pow(cosTheta, 2.0));
@@ -57,128 +55,117 @@ float hgPhase(float cosTheta, float g)
 float sampleCloudMap(vec2 coord) {
     // 使用fract确保纹理坐标在[0,1]范围内
     vec2 clampedCoord = fract(coord);
-    
-    // 使用线性插值采样以减少锯齿
-    return texture2D(cloudMap, clampedCoord).x;
+    return texture2D(cloudMap, clampedCoord).r;
 }
 
-// 分形布朗运动噪声 - 使用纹理
-float fbm(vec3 p) {
-    vec2 coord1 = p.xz * 0.0025;  // 调整缩放因子以控制云的大小
-    vec2 coord2 = p.xy * 0.0025;  // 第二组坐标用于多样性
-    
-    // 增强各层噪声的权重，使云层更浓密
-    float noise = clamp(sampleCloudMap(coord1), 0.0, 1.0) * 0.5;       // 增强权重
-    noise += clamp(sampleCloudMap(coord1 * 2.0), 0.0, 1.0) * 0.3;     // 增强权重
-    noise += clamp(sampleCloudMap(coord1 * 4.0), 0.0, 1.0) * 0.15;    // 增强权重
-    noise += clamp(sampleCloudMap(coord2), 0.0, 1.0) * 0.08;         // 使用不同的坐标
-    noise += clamp(sampleCloudMap(coord2 * 2.0), 0.0, 1.0) * 0.04;  // 使用不同的坐标
-    noise += clamp(sampleCloudMap(coord2 * 4.0), 0.0, 1.0) * 0.02; // 使用不同的坐标
-    
-    return noise;
+// 采样细节纹理
+float sampleDetailMap(vec2 coord) {
+    // 使用fract确保纹理坐标在[0,1]范围内
+    vec2 clampedCoord = fract(coord);
+    return texture2D(detailMap, clampedCoord).r;
 }
 
-// 计算 pos 点的云密度
-float getCloudDensity(vec3 pos) {
-    // 使用世界坐标x,z来采样噪声，确定哪些地方有云
-    vec3 cloudCoord = pos * 0.001;  // 调整缩放因子以控制云的大小
-    
-    // 生成噪声值
-    float noiseValue = fbm(cloudCoord);
-    
-    // 高度衰减 - 云层中部密度最大
-    float mid = (cloudMinHeight + cloudMaxHeight) / 200000.0;
-    float h = cloudMaxHeight - cloudMinHeight;
-    float heightWeight = 1.0 - 2.0 * abs(mid - pos.y) / h;
-    heightWeight = pow(max(heightWeight, 0.0), 0.5);
-    
-    // 应用高度权重
-    noiseValue *= heightWeight;
-    
-    // 应用厚度阈值，低于该阈值的都映射到0
-    float cloudThickness = 0.2;  // 降低阈值
-    noiseValue = clamp((noiseValue - cloudThickness) / (1.0 - cloudThickness), 0.0, 1.0);
-    
-    return noiseValue * cloudDensity * 0.0005;  // 增加密度系数
+// 采样覆盖遮罩
+float sampleCoverageMap(vec2 coord) {
+    // 使用fract确保纹理坐标在[0,1]范围内
+    vec2 clampedCoord = fract(coord);
+    return texture2D(coverageMap, clampedCoord).r;
 }
 
-// 获取云层颜色（使用简单的alpha混合方式）
+// 生成云形状(包含覆盖遮罩)
+float generateCloudShape(vec2 uv) {
+    // === 第一步:生成覆盖遮罩(云的分布) ===
+    // 使用非常低频的噪声,创建大块的"有云区域"和"无云区域"
+    float coverage = 0.0;
+    
+    // 多层低频噪声叠加,创建不规则的云团分布
+    coverage += sampleCoverageMap(uv * 0.1) * 0.5;   // 超大尺度分布
+    coverage += sampleCoverageMap(uv * 0.2) * 0.3;   // 大尺度分布
+    coverage += sampleCoverageMap(uv * 0.5) * 0.2;   // 中等尺度分布
+    
+    // 应用阈值,创建明确的"有云/无云"区域
+    float coverageThreshold = 0.5;  // 调整这个值控制云的覆盖率(0.5 = 50%天空有云)
+    if (coverage < coverageThreshold) {
+        return 0.0; // 这个区域没有云
+    }
+    
+    // 将coverage重新映射到[0,1]范围,用于后续混合
+    float cloudPresence = (coverage - coverageThreshold) / (1.0 - coverageThreshold);
+    
+    // === 第二步:在有云的区域生成云的形状细节 ===
+    float cloudShape = 0.0;
+    
+    // 不同频率和权重的噪声层
+    cloudShape += sampleCloudMap(uv * 0.5) * 0.5;     // 大尺度云朵形状
+    cloudShape += sampleCloudMap(uv * 1.0) * 0.3;     // 中等尺度云朵细节
+    cloudShape += sampleCloudMap(uv * 2.0) * 0.2;     // 小尺度云朵细节
+    
+    // 添加细节噪声层
+    cloudShape += sampleDetailMap(uv * 1.0) * 0.4;
+    cloudShape += sampleDetailMap(uv * 2.0) * 0.3;
+    cloudShape += sampleDetailMap(uv * 4.0) * 0.2;
+    cloudShape += sampleDetailMap(uv * 8.0) * 0.1;
+    
+    // === 第三步:组合覆盖遮罩和云形状 ===
+    // 用cloudPresence调制云的密度
+    cloudShape *= cloudPresence;
+    
+    return cloudShape;
+}
+
+// 获取云层alpha值
 float getCloudAlpha(vec3 direction) {
     // 旋转90度，使云层铺在天空上（绕X轴旋转90度）
     vec3 rotatedDirection = vec3(direction.x, direction.z, -direction.y);
     
-    // 从相机位置沿视线方向进行ray marching
-    vec3 rayOrigin = vCameraPosition;
-    vec3 rayDir = rotatedDirection;
-    
-    // 设置云层的边界
-    float cloudBottom = cloudMinHeight;
-    float cloudTop = cloudMaxHeight;
-    
-    // 计算与云层的交点
-    float tBottom = (cloudBottom - rayOrigin.y) / rayDir.y;
-    float tTop = (cloudTop - rayOrigin.y) / rayDir.y;
-    
-    // 确保tBottom是进入点，tTop是离开点
-    float tMin = min(tBottom, tTop);
-    float tMax = max(tBottom, tTop);
-    
-    // 如果光线与云层不相交，则没有云
-    if (tMax < 0.0 || tMin > 100000.0) {
-        return 0.0;  // 完全透明
+    // 只在上半球渲染云（y轴正方向）
+    if (rotatedDirection.y <= 0.0) {
+        return 0.0;
     }
     
-    // 确保进入点在相机前方
-    tMin = max(tMin, 0.0);
+    // 定义云层高度
+    float cloudAltitude = 1000.0;
     
-    // 计算步长和步数
-    float stepLength = 50.0;
-    int maxSteps = 300;
+    // 计算射线与云层平面的交点
+    float t = cloudAltitude / rotatedDirection.y;
+    vec3 cloudPos = rotatedDirection * t;
     
-    // 初始化累积值
-    float alpha = 0.0;  // 不透明度
+    // 使用UV坐标采样云纹理，增加缩放因子使云朵更分散
+    vec2 cloudUV = cloudPos.xz * 0.001;  // 增加缩放因子，使云朵更大更分散
     
-    // 计算屏幕UV坐标用于蓝噪声采样
-    vec2 screenUV = gl_FragCoord.xy / vec2(1920.0, 1080.0);  // 假设屏幕分辨率为1920x1080
+    // 添加时间偏移实现云移动
+    float speedShape = iTime * 0.0001;
+    vec2 windDir = vec2(speedShape, speedShape * 0.2); // 风向
+    cloudUV += windDir;  // 风速
     
-    // 采样蓝噪声纹理
-    float blueNoiseValue = texture2D(blueNoise, screenUV).r;
-    
-    // 使用蓝噪声对步进起始点做偏移，解决分层问题
-    vec3 point = rayOrigin + rayDir * (tMin + stepLength * blueNoiseValue);
-    
-    // 从进入点开始ray marching
-    for(int i = 0; i < maxSteps; i++) {
-        float t = tMin + float(i) * stepLength;
-        // 应用蓝噪声偏移
-        t += stepLength * blueNoiseValue * 0.5;
-        vec3 point = rayOrigin + rayDir * t;
-        
-        // 检查是否超出云层范围
-        if(point.y < cloudBottom || point.y > cloudTop || t > tMax) {
-            break;
-        }
-        
-        // 采样云密度
-        float density = getCloudDensity(point);
-        
-        // 增加密度以获得更明显的云效果
-        density *= 1.0;
-        
-        // 累积不透明度
-        alpha += density * stepLength * 0.02;
-        
-        // 限制不透明度在合理范围内
-        alpha = min(alpha, 1.0);
-        
-        // 如果不透明度接近1，可以提前退出循环
-        if(alpha >= 0.99) {
-            alpha = 1.0;
-            break;
-        }
+    // 限制只在纹理的中心区域渲染云
+    // 根据y坐标判断是否为边缘区域
+    float yCoord = abs(rotatedDirection.y); // 使用绝对值
+    float edgeThreshold = 0.1; // 靠近y=0的位置为边缘
+    if (yCoord < edgeThreshold) {
+        return 0.0; // 在边缘区域不渲染云
     }
     
-    return alpha;
+    // 生成云形状(已包含覆盖遮罩)
+    float cloudShape = generateCloudShape(cloudUV);
+    
+    // 应用密度阈值，创建更清晰的云朵边缘
+    float densityThreshold = 0.1;
+    if (cloudShape < densityThreshold) {
+        cloudShape = 0.0;
+    } else {
+        // 增强云层的对比度
+        cloudShape = (cloudShape - densityThreshold) / (1.0 - densityThreshold);
+        cloudShape = pow(cloudShape, 0.7);
+    }
+    
+    // 根据高度角度调整云的透明度
+    float cloudFade = smoothstep(0.0, 0.1, rotatedDirection.y);
+    
+    // 应用云密度参数
+    float finalDensity = cloudShape * cloudFade * cloudDensity * 0.1;
+    
+    return finalDensity;
 }
 
 // 计算大气散射光照
@@ -224,19 +211,19 @@ vec3 calculateAtmosphericLight(vec3 direction, vec3 sunDir) {
 
 void main() 
 {
-    // 归一化世界坐标，使其落在单位球上
-    vec3 direction = normalize(vWorldPosition);
+    // 使用世界坐标计算方向
+    vec3 direction = normalize(vWorldPosition - cameraPosition);
     vec3 sunDir = vSunDirection;
 
-    // 计算大气散射颜色 - 使用归一化方向
+    // 计算大气散射颜色
     vec3 skyColor = calculateAtmosphericLight(direction, sunDir);
     
-    // 获取云层不透明度 - 使用归一化方向
+    // 获取云层不透明度
     float cloudAlpha = getCloudAlpha(direction);
     
-    // 使用简单的alpha混合公式: finalColor = (1 - cloudAlpha) * skyColor + cloudAlpha * whiteColor
-    vec3 whiteColor = vec3(1.0, 1.0, 1.0);  // 纯白色云层
-    vec3 finalColor = (1.0 - cloudAlpha) * skyColor + cloudAlpha * whiteColor;
+    // 简化云层颜色混合
+    vec3 cloudColor = vec3(1.0, 1.0, 1.0);  // 纯白色云
+    vec3 finalColor = mix(skyColor, cloudColor, cloudAlpha);
     
     // 确保颜色不会全黑
     finalColor = max(finalColor, vec3(0.02));

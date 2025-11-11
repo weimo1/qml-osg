@@ -66,6 +66,8 @@ add_executable(${PROJECT_NAME}
     CloudSeaAtmosphere.h
     VolumeCloudSky.cpp
     VolumeCloudSky.h
+    SkyCloud.cpp
+    SkyCloud.h
     qml.qrc
 )
 
@@ -98,4 +100,6 @@ target_link_libraries(${PROJECT_NAME}
 set(RESOURCE_FILES
     shader/VolumeCloud.vert
     shader/VolumeCloud.frag
+    shader/CloudSky.vert
+    shader/CloudSky.frag
 )

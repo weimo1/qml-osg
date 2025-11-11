@@ -26,6 +26,7 @@
 // 前向声明
 class SkyBoxThree;
 class VolumeCloudSky;
+class SkyCloud;
 class DemoShader : public osg::Referenced
 {
 public:
@@ -143,7 +144,7 @@ public:
                                                         float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
                                                         float sunZenithAngle, float sunAzimuthAngle);
 
-    // 辅助函数：递归查找VolumeCloudSky节点
+    // 辅助函数：递归查找SkyCloud节点
     osg::Node* findVolumeCloudSkyNode(osg::Node* node);
 
 private:

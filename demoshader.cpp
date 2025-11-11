@@ -28,6 +28,8 @@ const float DemoShader::kLengthUnitInMeters = 1000.0f;
 #include "skyboxmanipulator.h"
 #include "CloudSeaAtmosphere.h"
 #include "VolumeCloudSky.h"
+#include "SkyCloud.h"
+
 DemoShader::DemoShader()
     : _viewDistanceMeters(5000.0f)  // 初始观察距离5km，更接近地球表面
     , _viewZenithAngleRadians(0.0f)  // 初始视角天顶角，从地面向上看
@@ -657,9 +659,6 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
         VolumeCloudSky* volumeCloudSky = dynamic_cast<VolumeCloudSky*>(volumeCloudNode);
         if (volumeCloudSky) {
             // 使用新的函数设置所有参数
-            volumeCloudSky->setAllParameters(turbidity, rayleigh, mieCoefficient, mieDirectionalG, 
-                                           sunZenithAngle, sunAzimuthAngle, 30.0f,
-                                           0.25f, 2.0f, 0.8f, 2.5f, 150);
             std::cout << "VolumeCloudSky parameters updated successfully with SkyNode parameters" << std::endl;
         } else {
             std::cerr << "Failed to cast node to VolumeCloudSky" << std::endl;
@@ -889,7 +888,7 @@ osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
     
     // 创建一个球体几何体作为天空盒
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 5000.0);  // 调整球体半径为1000.0
+    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 45000.0);  // 调整球体半径为1000.0
     osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
     
     drawable->setUseDisplayList(false);
@@ -899,13 +898,13 @@ osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
     geode->setCullingActive(false);
     
     // 创建体积云天空盒对象
-    osg::ref_ptr<VolumeCloudSky> volumeCloudSky = new VolumeCloudSky(viewer->getCamera());
-    volumeCloudSky->setName("volume_cloud_sky");
-    volumeCloudSky->addChild(geode.get());
+    osg::ref_ptr<SkyCloud> skyCloud = new SkyCloud(viewer->getCamera());
+    skyCloud->setName("volume_cloud_sky");
+    skyCloud->addChild(geode.get());
     
     // 将天空盒添加到根节点
-    if (volumeCloudSky.valid()) {
-        root->addChild(volumeCloudSky);
+    if (skyCloud.valid()) {
+        root->addChild(skyCloud);
     } else {
         std::cerr << "Failed to create volume cloud sky" << std::endl;
         return nullptr;
