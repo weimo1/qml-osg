@@ -41,7 +41,7 @@ public:
             // 更新时间uniform
             auto now = std::chrono::high_resolution_clock::now();
             float elapsed = std::chrono::duration<float>(now - _startTime).count();
-            ss->getOrCreateUniform("iTime", osg::Uniform::FLOAT)->set(elapsed);
+            ss->getOrCreateUniform("time", osg::Uniform::FLOAT)->set(elapsed);
             
             // 计算太阳方向（基于天顶角和方位角）
         }
@@ -73,9 +73,9 @@ SkyCloud::SkyCloud(osg::Camera* camera)
     // 创建着色器程序
     osg::ref_ptr<osg::Program> program = new osg::Program;
     std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader/";
-    osg::Shader* pV = osgDB::readShaderFile(osg::Shader::VERTEX, resourcePath + "SkyAtmosphere.vert");
+    osg::Shader* pV = osgDB::readShaderFile(osg::Shader::VERTEX, resourcePath + "VolumeSkyCloud.vert");
     pV->setName("SkyAtmosphere.vert");
-    osg::Shader* pF = osgDB::readShaderFile(osg::Shader::FRAGMENT, resourcePath + "SkyAtmosphere.frag");
+    osg::Shader* pF = osgDB::readShaderFile(osg::Shader::FRAGMENT, resourcePath + "VolumeSkyCloud.frag");
     pF->setName("SkyAtmosphere.frag");
     program->addShader(pV);
     program->addShader(pF);
@@ -83,16 +83,25 @@ SkyCloud::SkyCloud(osg::Camera* camera)
 
     // 添加uniforms
     ss->addUniform(_cloudDensity.get());
+    ss->addUniform(_cloudHeight.get());
+    ss->addUniform(_coverageThreshold.get());
+    ss->addUniform(_densityThreshold.get());
+    ss->addUniform(_edgeThreshold.get());
+    
+  
     ss->addUniform(_rayleigh.get());
     ss->addUniform(_turbidity.get());
     ss->addUniform(_mieCoefficient.get());
     ss->addUniform(_mieDirectionalG.get());
     ss->addUniform(_up.get());
     ss->addUniform(_sunPosition.get());
-    ss->addUniform(new osg::Uniform("iTime", 0.0f));
+
+    
+    ss->addUniform(new osg::Uniform("time", 0.0f));
+    ss->addUniform(new osg::Uniform("cloudSpeed", 1.0f));
 
     // 加载2D噪声贴图 - 定义云的分布区域
-    osg::ref_ptr<osg::Image> cloudMapImage = osgDB::readImageFile("E:/C.png");
+    osg::ref_ptr<osg::Image> cloudMapImage = osgDB::readImageFile("E:/f.png");
     if (cloudMapImage.valid()) {
         osg::ref_ptr<osg::Texture2D> cloudMapTexture = new osg::Texture2D();
         cloudMapTexture->setImage(cloudMapImage.get());
@@ -119,7 +128,7 @@ SkyCloud::SkyCloud(osg::Camera* camera)
     }
 
     // 加载细节噪声贴图
-    osg::ref_ptr<osg::Image> detailMapImage = osgDB::readImageFile("E:/PN.png");
+    osg::ref_ptr<osg::Image> detailMapImage = osgDB::readImageFile("E:/WL.png");
     if (detailMapImage.valid()) {
         osg::ref_ptr<osg::Texture2D> detailMapTexture = new osg::Texture2D();
         detailMapTexture->setImage(detailMapImage.get());
@@ -186,13 +195,20 @@ void SkyCloud::initUniforms()
 {
 
     _cloudDensity = new osg::Uniform("cloudDensity", 100.0f);  // 云密度
+    _cloudHeight = new osg::Uniform("cloudHeight", 1300.0f);   // 云高度
+    _coverageThreshold = new osg::Uniform("coverageThreshold", 0.4f);  // 覆盖率阈值
+    _densityThreshold = new osg::Uniform("densityThreshold", 0.07f);   // 密度阈值
+    _edgeThreshold = new osg::Uniform("edgeThreshold", 0.04f);        // 边缘阈值
+    
+ 
     
     // 添加大气散射所需的uniform变量
     _rayleigh  = new osg::Uniform("rayleigh", 3.0f);
-	_mieCoefficient  = new osg::Uniform("mieCoefficient", 0.005f);
-	_mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.7f);
-	_sunPosition     = new osg::Uniform("sunPosition", osg::Vec3(0.0f, -0.9994f, 0.035f));
-	_up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f, 1.0f));	
+    _turbidity = new osg::Uniform("turbidity", 2.0f);  // 大气密度(浊度)
+    _mieCoefficient  = new osg::Uniform("mieCoefficient", 0.005f);
+    _mieDirectionalG = new osg::Uniform("mieDirectionalG", 0.7f);
+    _sunPosition     = new osg::Uniform("sunPosition", osg::Vec3(0.0f, 0.3994f, 0.035f));
+    _up = new osg::Uniform("up", osg::Vec3(0.0f, 0.0f, 1.0f));	
     
 }
 
@@ -226,5 +242,61 @@ void SkyCloud::setCloudDensity(float density)
 {
     if (_cloudDensity.valid()) {
         _cloudDensity->set(density);
+    }
+}
+
+// 设置云高度
+void SkyCloud::setCloudHeight(float height)
+{
+    if (_cloudHeight.valid()) {
+        _cloudHeight->set(height);
+    }
+}
+
+// 设置覆盖率阈值
+void SkyCloud::setCoverageThreshold(float threshold)
+{
+    if (_coverageThreshold.valid()) {
+        _coverageThreshold->set(threshold);
+    }
+}
+
+// 设置密度阈值
+void SkyCloud::setDensityThreshold(float threshold)
+{
+    if (_densityThreshold.valid()) {
+        _densityThreshold->set(threshold);
+    }
+}
+
+// 设置边缘阈值
+void SkyCloud::setEdgeThreshold(float threshold)
+{
+    if (_edgeThreshold.valid()) {
+        _edgeThreshold->set(threshold);
+    }
+}
+
+void SkyCloud::setMieCoefficient(float mieCoefficient)
+{
+    if (_mieCoefficient.valid()) {
+        _mieCoefficient->set(mieCoefficient);
+    }
+}
+void SkyCloud::setMieDirectionalG(float mieDirectionalG)
+{
+    if (_mieDirectionalG.valid()) {
+        _mieDirectionalG->set(mieDirectionalG);
+    }
+}
+void SkyCloud::setRayleigh(float rayleigh){
+    if (_rayleigh.valid()) {
+        _rayleigh->set(rayleigh);
+    }
+}
+void SkyCloud::setTurbidity(float turbidity)
+{
+    if (_turbidity.valid()) {
+        _turbidity->set(turbidity);
     }
 }

@@ -80,6 +80,9 @@ public:
                                    float densityThreshold, float contrast, float densityFactor,
                                    float stepSize, float maxSteps);
 
+    void updateSkyCloudParameters(float cloudDensity, float cloudHeight,
+                                float coverageThreshold, float densityThreshold, float edgeThreshold);
+
     // 添加模型选择相关方法
     void selectModel(int x, int y);
     osg::Geometry* pickGeometry(int x, int y);

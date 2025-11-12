@@ -172,47 +172,6 @@ void UIHandler::createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* roo
 }
 
 // 新增：创建结合纹理和大气渲染的场景
-void UIHandler::createTexturedAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
-{
-    if (viewer && rootNode) {
-        // 清除现有的场景
-        rootNode->removeChildren(0, rootNode->getNumChildren());
-        
-        // 如果DemoShader还没有创建，则创建它
-        if (!m_demoShader.valid()) {
-            m_demoShader = new DemoShader();
-        }
-        
-        // 创建结合纹理和大气渲染的场景
-        // 使用空字符串作为纹理路径，因为纹理路径在DemoShader中设置
-        osg::ref_ptr<osg::Node> texturedAtmosphereScene = m_demoShader->createTexturedAtmosphereScene();
-        
-        // 将场景添加到根节点
-        if (texturedAtmosphereScene.valid()) {
-            rootNode->addChild(texturedAtmosphereScene);
-        } else {
-            qDebug() << "Failed to create textured atmosphere scene";
-            return;
-        }
-        
-        // 设置默认的视图参数
-        osg::Vec3d eye(0.0, 0.0, 5.0);  // 设置相机位置
-        osg::Vec3d center(0.0, 0.0, 0.0);
-        osg::Vec3d up(0.0, 1.0, 0.0);
-        m_viewManager.setViewParameters(eye, center, up);
-        
-        // 设置相机背景色为黑色，避免干扰大气渲染效果
-        if (viewer->getCamera()) {
-            viewer->getCamera()->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
-        }
-        
-        // 强制更新视图
-        viewer->advance();
-        viewer->requestRedraw();
-        
-        qDebug() << "Textured atmosphere scene created successfully";
-    }
-}
 
 // 新增：创建结合天空盒和大气渲染的场景
 void UIHandler::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode)
@@ -481,10 +440,7 @@ void UIHandler::loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, con
             osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFile(stdFileName);
             
             if (loadedModel) {
-                // 清除现有的场景
-                rootNode->removeChildren(0, rootNode->getNumChildren());
-                
-                // 添加加载的模型到场景
+                // 不再清空现有场景，直接添加加载的模型到场景
                 rootNode->addChild(loadedModel);
                 
                 // 获取模型的包围球，用于计算合适的相机位置
@@ -523,23 +479,8 @@ void UIHandler::loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, con
                                        static_cast<float>(viewer->getCamera()->getViewport()->height());
                     viewer->getCamera()->setProjectionMatrixAsPerspective(
                         30.0f, aspectRatio, radius * 0.1f, radius * 100.0f);
-                } else {
-                    // 如果模型没有有效的边界球，使用默认位置
-                    osg::Vec3d eye(0.0, -10.0, 2.0);
-                    osg::Vec3d center(0.0, 0.0, 0.0);
-                    osg::Vec3d up(0.0, 0.0, 1.0);
-                    
-                    // 更新视图管理器中的相机参数
-                    m_viewManager.setViewParameters(eye, center, up);
-                    
-                    // 同时更新操作器的home位置，确保视角正确
-                    osgGA::TrackballManipulator* manipulator = dynamic_cast<osgGA::TrackballManipulator*>(viewer->getCameraManipulator());
-                    if (manipulator) {
-                        manipulator->setHomePosition(eye, center, up);
-                        // 立即应用home位置
-                        manipulator->home(0.0);
-                    }
                 }
+                // 注意：如果模型没有有效的边界球，我们不改变当前的相机位置
                 
                 // 强制更新视图
                 viewer->advance();
@@ -547,10 +488,8 @@ void UIHandler::loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, con
             }
         }
         catch (const std::exception& e) {
-            // 如果加载失败，重新创建默认场景
-            rootNode->removeChildren(0, rootNode->getNumChildren());
-            viewer->advance();
-            viewer->requestRedraw();
+            // 如果加载失败，不执行任何操作
+            // 保持现有场景不变
         }
         catch (...) {
             // 如果加载失败，重新创建默认场景
@@ -645,5 +584,21 @@ void UIHandler::updateCloudSeaAtmosphereParameters(osgViewer::Viewer* viewer, os
     }
 }
 
+void UIHandler::updateSkyCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                  float cloudDensity, float cloudHeight,
+                                            float coverageThreshold, float densityThreshold, float edgeThreshold)
+{
+    if (m_demoShader.valid()) {
+        // 使用DemoShader更新云海大气参数
+        m_demoShader->updateSkyCloudParameters(viewer, rootNode,
+            cloudDensity, cloudHeight,
+                                            coverageThreshold,densityThreshold,edgeThreshold);
+    }
+    
+    // 强制重绘
+    if (viewer) {
+        viewer->requestRedraw();
+    }
+  }
 
 

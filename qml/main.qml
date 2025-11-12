@@ -19,7 +19,7 @@ ApplicationWindow {
     
     // 文件路径输入框
     property string filePath: "test.osgt"
-    
+
     // 控制面板可见性
     property bool controlPanelVisible: true
     
@@ -413,6 +413,7 @@ ApplicationWindow {
                             case "light": return lightControls;
                             case "particle": return cloudSeaAtmosphereControls;
                             case "skynode": return skyNodeAtmosphereControls;
+                            case "physics": return physicsControls;  // 添加物理控制组件
                             default: return defaultControls;
                             }
                         }
@@ -528,10 +529,12 @@ ApplicationWindow {
                     TextField {
                         id: filePathInput
                         width: parent.width
+                        height: 40  // 增加高度以便更好地显示路径
                         text: filePath
                         placeholderText: "请输入OSG文件路径..."
                         selectByMouse: true
-                        font.pixelSize: 12
+                        font.pixelSize: 14  // 增加字体大小
+                        verticalAlignment: TextInput.AlignVCenter  // 垂直居中对齐
                         onTextChanged: {
                             filePath = text
                         }
@@ -1427,6 +1430,252 @@ ApplicationWindow {
                 }
             }
             
+            // 物理控制组件（用于控制SkyCloud参数）
+            Component {
+                id: physicsControls
+                
+                Column {
+                    width: parent.width
+                    spacing: 15
+                    
+                    // 标题
+                    Text {
+                        text: "SkyCloud参数控制"
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: "#2c3e50"
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云密度控制
+                    Text {
+                        text: "云密度 (Cloud Density)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyCloudDensitySlider
+                        width: parent.width
+                        from: 0.0
+                        to: 200.0
+                        value: 100.0
+                        stepSize: 1.0
+                        onValueChanged: {
+                            osgViewer.updateSkyCloudParameters(
+                                value,
+                                skyCloudHeightSlider.value,
+                                skyCloudCoverageThresholdSlider.value,
+                                skyCloudDensityThresholdSlider.value,
+                                skyCloudEdgeThresholdSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "密度: " + skyCloudDensitySlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 云高度控制
+                    Text {
+                        text: "云高度 (Cloud Height)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyCloudHeightSlider
+                        width: parent.width
+                        from: 100.0
+                        to: 5000.0
+                        value: 1300.0
+                        stepSize: 10.0
+                        onValueChanged: {
+                            osgViewer.updateSkyCloudParameters(
+                                skyCloudDensitySlider.value,
+                                value,
+                                skyCloudCoverageThresholdSlider.value,
+                                skyCloudDensityThresholdSlider.value,
+                                skyCloudEdgeThresholdSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "高度: " + skyCloudHeightSlider.value.toFixed(0) + " m"
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 覆盖率阈值控制
+                    Text {
+                        text: "覆盖率阈值 (Coverage Threshold)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyCloudCoverageThresholdSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: 0.4
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.updateSkyCloudParameters(
+                                skyCloudDensitySlider.value,
+                                skyCloudHeightSlider.value,
+                                value,
+                                skyCloudDensityThresholdSlider.value,
+                                skyCloudEdgeThresholdSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "覆盖率: " + skyCloudCoverageThresholdSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 密度阈值控制
+                    Text {
+                        text: "密度阈值 (Density Threshold)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyCloudDensityThresholdSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: 0.07
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.updateSkyCloudParameters(
+                                skyCloudDensitySlider.value,
+                                skyCloudHeightSlider.value,
+                                skyCloudCoverageThresholdSlider.value,
+                                value,
+                                skyCloudEdgeThresholdSlider.value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "密度阈值: " + skyCloudDensityThresholdSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 边缘阈值控制
+                    Text {
+                        text: "边缘阈值 (Edge Threshold)"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    Slider {
+                        id: skyCloudEdgeThresholdSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 0.1
+                        value: 0.04
+                        stepSize: 0.001
+                        onValueChanged: {
+                            osgViewer.updateSkyCloudParameters(
+                                skyCloudDensitySlider.value,
+                                skyCloudHeightSlider.value,
+                                skyCloudCoverageThresholdSlider.value,
+                                skyCloudDensityThresholdSlider.value,
+                                value
+                            );
+                        }
+                    }
+                    
+                    Text {
+                        text: "边缘阈值: " + skyCloudEdgeThresholdSlider.value.toFixed(3)
+                        font.pixelSize: 12
+                        color: "#7f8c8d"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    
+                    // 分隔线
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: "#bdc3c7"
+                    }
+                    
+                    // 调试按钮
+                    Text {
+                        text: "调试功能"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#34495e"
+                    }
+                    
+                    // 重置按钮
+                    Button {
+                        text: "重置参数"
+                        width: parent.width
+                        onClicked: {
+                            skyCloudDensitySlider.value = 100.0;
+                            skyCloudHeightSlider.value = 1300.0;
+                            skyCloudCoverageThresholdSlider.value = 0.4;
+                            skyCloudDensityThresholdSlider.value = 0.07;
+                            skyCloudEdgeThresholdSlider.value = 0.04;
+                        }
+                    }
+                }
+            }
+            
             // 默认控制组件
             Component {
                 id: defaultControls
@@ -1585,8 +1834,8 @@ ApplicationWindow {
             if (selectedFile.startsWith("file:///")) {
                 selectedFile = selectedFile.substring(8);
             }
-            filePathInput.text = selectedFile;
-            filePath = selectedFile;
+            // 通过window的属性访问filePath（不能直接访问filePathInput，因为不在同一作用域）
+            window.filePath = selectedFile;
             console.log("选择的文件: " + selectedFile);
         }
     }

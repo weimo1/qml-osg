@@ -24,7 +24,6 @@ public:
     void createShapeWithNewSkybox(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);
     void createPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode);  // 添加PBR场景创建函数
     void createAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode);  // 添加大气渲染场景创建函数
-    void createTexturedAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合纹理和大气渲染的场景创建函数
     void createSkyboxAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合天空盒和大气渲染的场景创建函数
     void createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加结合天空盒大气和PBR立方体的场景创建函数
     void createCloudSeaAtmosphereScene(osgViewer::Viewer* viewer, osg::Group* rootNode); // 添加云海大气效果场景创建函数
@@ -84,6 +83,9 @@ public:
                                   float densityThreshold, float contrast, float densityFactor,
                                   float stepSize, float maxSteps);
 
+    void updateSkyCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
+                                  float cloudDensity, float cloudHeight,
+                                            float coverageThreshold, float densityThreshold, float edgeThreshold);
 private:
     ViewManager m_viewManager;
     osg::ref_ptr<DemoShader> m_demoShader;

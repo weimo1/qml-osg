@@ -52,190 +52,9 @@ DemoShader::~DemoShader()
 }
 
 // 创建全屏四边形
-osg::Geometry* DemoShader::createFullScreenQuad()
-{
-    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry;
-    
-    // 顶点数据 - 创建一个覆盖整个屏幕的四边形
-    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array;
-    vertices->push_back(osg::Vec3(-1.0f, -1.0f, 0.0f)); // 左下角
-    vertices->push_back(osg::Vec3(1.0f, -1.0f, 0.0f));  // 右下角
-    vertices->push_back(osg::Vec3(-1.0f, 1.0f, 0.0f));  // 左上角
-    vertices->push_back(osg::Vec3(1.0f, 1.0f, 0.0f));   // 右上角
-    
-    // 纹理坐标
-    osg::ref_ptr<osg::Vec2Array> texcoords = new osg::Vec2Array;
-    texcoords->push_back(osg::Vec2(0.0f, 0.0f)); // 左下角
-    texcoords->push_back(osg::Vec2(1.0f, 0.0f)); // 右下角
-    texcoords->push_back(osg::Vec2(0.0f, 1.0f)); // 左上角
-    texcoords->push_back(osg::Vec2(1.0f, 1.0f)); // 右上角
-    
-    geom->setVertexArray(vertices);
-    geom->setTexCoordArray(0, texcoords);
-    
-    // 顶点索引
-    osg::ref_ptr<osg::DrawElementsUInt> indices = new osg::DrawElementsUInt(GL_TRIANGLE_STRIP);
-    indices->push_back(0);
-    indices->push_back(1);
-    indices->push_back(2);
-    indices->push_back(3);
-    
-    geom->addPrimitiveSet(indices);
-    
-    // 设置顶点属性
-    geom->setVertexAttribArray(0, vertices);  // 顶点位置
-    geom->setVertexAttribBinding(0, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribArray(1, texcoords); // 纹理坐标
-    geom->setVertexAttribBinding(1, osg::Geometry::BIND_PER_VERTEX);
-    
-    // 禁用光照以确保颜色正确显示
-    osg::StateSet* stateset = geom->getOrCreateStateSet();
-    stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    
-    return geom.release();
-}
 
-// 新增：创建结合天空盒纹理和大气渲染的场景
-osg::Node* DemoShader::createTexturedAtmosphereScene()
-{
-    std::cout << "Creating textured atmosphere scene with full-screen quad..." << std::endl;
-    
-    osg::ref_ptr<osg::Group> root = new osg::Group;
-    
-    // 创建全屏四边形
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    osg::ref_ptr<osg::Geometry> quad = createFullScreenQuad();
-    geode->addDrawable(quad);
-    
-    // 创建大气散射着色器程序
-    osg::ref_ptr<osg::Program> atmosphereProgram = new osg::Program;
-    
-    // 使用相对路径定位着色器文件
-    std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
-    
-    // 加载顶点着色器
-    std::string vertexShaderPath = resourcePath + "/vertex_shader.txt";
-    osg::ref_ptr<osg::Shader> vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
-    if (!vertexShader) {
-        // 如果失败，尝试使用绝对路径
-        vertexShaderPath = "E:/qt test/qml+osg/shader/vertex_shader.txt";
-        vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
-        if (!vertexShader) {
-            std::cerr << "Failed to load atmosphere vertex shader from: " << vertexShaderPath << std::endl;
-            return nullptr;
-        }
-    }
-    atmosphereProgram->addShader(vertexShader);
-    
-    // 加载片段着色器
-    std::string fragmentShaderPath = resourcePath + "/fragment_shader.txt";
-    osg::ref_ptr<osg::Shader> fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
-    if (!fragmentShader) {
-        // 如果失败，尝试使用绝对路径
-        fragmentShaderPath = "E:/qt test/qml+osg/shader/fragment_shader.txt";
-        fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
-        if (!fragmentShader) {
-            std::cerr << "Failed to load atmosphere fragment shader from: " << fragmentShaderPath << std::endl;
-            return nullptr;
-        }
-    }
-    atmosphereProgram->addShader(fragmentShader);
-    
-    // 设置着色器程序
-    osg::StateSet* stateset = geode->getOrCreateStateSet();
-    stateset->setAttributeAndModes(atmosphereProgram, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    
-   
-    
-    // 保存状态集引用，以便后续更新
-    _atmosphereStateSet = stateset;
-    
-    // 设置初始uniform变量
-    updateAtmosphereSceneUniforms(stateset);
-    
-    // 禁用深度测试以确保全屏四边形正确渲染
-    stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    
-    // 禁用光照
-    stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    
-    root->addChild(geode);
-    
-    std::cout << "Textured atmosphere scene created successfully" << std::endl;
-    
-    return root.release();
-}
 
-osg::Node* DemoShader::createAtmosphereScene()
-{
-    std::cout << "Creating atmosphere scene with full-screen quad..." << std::endl;
-    
-    osg::ref_ptr<osg::Group> root = new osg::Group;
-    
-    // 创建全屏四边形
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    osg::ref_ptr<osg::Geometry> quad = createFullScreenQuad();
-    geode->addDrawable(quad);
-    
-    // 创建大气散射着色器程序
-    osg::ref_ptr<osg::Program> atmosphereProgram = new osg::Program;
-    
-    // 使用相对路径定位着色器文件
-    std::string resourcePath = QDir::currentPath().toStdString() + "/../../shader";
-    
-    // 加载顶点着色器
-    std::string vertexShaderPath = resourcePath + "/atmosphere_vertex.txt";
-    osg::ref_ptr<osg::Shader> vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
-    if (!vertexShader) {
-        // 如果失败，尝试使用绝对路径
-        vertexShaderPath = "E:/qt test/qml+osg/shader/skybox_vertex.txt";
-        vertexShader = osg::Shader::readShaderFile(osg::Shader::VERTEX, vertexShaderPath);
-        if (!vertexShader) {
-            std::cerr << "Failed to load atmosphere vertex shader from: " << vertexShaderPath << std::endl;
-            return nullptr;
-        }
-    }
-    atmosphereProgram->addShader(vertexShader);
-    
-    // 加载片段着色器
-    std::string fragmentShaderPath = resourcePath + "/atmosphere_fragment.txt";
-    osg::ref_ptr<osg::Shader> fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
-    if (!fragmentShader) {
-        // 如果失败，尝试使用绝对路径
-        fragmentShaderPath = "E:/qt test/qml+osg/shader/skybox_fragment.txt";
-        fragmentShader = osg::Shader::readShaderFile(osg::Shader::FRAGMENT, fragmentShaderPath);
-        if (!fragmentShader) {
-            std::cerr << "Failed to load atmosphere fragment shader from: " << fragmentShaderPath << std::endl;
-            return nullptr;
-        }
-    }
-    atmosphereProgram->addShader(fragmentShader);
-    
-    // 设置着色器程序
-    osg::StateSet* stateset = geode->getOrCreateStateSet();
-    stateset->setAttributeAndModes(atmosphereProgram, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    
-    // 添加纹理uniform，即使不使用纹理也需要添加以避免着色器错误
-    stateset->addUniform(new osg::Uniform("skyTexture", 0));
-    
-    // 保存状态集引用，以便后续更新
-    _atmosphereStateSet = stateset;
-    
-    // 设置初始uniform变量
-    updateAtmosphereUniforms(stateset);
-    
-    // 禁用深度测试以确保全屏四边形正确渲染
-    stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    
-    // 禁用光照
-    stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    
-    root->addChild(geode);
-    
-    std::cout << "Atmosphere scene created successfully" << std::endl;
-    
-    return root.release();
-}
+
 
 // 新增：创建结合天空盒和大气渲染的场景
 osg::Node* DemoShader::createSkyboxAtmosphereScene(osgViewer::Viewer* viewer)
@@ -378,101 +197,7 @@ osg::Node* DemoShader::createPBRCube()
 }
 
 // 新增：创建调试用的简单立方体（用于验证基本渲染功能）
-osg::Node* DemoShader::createDebugCube()
-{
-    osg::ref_ptr<osg::Group> root = new osg::Group;
-    
-    // 使用ShaderCube创建立方体
-    osg::ref_ptr<osg::Node> cube = ShaderCube::createCube(1.0f);
-    
-    if (cube.valid()) {
-        // 获取立方体的状态集
-        osg::StateSet* cubeStateSet = cube->getOrCreateStateSet();
-        
-        // 移除原有的着色器程序和纹理
-        cubeStateSet->removeAttribute(osg::StateAttribute::PROGRAM);
-        
-        // 创建简单的调试着色器
-        static const char* vertCode = R"(#version 330 core
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in vec3 aNormal;
-            
-            uniform mat4 osg_ModelViewProjectionMatrix;
-            uniform mat4 osg_ModelViewMatrix;
-            uniform mat3 osg_NormalMatrix;
-            
-            out vec3 WorldPos;
-            out vec3 Normal;
-            
-            void main()
-            {
-                WorldPos = vec3(osg_ModelViewMatrix * vec4(aPos, 1.0));
-                Normal = normalize(osg_NormalMatrix * aNormal);
-                gl_Position = osg_ModelViewProjectionMatrix * vec4(aPos, 1.0);
-            }
-        )";
-        
-        static const char* fragCode = R"(#version 330 core
-            out vec4 FragColor;
-            in vec3 WorldPos;
-            in vec3 Normal;
-            
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            uniform vec3 lightColor;
-            uniform vec3 objectColor;
-            
-            void main()
-            {
-                // 环境光
-                float ambientStrength = 0.1;
-                vec3 ambient = ambientStrength * lightColor;
-                
-                // 漫反射
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - WorldPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * lightColor;
-                
-                // 镜面反射
-                float specularStrength = 0.5;
-                vec3 viewDir = normalize(viewPos - WorldPos);
-                vec3 reflectDir = reflect(-lightDir, norm);
-                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-                vec3 specular = specularStrength * spec * lightColor;
-                
-                vec3 result = (ambient + diffuse + specular) * objectColor;
-                FragColor = vec4(result, 1.0);
-            }
-        )";
-        
-        // 编译着色器
-        osg::ref_ptr<osg::Shader> vertShader = new osg::Shader(osg::Shader::VERTEX, vertCode);
-        osg::ref_ptr<osg::Shader> fragShader = new osg::Shader(osg::Shader::FRAGMENT, fragCode);
-        osg::ref_ptr<osg::Program> program = new osg::Program;
-        program->addShader(vertShader);
-        program->addShader(fragShader);
-        
-        cubeStateSet->setAttributeAndModes(program, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-        
-        // 设置调试uniform变量
-        cubeStateSet->addUniform(new osg::Uniform("objectColor", osg::Vec3(1.0f, 0.5f, 0.31f))); // 铜色
-        cubeStateSet->addUniform(new osg::Uniform("lightPos", osg::Vec3(5.0f, 5.0f, 5.0f)));
-        cubeStateSet->addUniform(new osg::Uniform("viewPos", osg::Vec3(0.0f, -5.0f, 0.0f)));
-        cubeStateSet->addUniform(new osg::Uniform("lightColor", osg::Vec3(1.0f, 1.0f, 1.0f)));
-        
-        // 设置渲染状态
-        cubeStateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-        cubeStateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
-        cubeStateSet->setRenderBinDetails(0, "RenderBin");
-        
-        root->addChild(cube);
-    }
-    
-    std::cout << "Debug cube created successfully" << std::endl;
-    
-    return root.release();
-}
+
 
 // 新增：创建结合天空盒大气和PBR立方体的场景
 osg::Node* DemoShader::createSkyboxAtmosphereWithPBRScene(osgViewer::Viewer* viewer)
@@ -530,20 +255,28 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
     // 查找场景中的VolumeCloudSky节点
     osg::Node* volumeCloudNode = nullptr;
     
+    // 查找场景中的SkyCloud节点
+    osg::Node* skyCloudNode = nullptr;
+    
     // 遍历根节点的所有子节点
     for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
         osg::Node* child = rootNode->getChild(i);
         if (!child) continue;
         
         // 首先检查当前子节点是否为SkyBoxThree
-        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child)|| child->getName() == "volume_cloud_sky")  {
-            if (child->getName() == "volume_cloud_sky") {
-                volumeCloudNode = child;
-                std::cout << "Found VolumeCloudSky node at root level: " << child->getName() << std::endl;
-            } else {
-                skyboxNode = child;
-                std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
-            }
+        if (child->getName() == "skybox" || child->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(child))  {
+            skyboxNode = child;
+            std::cout << "Found SkyBoxThree node at root level: " << child->getName() << std::endl;
+        }
+        // 检查是否为VolumeCloudSky节点
+        else if (child->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(child)) {
+            volumeCloudNode = child;
+            std::cout << "Found VolumeCloudSky node at root level: " << child->getName() << std::endl;
+        }
+        // 检查是否为SkyCloud节点
+        else if (child->getName() == "sky_cloud" || dynamic_cast<SkyCloud*>(child)) {
+            skyCloudNode = child;
+            std::cout << "Found SkyCloud node at root level: " << child->getName() << std::endl;
         }
         
         // 如果当前子节点是Group，继续在其子节点中查找
@@ -554,22 +287,27 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
                 if (!grandChild) continue;
                 
                 // 检查孙节点是否为SkyBoxThree
-                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)|| grandChild->getName() == "volume_cloud_sky") {
-                    if (grandChild->getName() == "volume_cloud_sky") {
-                        volumeCloudNode = grandChild;
-                        std::cout << "Found VolumeCloudSky node nested in group: " << grandChild->getName() << std::endl;
-                    } else {
-                        skyboxNode = grandChild;
-                        std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
-                    }
+                if (grandChild->getName() == "skybox" || grandChild->getName() == "improved_skybox" || dynamic_cast<SkyBoxThree*>(grandChild)) {
+                    skyboxNode = grandChild;
+                    std::cout << "Found SkyBoxThree node nested in group: " << grandChild->getName() << std::endl;
+                }
+                // 检查是否为VolumeCloudSky节点
+                else if (grandChild->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(grandChild)) {
+                    volumeCloudNode = grandChild;
+                    std::cout << "Found VolumeCloudSky node nested in group: " << grandChild->getName() << std::endl;
+                }
+                // 检查是否为SkyCloud节点
+                else if (grandChild->getName() == "sky_cloud" || dynamic_cast<SkyCloud*>(grandChild)) {
+                    skyCloudNode = grandChild;
+                    std::cout << "Found SkyCloud node nested in group: " << grandChild->getName() << std::endl;
                 }
             }
         }
     }
     
     // 如果还是没有找到，尝试更广泛的搜索
-    if (!skyboxNode && !volumeCloudNode) {
-        std::cout << "Performing extensive search for SkyBoxThree and VolumeCloudSky nodes..." << std::endl;
+    if (!skyboxNode && !volumeCloudNode && !skyCloudNode) {
+        std::cout << "Performing extensive search for SkyBoxThree, VolumeCloudSky and SkyCloud nodes..." << std::endl;
         for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
             osg::Node* child = rootNode->getChild(i);
             if (!child) continue;
@@ -584,8 +322,14 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
             }
             
             if (foundVolumeCloudNode && !volumeCloudNode) {
-                volumeCloudNode = foundVolumeCloudNode;
-                std::cout << "Found VolumeCloudSky node through recursive search: " << volumeCloudNode->getName() << std::endl;
+                // 检查找到的节点是VolumeCloudSky还是SkyCloud
+                if (foundVolumeCloudNode->getName() == "sky_cloud" || dynamic_cast<SkyCloud*>(foundVolumeCloudNode)) {
+                    skyCloudNode = foundVolumeCloudNode;
+                    std::cout << "Found SkyCloud node through recursive search: " << skyCloudNode->getName() << std::endl;
+                } else {
+                    volumeCloudNode = foundVolumeCloudNode;
+                    std::cout << "Found VolumeCloudSky node through recursive search: " << volumeCloudNode->getName() << std::endl;
+                }
             }
         }
     }
@@ -667,8 +411,26 @@ void DemoShader::updateSkyNodeAtmosphereParameters(osgViewer::Viewer* viewer, os
         std::cout << "VolumeCloudSky node not found in the scene" << std::endl;
     }
     
+    // 更新SkyCloud节点（如果找到）
+    if (skyCloudNode) {
+        // 将节点转换为SkyCloud类型并更新参数
+        SkyCloud* skyCloud = dynamic_cast<SkyCloud*>(skyCloudNode);
+        if (skyCloud) {
+            // 更新SkyCloud的大气参数
+            skyCloud->setRayleigh(rayleigh);
+            skyCloud->setTurbidity(turbidity);
+            skyCloud->setMieCoefficient(mieCoefficient);
+            skyCloud->setMieDirectionalG(mieDirectionalG);
+            std::cout << "SkyCloud atmosphere parameters updated successfully" << std::endl;
+        } else {
+            std::cerr << "Failed to cast node to SkyCloud" << std::endl;
+        }
+    } else {
+        std::cout << "SkyCloud node not found in the scene" << std::endl;
+    }
+    
     // 如果都没有找到节点，打印所有子节点的信息以便调试
-    if (!skyboxNode && !volumeCloudNode) {
+    if (!skyboxNode && !volumeCloudNode && !skyCloudNode) {
         std::cout << "Scene children count: " << rootNode->getNumChildren() << std::endl;
         for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
             osg::Node* child = rootNode->getChild(i);
@@ -827,26 +589,7 @@ void DemoShader::updateSkyNodeCloudParameters(osgViewer::Viewer* viewer, osg::Gr
             }
         }
     } else {
-        std::cerr << "Failed to find SkyBoxThree node in the scene" << std::endl;
-        // 打印所有子节点的信息以便调试
-        std::cout << "Scene children count: " << rootNode->getNumChildren() << std::endl;
-        for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
-            osg::Node* child = rootNode->getChild(i);
-            if (child) {
-                std::cout << "  Child " << i << ": " << child->getName() << " (class: " << child->className() << ")" << std::endl;
-                // 如果是Group，打印其子节点
-                osg::Group* group = child->asGroup();
-                if (group) {
-                    std::cout << "    Group children count: " << group->getNumChildren() << std::endl;
-                    for (unsigned int j = 0; j < group->getNumChildren(); ++j) {
-                        osg::Node* grandChild = group->getChild(j);
-                        if (grandChild) {
-                            std::cout << "      Grandchild " << j << ": " << grandChild->getName() << " (class: " << grandChild->className() << ")" << std::endl;
-                        }
-                    }
-                }
-            }
-        }
+        std::cout << "SkyCloud node not found in the scene" << std::endl;
     }
     
     // 强制更新视图
@@ -888,7 +631,7 @@ osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
     
     // 创建一个球体几何体作为天空盒
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 45000.0);  // 调整球体半径为1000.0
+    osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 450000.0);  // 调整球体半径为1000.0
     osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
     
     drawable->setUseDisplayList(false);
@@ -899,7 +642,7 @@ osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
     
     // 创建体积云天空盒对象
     osg::ref_ptr<SkyCloud> skyCloud = new SkyCloud(viewer->getCamera());
-    skyCloud->setName("volume_cloud_sky");
+    skyCloud->setName("sky_cloud");
     skyCloud->addChild(geode.get());
     
     // 将天空盒添加到根节点
@@ -915,88 +658,12 @@ osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
     return root.release();
 }
 
-void DemoShader::updateAtmosphereSceneUniforms(osg::StateSet* stateset)
-{
-    if (!stateset) return;
-    
-    // 相机位置
-    osg::Vec3 camera(0.0f, 0.0f, _viewDistanceMeters / kLengthUnitInMeters);
-    osg::Uniform* cameraUniform = stateset->getUniform("camera");
-    if (cameraUniform) {
-        cameraUniform->set(camera);
-    } else {
-        stateset->addUniform(new osg::Uniform("camera", camera));
-    }
-    
-    // 曝光值
-    osg::Uniform* exposureUniform = stateset->getUniform("exposure");
-    if (exposureUniform) {
-        exposureUniform->set(_exposure);
-    } else {
-        stateset->addUniform(new osg::Uniform("exposure", _exposure));
-    }
-    
-    // 白点
-    osg::Vec3 whitePoint(1.0f, 1.0f, 1.0f);
-    osg::Uniform* whitePointUniform = stateset->getUniform("white_point");
-    if (whitePointUniform) {
-        whitePointUniform->set(whitePoint);
-    } else {
-        stateset->addUniform(new osg::Uniform("white_point", whitePoint));
-    }
-    
-    // 地球中心
-    osg::Vec3 earthCenter(0.0f, 0.0f, -6360000.0f / kLengthUnitInMeters);
-    osg::Uniform* earthCenterUniform = stateset->getUniform("earth_center");
-    if (earthCenterUniform) {
-        earthCenterUniform->set(earthCenter);
-    } else {
-        stateset->addUniform(new osg::Uniform("earth_center", earthCenter));
-    }
-    
-    // 太阳方向
-    osg::Vec3 sunDirection(
-        cos(_sunAzimuthAngleRadians) * sin(_sunZenithAngleRadians),
-        sin(_sunAzimuthAngleRadians) * sin(_sunZenithAngleRadians),
-        cos(_sunZenithAngleRadians)
-    );
-    sunDirection.normalize();
-    
-    osg::Uniform* sunDirectionUniform = stateset->getUniform("sun_direction");
-    if (sunDirectionUniform) {
-        sunDirectionUniform->set(sunDirection);
-    } else {
-        stateset->addUniform(new osg::Uniform("sun_direction", sunDirection));
-    }
-    
-    // 太阳大小
-    float sunAngularRadius = kSunAngularRadius;
-    float sunCosAngularRadius = cos(sunAngularRadius);
-    osg::Vec2 sunSize(tan(sunAngularRadius), sunCosAngularRadius);
-    
-    osg::Uniform* sunSizeUniform = stateset->getUniform("sun_size");
-    if (sunSizeUniform) {
-        sunSizeUniform->set(sunSize);
-    } else {
-        stateset->addUniform(new osg::Uniform("sun_size", sunSize));
-    }
-    
-    std::cout << "Updated atmosphere scene uniforms:" << std::endl;
-    std::cout << "  Camera: " << camera.x() << ", " << camera.y() << ", " << camera.z() << std::endl;
-    std::cout << "  Exposure: " << _exposure << std::endl;
-    std::cout << "  Sun direction: " << sunDirection.x() << ", " << sunDirection.y() << ", " << sunDirection.z() << std::endl;
-    std::cout << "  Sun size: " << sunSize.x() << ", " << sunSize.y() << std::endl;
-}
+
 
 void DemoShader::updateAtmosphereUniforms(osg::StateSet* stateset)
 {
     if (!stateset) return;
-    
-    // 根据参数计算太阳方向
-    // 使用标准的天球坐标系
-    // 天顶角：0度表示天顶，90度表示地平线，180度表示天底
-    // 方位角：0度表示北方，90度表示东方
-    // 在OpenGL坐标系中：X向右，Y向上，Z指向观察者
+   
     osg::Vec3 sunDirection(
         sin(_sunZenithAngleRadians) * sin(_sunAzimuthAngleRadians),   // X分量
         cos(_sunZenithAngleRadians),                                   // Y分量（天顶角的余弦）
@@ -1291,8 +958,9 @@ osg::Node* DemoShader::findVolumeCloudSkyNode(osg::Node* node)
 {
     if (!node) return nullptr;
     
-    // 检查当前节点是否为VolumeCloudSky
-    if (node->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(node)) {
+    // 检查当前节点是否为VolumeCloudSky或SkyCloud
+    if (node->getName() == "volume_cloud_sky" || dynamic_cast<VolumeCloudSky*>(node) || 
+        node->getName() == "sky_cloud" || dynamic_cast<SkyCloud*>(node)) {
         return node;
     }
     
@@ -1306,4 +974,39 @@ osg::Node* DemoShader::findVolumeCloudSkyNode(osg::Node* node)
     }
     
     return nullptr;
+}
+
+void DemoShader::updateSkyCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode, float cloudDensity, float cloudHeight, float coverageThreshold, float densityThreshold, float edgeThreshold)
+{
+    std::cout << "Updating Sky Cloud parameters..." << std::endl;
+    std::cout << "  Cloud Density: " << cloudDensity << ", Cloud Height: " << cloudHeight
+              << ", Coverage Threshold: " << coverageThreshold << ", Density Threshold: " << densityThreshold
+              << ", Edge Threshold: " << edgeThreshold << std::endl;
+              
+    // 查找场景中的SkyCloud节点
+    osg::Node* skyCloudNode = nullptr;
+    
+    // 首先尝试从_cloudSeaAtmosphere中查找
+    if (_cloudSeaAtmosphere.valid()) {
+        skyCloudNode = findVolumeCloudSkyNode(_cloudSeaAtmosphere);
+    }
+    if (!skyCloudNode && rootNode) {
+        skyCloudNode = findVolumeCloudSkyNode(rootNode);
+    }
+    if (skyCloudNode) {
+        // 将节点转换为SkyCloud类型并更新参数
+        SkyCloud* skyCloud = dynamic_cast<SkyCloud*>(skyCloudNode);
+        if (skyCloud) {
+            skyCloud->setCloudDensity(cloudDensity);
+            skyCloud->setCloudHeight(cloudHeight);
+            skyCloud->setCoverageThreshold(coverageThreshold);
+            skyCloud->setDensityThreshold(densityThreshold);
+            skyCloud->setEdgeThreshold(edgeThreshold);
+            std::cout << "SkyCloud parameters updated successfully" << std::endl;
+        } else {
+            std::cerr << "Failed to cast node to SkyCloud" << std::endl;
+        }
+    } else {
+        std::cerr << "Failed to find SkyCloud node in the scene" << std::endl;
+    }
 }

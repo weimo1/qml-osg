@@ -1,0 +1,104 @@
+#version 330
+layout(location = 0) in vec3 aPos;
+
+uniform vec3 sunPosition;
+uniform float rayleigh;
+uniform float turbidity;
+uniform float mieCoefficient;
+uniform vec3 up;
+uniform vec3 cameraPosition;
+
+uniform mat4 viewInverse;
+uniform mat4 osg_ProjectionMatrix;
+uniform mat4 osg_ModelViewMatrix;
+
+// 云朵uniforms
+uniform float cloudSpeed;
+uniform float cloudDensity;
+uniform float cloudHeight;
+uniform float coverageThreshold;
+uniform float densityThreshold;
+uniform float edgeThreshold;
+uniform float time;
+
+out vec3 vWorldPosition;
+out vec3 vSunDirection;
+out float vSunfade;
+out vec3 vBetaR;
+out vec3 vBetaM;
+out float vSunE;
+
+// 云朵相关输出
+out vec3 vDirection;
+out float vCloudSpeed;
+out float vCloudDensity;
+out float vTime;
+out vec3 vWorldPos;
+
+// constants for atmospheric scattering
+const float e = 2.71828182845904523536028747135266249775724709369995957;
+const float pi = 3.141592653589793238462643383279502884197169;
+
+// wavelength of used primaries, according to preetham
+const vec3 lambda = vec3(680E-9, 550E-9, 450E-9);
+// this pre-calculation replaces older TotalRayleigh(vec3 lambda) function:
+// (8.0 * pow(pi, 3.0) * pow(pow(n, 2.0) - 1.0, 2.0) * (6.0 + 3.0 * pn)) / (3.0 * N * pow(lambda, vec3(4.0)) * (6.0 - 7.0 * pn))
+const vec3 totalRayleigh = vec3(5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5);
+
+// mie stuff
+// K coefficient for the primaries
+const float v = 4.0;
+const vec3 K = vec3(0.686, 0.678, 0.666);
+// MieConst = pi * pow( ( 2.0 * pi ) / lambda, vec3( v - 2.0 ) ) * K
+const vec3 MieConst = vec3(1.8399918514433978E14, 2.7798023919660528E14, 4.0790479543861094E14);
+
+// earth shadow hack
+// cutoffAngle = pi / 1.95;
+const float cutoffAngle = 1.6110731556870734;
+const float steepness = 1.5;
+const float EE = 1000.0;
+
+float sunIntensity(float zenithAngleCos) {
+    zenithAngleCos = clamp(zenithAngleCos, -1.0, 1.0);
+    return EE * max(0.0, 1.0 - pow(e, -( ( cutoffAngle - acos(zenithAngleCos) ) / steepness )));
+}
+
+vec3 totalMie(float T){
+    float c = (0.2 * T) * 10E-18;
+    return 0.434 * c * MieConst;
+}
+
+void main() 
+{
+    mat4 modelMatrix = viewInverse * osg_ModelViewMatrix;
+
+    vec4 worldPosition = modelMatrix * vec4(aPos, 1.0);
+    vWorldPosition = worldPosition.xyz;
+
+    gl_Position = osg_ProjectionMatrix * osg_ModelViewMatrix * vec4(aPos,1);
+    gl_Position.z = gl_Position.w; // set z to camera.far
+
+    vSunDirection = normalize(sunPosition);
+
+    vSunE = sunIntensity(dot(vSunDirection, up));
+
+    vSunfade = 1.0 - clamp(1.0 - exp((sunPosition.z / 450000.0)), 0.0, 1.0);
+
+    float rayleighCoefficient = rayleigh - (1.0 * (1.0 - vSunfade));
+
+    // extinction (absorption + out scattering)
+    // rayleigh coefficients
+    vBetaR = totalRayleigh * rayleighCoefficient;
+
+    // mie coefficients
+    vBetaM = totalMie(turbidity) * mieCoefficient;
+    
+    // 云朵相关参数传递
+    vDirection = normalize(vWorldPosition - cameraPosition);
+    vCloudSpeed = cloudSpeed;
+    vCloudDensity = cloudDensity;
+    vTime = time;
+    
+    // 传递新的uniform变量
+    vWorldPos = vWorldPosition;
+}

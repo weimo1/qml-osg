@@ -17,6 +17,18 @@ public:
     
     // 设置云参数
     void setCloudDensity(float density);
+    void setCloudHeight(float height);
+    void setCoverageThreshold(float threshold);
+    void setDensityThreshold(float threshold);
+
+    // 设置边缘阈值
+    void setEdgeThreshold(float threshold);
+
+    // 添加设置大气参数的方法
+    void setRayleigh(float rayleigh);
+    void setTurbidity(float turbidity);
+    void setMieCoefficient(float mieCoefficient);
+    void setMieDirectionalG(float mieDirectionalG);
 
     META_Node(osg, SkyCloud);
 
@@ -37,4 +49,8 @@ private:
 
     // 云朵相关uniforms
     osg::ref_ptr<osg::Uniform> _cloudDensity;
+    osg::ref_ptr<osg::Uniform> _cloudHeight;
+    osg::ref_ptr<osg::Uniform> _coverageThreshold;
+    osg::ref_ptr<osg::Uniform> _densityThreshold;
+    osg::ref_ptr<osg::Uniform> _edgeThreshold;
 };

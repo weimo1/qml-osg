@@ -41,12 +41,6 @@ public:
     void updateFromSkyNodeParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG, 
                                    float sunZenithAngle, float sunAzimuthAngle, float cloudDensity);
                                    
-    // 新增：设置所有参数的函数
-    void setAllParameters(float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
-                        float sunZenithAngle, float sunAzimuthAngle, float cloudDensity,
-                        float densityThreshold, float contrast, float densityFactor,
-                        float stepSize, int maxSteps);
-
     META_Node(osg, VolumeCloudSky);
 
     virtual bool computeLocalToWorldMatrix(osg::Matrix& matrix, osg::NodeVisitor* nv) const;

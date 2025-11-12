@@ -115,7 +115,11 @@ public slots:
                                     float cloudDensity, float cloudHeight,
                                     float densityThreshold, float contrast, float densityFactor,
                                     float stepSize, float maxSteps);
-    
+                                    
+    // 添加更新SkyCloud参数的Q_INVOKABLE函数
+    Q_INVOKABLE void updateSkyCloudParameters(float cloudDensity, float cloudHeight,
+                                            float coverageThreshold, float densityThreshold, float edgeThreshold);
+
     // 添加实际调用渲染器的槽函数
     void invokeCreateShape();
     void invokeCreateShapeWithNewSkybox();
@@ -160,6 +164,10 @@ public slots:
                                          float cloudDensity, float cloudHeight,
                                          float densityThreshold, float contrast, float densityFactor,
                                          float stepSize, float maxSteps);
+
+    // 添加更新SkyCloud参数的槽函数声明
+    void invokeUpdateSkyCloudParameters(float cloudDensity, float cloudHeight,
+                                      float coverageThreshold, float densityThreshold, float edgeThreshold);
 
 private:
     mutable SimpleOSGRenderer* m_renderer;  // 保存渲染器引用

@@ -797,4 +797,17 @@ void SimpleOSGRenderer::updateVolumeCloudParameters(float sunZenithAngle, float 
     }
 }
 
+// 添加更新SkyCloud参数的方法
+void SimpleOSGRenderer::updateSkyCloudParameters(float cloudDensity, float cloudHeight,
+                                               float coverageThreshold, float densityThreshold, float edgeThreshold)
+{
+    if (m_uiHandler) {
+        // 查找场景中的SkyCloud节点并更新参数 
+    m_uiHandler->updateSkyCloudParameters(m_viewer.get(), m_rootNode.get(),
+                                            cloudDensity, cloudHeight,
+                                            coverageThreshold,densityThreshold,edgeThreshold
+                                            );
+}
+}
+
 // 已详替换为DemoShader中的辧段 - updateTexturedAtmosphereParameters不再使用

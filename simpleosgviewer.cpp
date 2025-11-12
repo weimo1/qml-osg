@@ -558,6 +558,29 @@ void SimpleOSGViewer::invokeUpdateVolumeCloudParameters(float sunZenithAngle, fl
     }
 }
 
+// 添加更新SkyCloud参数的方法
+void SimpleOSGViewer::updateSkyCloudParameters(float cloudDensity, float cloudHeight,
+                                            float coverageThreshold, float densityThreshold, float edgeThreshold)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeUpdateSkyCloudParameters", Qt::QueuedConnection,
+                                 Q_ARG(float, cloudDensity), Q_ARG(float, cloudHeight),
+                                 Q_ARG(float, coverageThreshold), Q_ARG(float, densityThreshold),
+                                 Q_ARG(float, edgeThreshold));
+    }
+}
+
+// 实际调用渲染器更新SkyCloud参数的方法
+void SimpleOSGViewer::invokeUpdateSkyCloudParameters(float cloudDensity, float cloudHeight,
+                                                  float coverageThreshold, float densityThreshold, float edgeThreshold)
+{
+    if (m_renderer) {
+        m_renderer->updateSkyCloudParameters(cloudDensity, cloudHeight,
+                                           coverageThreshold, densityThreshold, edgeThreshold);
+    }
+}
+
 // 实际调用渲染器创建云海大气效果场景的方法
 void SimpleOSGViewer::invokeCreateTexturedAtmosphereScene()
 {

@@ -72,9 +72,6 @@ public:
     void setMieScattering(float mie) { _mieScattering = mie; }
     void setRayleighScattering(float rayleigh) { _rayleighScattering = rayleigh; }
     
-    // 创建用于大气渲染的全屏四边形场景
-    osg::Node* createAtmosphereScene();
-    osg::Geometry* createFullScreenQuad();
     
     // 更新大气场景中的uniform变量
     void updateAtmosphereUniforms(osg::StateSet* stateset);
@@ -82,22 +79,13 @@ public:
     // 更新场景中的uniform变量
     void updateSceneUniforms(osg::StateSet* stateset);
     
-    // 新增：创建结合天空盒纹理和大气渲染的场景
-    osg::Node* createTexturedAtmosphereScene();
-    
-    
-    // 新增：更新大气场景uniform变量
-    void updateAtmosphereSceneUniforms(osg::StateSet* stateset);
     
     // 新增：创建结合天空盒和大气渲染的场景
     osg::Node* createSkyboxAtmosphereScene(osgViewer::Viewer* viewer);
     
     // 新增：创建PBR立方体
     osg::Node* createPBRCube();
-    
-    // 新增：创建调试用的简单立方体
-    osg::Node* createDebugCube();
-    
+
     // 新增：创建使用改进大气着色器的场景
     osg::Node* createImprovedAtmosphereScene(osgViewer::Viewer* viewer);
     
@@ -144,6 +132,9 @@ public:
                                                         float turbidity, float rayleigh, float mieCoefficient, float mieDirectionalG,
                                                         float sunZenithAngle, float sunAzimuthAngle);
 
+    void updateSkyCloudParameters(
+        osgViewer::Viewer* viewer, osg::Group* rootNode,float cloudDensity, float cloudHeight, float coverageThreshold, float densityThreshold, float edgeThreshold);
+                              
     // 辅助函数：递归查找SkyCloud节点
     osg::Node* findVolumeCloudSkyNode(osg::Node* node);
 
