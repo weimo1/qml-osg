@@ -9,7 +9,6 @@ ViewManager::ViewManager()
     : m_eye(0.0, -5.0, 0.0)
     , m_center(0.0, 0.0, 0.0)
     , m_up(0.0, 0.0, 1.0)
-    , m_orthographicScale(1.0)
 {
 }
 
@@ -23,18 +22,6 @@ void ViewManager::setViewParameters(osg::Vec3d eye, osg::Vec3d center, osg::Vec3
     m_eye = eye;
     m_center = center;
     m_up = up;
-}
-
-// 设置正交投影缩放因子
-void ViewManager::setOrthographicScale(double scale)
-{
-    m_orthographicScale = scale;
-}
-
-// 获取正交投影缩放因子
-double ViewManager::getOrthographicScale() const
-{
-    return m_orthographicScale;
 }
 
 // 从操作器获取当前视图参数
@@ -92,9 +79,6 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
 {
     if (!viewer || !rootNode) return;
     
-    // 重置正交投影缩放因子
-    m_orthographicScale = 1.0;
-    
     // 获取场景的边界框，用于设置操作器的旋转中心
     osg::ComputeBoundsVisitor boundsVisitor;
     rootNode->accept(boundsVisitor);
@@ -146,7 +130,10 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
         manipulator->setHomePosition(eye, center, up);
         
         // 对于所有视图类型，都不固定垂直轴以获得更好的旋转体验
-        manipulator->setVerticalAxisFixed(false);
+        manipulator->setVerticalAxisFixed(true);
+        
+        // 禁止投掷效果，避免自动旋转
+        manipulator->setAllowThrow(false);
         
         // 立即应用home位置
         manipulator->home(0.0);
@@ -164,7 +151,6 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
     }
 }
 
-// 视图相关的辅助函数实现
 void ViewManager::setupFrontView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
 {
     if (!viewer || !rootNode) return;
@@ -207,15 +193,8 @@ void ViewManager::setupFrontView(osgViewer::Viewer* viewer, osg::Group* rootNode
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置正交投影，根据模型大小和宽高比调整范围
-    double orthoSize = modelSize * m_orthographicScale;
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-orthoSize * aspectRatio, orthoSize * aspectRatio, 
-                                          -orthoSize, orthoSize, -viewDistance, viewDistance * 3);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-orthoSize, orthoSize,
-                                          -orthoSize / aspectRatio, orthoSize / aspectRatio, -viewDistance, viewDistance * 3);
-    }
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 500000.0);
 }
 
 void ViewManager::setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -260,15 +239,8 @@ void ViewManager::setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置正交投影，根据模型大小和宽高比调整范围
-    double orthoSize = modelSize * m_orthographicScale;
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-orthoSize * aspectRatio, orthoSize * aspectRatio, 
-                                          -orthoSize, orthoSize, -viewDistance, viewDistance * 3);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-orthoSize, orthoSize,
-                                          -orthoSize / aspectRatio, orthoSize / aspectRatio, -viewDistance, viewDistance * 3);
-    }
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 500000.0);
 }
 
 void ViewManager::setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -313,15 +285,8 @@ void ViewManager::setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, 
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置正交投影，根据模型大小和宽高比调整范围
-    double orthoSize = modelSize * m_orthographicScale;
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-orthoSize * aspectRatio, orthoSize * aspectRatio, 
-                                          -orthoSize, orthoSize, -viewDistance, viewDistance * 3);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-orthoSize, orthoSize,
-                                          -orthoSize / aspectRatio, orthoSize / aspectRatio, -viewDistance, viewDistance * 3);
-    }
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 500000.0);
 }
 
 void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -343,28 +308,63 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置透视投影
-    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 1.0, 10000.0);
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 500000.0);
+    
+    // 确保深度测试正确配置
+    osg::StateSet* stateset = camera->getOrCreateStateSet();
+    stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
 }
 
-// 更新正交投影（用于滚轮缩放）
-void ViewManager::updateOrthographicProjection(osgViewer::Viewer* viewer, int width, int height)
+// 实现重置到主视角的功能
+void ViewManager::resetToHomeView(osgViewer::Viewer* viewer)
 {
-    if (!viewer) return;
+    if (viewer && viewer->getCameraManipulator()) {
+        viewer->getCameraManipulator()->home(0.0);
+        qDebug() << "View reset to home position";
+    }
+}
+
+// 实现适应视图功能
+void ViewManager::fitToView(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (!viewer || !rootNode) return;
     
-    osg::Camera* camera = viewer->getCamera();
-    if (!camera) return;
+    // 计算整个场景的包围盒
+    osg::ComputeBoundsVisitor boundsVisitor;
+    rootNode->accept(boundsVisitor);
+    osg::BoundingBox bb = boundsVisitor.getBoundingBox();
     
-    // 计算宽高比
-    double aspectRatio = static_cast<double>(width) / static_cast<double>(height);
-    
-    // 根据当前视图类型更新正交投影
-    // 这里我们假设当前是正交投影模式，直接更新投影矩阵
-    if (width > height) {
-        camera->setProjectionMatrixAsOrtho(-1.0 * aspectRatio * m_orthographicScale, 1.0 * aspectRatio * m_orthographicScale,
-                                          -1.0 * m_orthographicScale, 1.0 * m_orthographicScale, 1.0, 100.0);
-    } else {
-        camera->setProjectionMatrixAsOrtho(-1.0 * m_orthographicScale, 1.0 * m_orthographicScale,
-                                          -1.0 / aspectRatio * m_orthographicScale, 1.0 / aspectRatio * m_orthographicScale, 1.0, 100.0);
+    // 如果包围盒有效，则调整相机位置以适应整个场景
+    if (bb.valid())
+    {
+        // 获取当前相机操作器
+        osgGA::CameraManipulator* manipulator = viewer->getCameraManipulator();
+        if (manipulator)
+        {
+            // 设置新的home位置，使整个场景完整显示在视图中
+            osg::Vec3 center = bb.center();
+            osg::BoundingSphere bs(bb);
+            float radius = bs.radius();
+            
+            // 如果半径为0（可能只有一个点），设置一个默认值
+            if (radius == 0.0f) {
+                radius = 1.0f;
+            }
+            
+            // 设置合适的相机距离
+            osg::Vec3 eye = center + osg::Vec3(0, -radius * 2.5f, radius * 0.5f);
+            osg::Vec3 up(0.0f, 0.0f, 1.0f);
+            
+            manipulator->setHomePosition(eye, center, up);
+            manipulator->home(0.0);
+            
+            qDebug() << "View fitted to scene bounds";
+        }
+    }
+    else
+    {
+        // 如果没有有效的包围盒，重置到默认视角
+        resetToHomeView(viewer);
     }
 }

@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
     // 添加Qt 6的QML路径
     engine.addImportPath("D:/Qt6/6.9.2/msvc2022_64/qml");
     
+    // 加载新的桥梁设计界面
+ //   const QUrl url(QStringLiteral("qrc:///qml/bridge_design.qml"));
     const QUrl url(QStringLiteral("qrc:///qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {

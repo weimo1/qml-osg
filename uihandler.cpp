@@ -1,35 +1,17 @@
 #include "uihandler.h"
-#include "viewmanager.h"
 #include <QFile>
-#include <QCoreApplication>
 #include <QDir>
-#include <osg/Group>
-#include <osg/Geode>
-#include <osg/Geometry>
-#include <osg/ShapeDrawable>
-#include <osg/StateSet>
-#include <osg/Vec3>
-#include <osg/Vec4>
-#include <osg/Material>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/BoundingBox>
 #include <osg/BoundingSphere>
 #include <osg/MatrixTransform>
 #include <osgDB/ReadFile>
-#include <osgDB/Registry>
-#include <osgDB/Options>
 #include <osgGA/TrackballManipulator>
-#include <osgGA/GUIEventAdapter>
-#include <osgGA/CameraManipulator>
-#include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
-#include <osg/Program>
-#include <osg/Shader>
 #include <QDebug>
-#include "shadercube.h"
-#include "shaderpbr.h"  // 添加PBR头文件
-
+#include <osg/ShapeDrawable>
+#include <osg/Shape>
 
 UIHandler::UIHandler()
 {
@@ -39,269 +21,221 @@ UIHandler::~UIHandler()
 {
 }
 
-void UIHandler::createShape(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode)
+// 视图操作相关方法
+void UIHandler::resetToHomeView(osgViewer::Viewer* viewer)
+{
+    if (viewer) {
+        getViewManager()->resetToHomeView(viewer);
+    }
+}
+
+void UIHandler::fitToView(osgViewer::Viewer* viewer, osg::Group* rootNode)
 {
     if (viewer && rootNode) {
-        // 清除现有的场景
-        rootNode->removeChildren(0, rootNode->getNumChildren());
-        
-        // 创建天空盒
-        std::string resourcePath = "E:/qt test/qml+osg/resource";
-        osg::ref_ptr<osg::Node> skyBox = ShaderCube::createSkyBox(resourcePath);
-        if (skyBox.valid()) {
-            rootNode->addChild(skyBox);
-        }
-        
-        // 使用Shader创建立方体
-        osg::ref_ptr<osg::Node> shaderCube = ShaderCube::createCube(1.0f);
-        
-        // 更新节点引用
-        shapeNode = dynamic_cast<osg::Geode*>(shaderCube.get());
-        
-        // 将Shader立方体添加到根节点
-        if (shaderCube.valid()) {
-            rootNode->addChild(shaderCube);
-        }
-        
-        // 强制更新视图
-        viewer->advance();
-        viewer->requestRedraw();
+        getViewManager()->fitToView(viewer, rootNode);
     }
-}
-
-void UIHandler::createPBRScene(osgViewer::Viewer* viewer, osg::Group* rootNode, osg::ref_ptr<osg::Geode>& shapeNode)
-{
-    if (viewer && rootNode) {
-        // 清除现有的场景
-        rootNode->removeChildren(0, rootNode->getNumChildren());
-        
-        // 创建带PBR效果和天空盒的场景
-        osg::ref_ptr<osg::Node> pbrScene = ShaderPBR::createPBRSceneWithSkybox(1.0f);
-        
-        // 更新节点引用
-        shapeNode = nullptr; // PBR场景不使用单个Geode节点
-        
-        // 将PBR场景添加到根节点
-        if (pbrScene.valid()) {
-            rootNode->addChild(pbrScene);
-        }
-        
-        // 设置默认的视图参数
-        osg::Vec3d eye(0.0, -5.0, 0.0);
-        osg::Vec3d center(0.0, 0.0, 0.0);
-        osg::Vec3d up(0.0, 0.0, 1.0);
-        m_viewManager.setViewParameters(eye, center, up);
-        
-        // 强制更新视图
-        viewer->advance();
-        viewer->requestRedraw();
-    }
-}
-
-void UIHandler::resetView(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType)
-{
-    if (viewer && rootNode) {
-        // 获取当前视口大小
-        osg::Camera* camera = viewer->getCamera();
-        if (camera) {
-            osg::Viewport* viewport = camera->getViewport();
-            if (viewport) {
-                int width = viewport->width();
-                int height = viewport->height();
-                resetToHomeView(viewer, rootNode);
-                // 强制更新视图
-                viewer->advance();
-                viewer->requestRedraw();
-            } else {
-                // 如果没有视口，使用默认尺寸
-                resetToHomeView(viewer, rootNode);
-                viewer->advance();
-                viewer->requestRedraw();
-            }
-        } else {
-            // 如果没有相机，使用默认尺寸
-            resetToHomeView(viewer, rootNode);
-            viewer->advance();
-            viewer->requestRedraw();
-        }
-    }
-}
-
-void UIHandler::resetToHomeView(osgViewer::Viewer* viewer, osg::Group* rootNode)
-{
-    if (viewer && rootNode) {
-        // 使用操作器的home方法重置视图
-        osgGA::CameraManipulator* manipulator = viewer->getCameraManipulator();
-        if (manipulator) {
-            try {
-                // 调用操作器的home方法重置视图
-                manipulator->home(0.0);
-                
-                // 更新ViewManager中的相机参数
-                m_viewManager.updateViewParametersFromManipulator(viewer);
-            }
-            catch (...) {
-                // 如果操作器调用失败，使用默认设置
-                osg::Vec3d eye(0.0, -5.0, 0.0);
-                osg::Vec3d center(0.0, 0.0, 0.0);
-                osg::Vec3d up(0.0, 0.0, 1.0);
-                m_viewManager.setViewParameters(eye, center, up);
-            }
-        } else {
-            // 如果没有操作器，使用默认设置
-            osg::Vec3d eye(0.0, -5.0, 0.0);
-            osg::Vec3d center(0.0, 0.0, 0.0);
-            osg::Vec3d up(0.0, 0.0, 1.0);
-            m_viewManager.setViewParameters(eye, center, up);
-        }
-        
-        // 强制更新视图
-        viewer->advance();
-        viewer->requestRedraw();
-    }
-}
-
-void UIHandler::loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName)
-{
-    if (viewer && rootNode) {
-        // 检查文件名是否为空
-        if (fileName.isEmpty()) {
-            return;
-        }
-        
-        // 处理相对路径 - 尝试在当前工作目录和应用程序目录中查找文件
-        QString fullPath = fileName;
-        QFile file(fullPath);
-        
-        // 如果文件不存在，尝试在应用程序目录中查找
-        if (!file.exists()) {
-            QString appDir = QCoreApplication::applicationDirPath();
-            fullPath = appDir + "/" + fileName;
-            file.setFileName(fullPath);
-            
-            // 如果仍然不存在，尝试在应用程序目录的上一级目录中查找
-            if (!file.exists()) {
-                fullPath = appDir + "/../" + fileName;
-                file.setFileName(fullPath);
-            }
-        }
-        
-        if (!file.exists()) {
-            return;
-        }
-        
-        // 将QString转换为std::string
-        std::string stdFileName = fullPath.toStdString();
-        
-        try {
-            // 使用osgDB加载模型
-            osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFile(stdFileName);
-            
-            if (loadedModel) {
-                // 清除现有的场景
-                rootNode->removeChildren(0, rootNode->getNumChildren());
-                
-                // 添加加载的模型到场景
-                rootNode->addChild(loadedModel);
-                
-                // 获取模型的包围球，用于计算合适的相机位置
-                osg::BoundingSphere bs = loadedModel->getBound();
-                double radius = bs.radius();
-                osg::Vec3d center = bs.center();
-                
-                // 如果模型有有效的边界球，则调整相机位置确保能看到整个模型
-                if (radius > 0) {
-                    // 计算合适的视距，确保模型完整显示
-                    double viewDistance = radius * 3.0;
-                    
-                    // 设置相机方向向上为Z轴
-                    osg::Vec3d up(0.0, 0.0, 1.0);
-                    
-                    // 从前方观察模型（稍微偏下的角度）
-                    osg::Vec3d viewDirection(0.0, -1.0, 0.3);
-                    viewDirection.normalize();
-                    
-                    // 相机位置 = 模型中心 + 视线方向 * 距离
-                    osg::Vec3d eye = center + viewDirection * viewDistance;
-                    
-                    // 更新视图管理器中的相机参数
-                    m_viewManager.setViewParameters(eye, center, up);
-                    
-                    // 同时更新操作器的home位置，确保视角正确
-                    osgGA::TrackballManipulator* manipulator = dynamic_cast<osgGA::TrackballManipulator*>(viewer->getCameraManipulator());
-                    if (manipulator) {
-                        manipulator->setHomePosition(eye, center, up);
-                        // 立即应用home位置
-                        manipulator->home(0.0);
-                    }
-                    
-                    // 调整投影矩阵以适应模型大小
-                    float aspectRatio = static_cast<float>(viewer->getCamera()->getViewport()->width()) / 
-                                       static_cast<float>(viewer->getCamera()->getViewport()->height());
-                    viewer->getCamera()->setProjectionMatrixAsPerspective(
-                        30.0f, aspectRatio, radius * 0.1f, radius * 100.0f);
-                } else {
-                    // 如果模型没有有效的边界球，使用默认位置
-                    osg::Vec3d eye(0.0, -10.0, 2.0);
-                    osg::Vec3d center(0.0, 0.0, 0.0);
-                    osg::Vec3d up(0.0, 0.0, 1.0);
-                    
-                    // 更新视图管理器中的相机参数
-                    m_viewManager.setViewParameters(eye, center, up);
-                    
-                    // 同时更新操作器的home位置，确保视角正确
-                    osgGA::TrackballManipulator* manipulator = dynamic_cast<osgGA::TrackballManipulator*>(viewer->getCameraManipulator());
-                    if (manipulator) {
-                        manipulator->setHomePosition(eye, center, up);
-                        // 立即应用home位置
-                        manipulator->home(0.0);
-                    }
-                }
-                
-                // 强制更新视图
-                viewer->advance();
-                viewer->requestRedraw();
-            }
-        }
-        catch (const std::exception& e) {
-            // 如果加载失败，重新创建默认场景
-            rootNode->removeChildren(0, rootNode->getNumChildren());
-            viewer->advance();
-            viewer->requestRedraw();
-        }
-        catch (...) {
-            // 如果加载失败，重新创建默认场景
-            rootNode->removeChildren(0, rootNode->getNumChildren());
-            viewer->advance();
-            viewer->requestRedraw();
-        }
-    }
-}
-
-void UIHandler::setShapeColor(osg::Geode* shapeNode, float r, float g, float b, float a)
-{
-    // 使用保存的节点引用
-    if (shapeNode) {
-        // 获取状态集
-        osg::StateSet* stateset = shapeNode->getOrCreateStateSet();
-        
-        // 更新颜色uniform
-        osg::Uniform* colorUniform = stateset->getUniform("baseColor");
-        if (colorUniform) {
-            colorUniform->set(osg::Vec4(r, g, b, a));
-        } else {
-            stateset->addUniform(new osg::Uniform("baseColor", osg::Vec4(r, g, b, a)));
-        }
-    }
-}
-
-// 添加相机相关的函数实现
-void UIHandler::setupCameraForView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height, SimpleOSGViewer::ViewType viewType)
-{
-    m_viewManager.setupCameraForView(viewer, rootNode, width, height, viewType);
 }
 
 void UIHandler::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType)
 {
-    m_viewManager.setViewType(viewer, rootNode, viewType);
+    if (viewer && rootNode) {
+        getViewManager()->setViewType(viewer, rootNode, viewType);
+    }
+}
+
+// 文件加载相关方法
+void UIHandler::loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName)
+{
+    if (!viewer || !rootNode) return;
+    
+    // 处理QML传来的file:// URL格式
+    QString localFileName = fileName;
+    if (localFileName.startsWith("file://")) {
+        // 移除file://前缀
+        localFileName = localFileName.mid(7);
+        // 处理Windows路径中的额外斜杠
+        if (localFileName.startsWith("/")) {
+            localFileName = localFileName.mid(1);
+        }
+    }
+
+    QFileInfo fileInfo(localFileName);
+    if (fileInfo.isDir()) {
+        // 如果是目录，则遍历目录下的所有OSG相关文件
+        loadOSGFilesFromDirectory(viewer, rootNode, localFileName);
+    } else {
+        // 如果是单个文件，则加载该文件
+        loadSingleOSGFile(viewer, rootNode, localFileName);
+    }
+}
+
+void UIHandler::loadSingleOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName)
+{
+    if (!viewer || !rootNode) return;
+    
+    // 将QString转换为std::string
+    std::string stdFileName = fileName.toStdString();
+    
+    // 使用osgDB读取文件
+    osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFile(stdFileName);
+    
+    if (loadedModel)
+    {
+        // 将加载的模型添加到场景图中
+        rootNode->addChild(loadedModel);
+        
+        // 计算新添加模型的包围盒
+        osg::ComputeBoundsVisitor boundsVisitor;
+        loadedModel->accept(boundsVisitor);
+        osg::BoundingBox bb = boundsVisitor.getBoundingBox();
+        
+        // 如果包围盒有效，则调整相机位置以适应新模型
+        if (bb.valid())
+        {
+            // 获取当前相机操作器
+            osgGA::CameraManipulator* manipulator = viewer->getCameraManipulator();
+            if (manipulator)
+            {
+                // 设置新的home位置，使模型完整显示在视图中
+                osg::Vec3 center = bb.center();
+                osg::BoundingSphere bs(bb);
+                float radius = bs.radius();
+                
+                // 设置合适的相机距离
+                osg::Vec3 eye = center + osg::Vec3(0, -radius * 2.5f, radius);
+                osg::Vec3 up(0.0f, 0.0f, 1.0f);
+                
+                manipulator->setHomePosition(eye, center, up);
+                manipulator->home(0.0);
+            }
+        }
+        
+        qDebug() << "Successfully loaded OSG file:" << fileName;
+    }
+    else
+    {
+        qDebug() << "Failed to load OSG file:" << fileName;
+    }
+}
+
+void UIHandler::loadOSGFilesFromDirectory(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& dirPath)
+{
+    if (!viewer || !rootNode) return;
+    
+    QDir dir(dirPath);
+    if (!dir.exists()) {
+        qDebug() << "Directory does not exist:" << dirPath;
+        return;
+    }
+
+    // 支持的OSG文件扩展名
+    QStringList filters;
+    filters << "*.osg" << "*.osgt" << "*.osgb";
+    
+    // 获取目录中所有匹配的文件
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::Readable);
+    
+    if (fileList.isEmpty()) {
+        qDebug() << "No OSG files found in directory:" << dirPath;
+        return;
+    }
+
+    // 遍历并加载所有文件
+    for (const QFileInfo& fileInfo : fileList) {
+        loadSingleOSGFile(viewer, rootNode, fileInfo.absoluteFilePath());
+    }
+    
+    // 适应视图以显示所有加载的模型
+    fitToView(viewer, rootNode);
+}
+
+// 光照控制相关方法
+void UIHandler::toggleLighting(osgViewer::Viewer* viewer, osg::Group* rootNode, bool enabled)
+{
+    if (!rootNode) return;
+    
+    // 遍历场景图，启用或禁用光照
+    osg::StateSet* stateSet = rootNode->getOrCreateStateSet();
+    if (enabled) {
+        stateSet->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        qDebug() << "Lighting enabled";
+    } else {
+        stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+        qDebug() << "Lighting disabled";
+    }
+    
+    // 强制更新视图
+    if (viewer) {
+        viewer->requestRedraw();
+    }
+}
+
+// 模型选择相关方法
+void UIHandler::selectModel(osgViewer::Viewer* viewer, int x, int y)
+{
+    if (!viewer) return;
+    
+    // 需要反转Y坐标，osg和qml的坐标系不同
+    osg::Viewport* currentViewport = viewer->getCamera()->getViewport(); 
+    if (!currentViewport) return;
+    
+    y = currentViewport->height() - y;
+    
+    // 创建一个线段求交器
+    osg::ref_ptr<osgUtil::LineSegmentIntersector> intersector = 
+        new osgUtil::LineSegmentIntersector(osgUtil::Intersector::WINDOW, x, y);
+        
+    // 创建求交访问器
+    osgUtil::IntersectionVisitor iv(intersector.get());
+    
+    // 执行求交检测
+    viewer->getCamera()->accept(iv);
+    
+    // 检查是否有交点
+    if (intersector->containsIntersections())
+    {
+        // 获取第一个交点
+        osgUtil::LineSegmentIntersector::Intersection intersection = intersector->getFirstIntersection();
+        
+        // 获取被选中的节点路径
+        osg::NodePath nodePath = intersection.nodePath;
+        
+        // 遍历节点路径，查找可选择的几何体
+        for (int i = nodePath.size() - 1; i >= 0; --i)
+        {
+            osg::Node* node = nodePath[i];
+            osg::Geode* geode = dynamic_cast<osg::Geode*>(node);
+            if (geode)
+            {
+                // 找到Geode节点，选中它
+                osg::StateSet* ss = geode->getOrCreateStateSet();
+                if (ss)
+                {
+                    ss->getOrCreateUniform("bSelect", osg::Uniform::BOOL)->set(true);
+                }
+                break;
+            }
+        }
+    }
+}
+
+// 天空盒相关方法
+void UIHandler::createSkyBox(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (!viewer || !rootNode) return;
+    
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+    geode->addDrawable(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(), 450000)));
+    geode->setCullingActive(false);
+
+    m_skyBox = new SkyBoxThree(viewer->getCamera());
+    m_skyBox->setName("skybox");
+    m_skyBox->addChild(geode.get());
+    rootNode->addChild(m_skyBox);
+}
+
+// 获取ViewManager实例
+ViewManager* UIHandler::getViewManager()
+{
+    return &m_viewManager;
 }

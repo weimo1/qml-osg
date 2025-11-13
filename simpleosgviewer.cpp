@@ -9,18 +9,21 @@
 #include <QFileDialog>
 #include <QCoreApplication>
 #include <QMetaObject>
+#include <QKeyEvent>  // 添加键盘事件头文件
 
 SimpleOSGViewer::SimpleOSGViewer(QQuickItem *parent)
-    : QQuickFramebufferObject(parent), m_renderer(nullptr), m_viewType(MainView), m_mouseX(0), m_mouseY(0), m_cameraX(0.0), m_cameraY(0.0), m_cameraZ(0.0)
+    : QQuickFramebufferObject(parent), m_renderer(nullptr), m_viewType(MainView), m_mouseX(0), m_mouseY(0)
 {
+    setMirrorVertically(true);//osg和qml的Y轴朝向是反的
     setTextureFollowsItemSize(true);
     setAcceptedMouseButtons(Qt::AllButtons);
     setAcceptHoverEvents(true);
+
+    setFlag(QQuickItem::ItemIsFocusScope);  // 设置为焦点范围
     
     // 使用定时器定期更新，避免线程问题
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &SimpleOSGViewer::update);
-    connect(timer, &QTimer::timeout, this, &SimpleOSGViewer::updateCameraPosition);
     timer->start(16); // 约60 FPS
 }
 
@@ -51,43 +54,7 @@ SimpleOSGViewer::ViewType SimpleOSGViewer::viewType() const
     return m_viewType;
 }
 
-// 添加获取相机Eye位置的方法
-QVector3D SimpleOSGViewer::getCameraEye() const
-{
-    if (m_renderer) {
-        ViewManager* viewManager = m_renderer->getViewManager();
-        if (viewManager) {
-            osg::Vec3d eye = viewManager->getEye();
-            return QVector3D(eye.x(), eye.y(), eye.z());
-        }
-    }
-    return QVector3D(0.0f, 0.0f, 0.0f);
-}
-
-QVector3D SimpleOSGViewer::getCameraCenter() const
-{
-    if (m_renderer) {
-        ViewManager* viewManager = m_renderer->getViewManager();
-        if (viewManager) {
-            osg::Vec3d center = viewManager->getCenter();
-            return QVector3D(center.x(), center.y(), center.z());
-        }
-    }
-    return QVector3D(0.0f, 0.0f, 0.0f);
-}
-
-QVector3D SimpleOSGViewer::getCameraUp() const
-{
-    if (m_renderer) {
-        ViewManager* viewManager = m_renderer->getViewManager();
-        if (viewManager) {
-            osg::Vec3d up = viewManager->getUp();
-            return QVector3D(up.x(), up.y(), up.z());
-        }
-    }
-    return QVector3D(0.0f, 0.0f, 1.0f);
-}
-
+ 
 void SimpleOSGViewer::mousePressEvent(QMouseEvent *event)
 {
     // 更新鼠标位置
@@ -176,112 +143,80 @@ void SimpleOSGViewer::hoverMoveEvent(QHoverEvent *event)
     QQuickFramebufferObject::hoverMoveEvent(event);
 }
 
-// 实现创建图形功能
-void SimpleOSGViewer::createShape()
+// 添加键盘按下事件处理函数
+void SimpleOSGViewer::keyPressEvent(QKeyEvent *event)
 {
-    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeCreateShape", Qt::QueuedConnection);
+        // 将键盘事件传递给渲染器处理
+        m_renderer->processEvent(event);
     }
+    
+    // 调用父类处理确保事件被正确处理
+    QQuickFramebufferObject::keyPressEvent(event);
 }
 
-// 实现创建PBR场景功能
-void SimpleOSGViewer::createPBRScene()
+// 添加键盘释放事件处理函数
+void SimpleOSGViewer::keyReleaseEvent(QKeyEvent *event)
 {
-    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeCreatePBRScene", Qt::QueuedConnection);
+        // 将键盘事件传递给渲染器处理
+        m_renderer->processEvent(event);
     }
+    
+    // 调用父类处理确保事件被正确处理
+    QQuickFramebufferObject::keyReleaseEvent(event);
 }
 
-// 实现重置视野功能
-void SimpleOSGViewer::resetView()
+// 实现重置视图功能
+void SimpleOSGViewer::resetToHomeView()
 {
-    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
         QMetaObject::invokeMethod(this, "invokeResetView", Qt::QueuedConnection);
+    }
+}
+
+// 实现适应视图功能
+void SimpleOSGViewer::fitToView()
+{
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeFitToView", Qt::QueuedConnection);
     }
 }
 
 // 实现加载OSG文件功能
 void SimpleOSGViewer::loadOSGFile(const QString& fileName)
 {
-    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
         QMetaObject::invokeMethod(this, "invokeLoadOSGFile", Qt::QueuedConnection, Q_ARG(QString, fileName));
     }
-}
+} 
+ 
 
-// 实现文件选择功能
-void SimpleOSGViewer::openFileSelector()
+// 添加光照控制功能
+void SimpleOSGViewer::toggleLighting(bool enabled)
 {
-    // 发送信号通知QML打开文件对话框
-    emit requestFileDialog();
-}
-
-// 实现选择模型功能
-void SimpleOSGViewer::selectModel(int x, int y)
-{
-    // 直接调用渲染器的方法
     if (m_renderer) {
-        m_renderer->selectModel(x, y);
+        QMetaObject::invokeMethod(this, "invokeToggleLighting", Qt::QueuedConnection, Q_ARG(bool, enabled));
     }
 }
 
-// 实现设置图形颜色功能
-void SimpleOSGViewer::setShapeColor(float r, float g, float b, float a)
-{
-    // 直接调用渲染器的方法
-    if (m_renderer) {
-        m_renderer->setShapeColor(r, g, b, a);
-    }
-}
-
-// 实际调用渲染器创建图形的方法
-void SimpleOSGViewer::invokeCreateShape()
-{
-    if (m_renderer) {
-        m_renderer->createShape();
-    }
-}
-
-// 实际调用渲染器创建PBR场景的方法
-void SimpleOSGViewer::invokeCreatePBRScene()
-{
-    if (m_renderer) {
-        m_renderer->createPBRScene();
-    }
-}
-
-// 实际调用渲染器重置视野的方法
+// 添加invokeResetView槽函数的实现
 void SimpleOSGViewer::invokeResetView()
-{
-    if (m_renderer) {
-        m_renderer->resetView(m_viewType);
-    }
-}
-
-// 添加回归主视角的方法
-void SimpleOSGViewer::resetToHomeView()
-{
-    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
-    if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeResetToHomeView", Qt::QueuedConnection);
-    }
-}
-
-// 实际调用渲染器回归主视角的方法
-void SimpleOSGViewer::invokeResetToHomeView()
 {
     if (m_renderer) {
         m_renderer->resetToHomeView();
     }
-    
-    // 强制更新视图
-    update();
 }
 
-// 实际调用渲染器加载文件的方法
+// 添加invokeSetViewType槽函数的实现
+void SimpleOSGViewer::invokeSetViewType(SimpleOSGViewer::ViewType viewType)
+{
+    if (m_renderer) {
+        m_renderer->setViewType(viewType);
+    }
+}
+
+// 添加invokeLoadOSGFile槽函数的实现
 void SimpleOSGViewer::invokeLoadOSGFile(const QString& fileName)
 {
     if (m_renderer) {
@@ -289,29 +224,18 @@ void SimpleOSGViewer::invokeLoadOSGFile(const QString& fileName)
     }
 }
 
-// 实际调用渲染器设置视图类型的方法
-void SimpleOSGViewer::invokeSetViewType(ViewType viewType)
+// 添加invokeFitToView槽函数的实现
+void SimpleOSGViewer::invokeFitToView()
 {
     if (m_renderer) {
-        m_renderer->setViewType(viewType);
+        m_renderer->fitToView();
     }
-    // 强制更新视图
-    update();
 }
 
-// 添加获取摄像机位置的函数
-void SimpleOSGViewer::updateCameraPosition() {
+// 添加invokeToggleLighting槽函数的实现
+void SimpleOSGViewer::invokeToggleLighting(bool enabled)
+{
     if (m_renderer) {
-        ViewManager* viewManager = m_renderer->getViewManager();
-        if (viewManager) {
-            // 从操作器获取当前的相机参数
-            viewManager->updateViewParametersFromManipulator(m_renderer->getViewer());
-            
-            osg::Vec3d eye = viewManager->getEye();
-            m_cameraX = eye.x();
-            m_cameraY = eye.y();
-            m_cameraZ = eye.z();
-            emit cameraPositionChanged();
-        }
+        m_renderer->toggleLighting(enabled);
     }
 }

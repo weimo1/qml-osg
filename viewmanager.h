@@ -2,9 +2,8 @@
 #define VIEWMANAGER_H
 
 #include <osg/Vec3d>
-#include <osg/ref_ptr>
-#include <osg/Group>
 #include <osgViewer/Viewer>
+#include <osg/Group>
 #include "simpleosgviewer.h"
 
 class ViewManager
@@ -12,45 +11,35 @@ class ViewManager
 public:
     ViewManager();
     ~ViewManager();
+
+    // 视图相关的公共方法
+    void setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
+    void resetToHomeView(osgViewer::Viewer* viewer);
+    void fitToView(osgViewer::Viewer* viewer, osg::Group* rootNode);
     
-    // 设置视图参数
-    void setViewParameters(osg::Vec3d eye, osg::Vec3d center, osg::Vec3d up);
-    
-    // 设置和获取正交投影缩放因子
-    void setOrthographicScale(double scale);
-    double getOrthographicScale() const;
-    
-    // 从操作器获取当前视图参数
+    // 相机操作相关方法
+    void setupCameraForView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height, SimpleOSGViewer::ViewType viewType);
     void updateViewParametersFromManipulator(osgViewer::Viewer* viewer);
-    
+
     // 获取视图参数
     osg::Vec3d getEye() const { return m_eye; }
     osg::Vec3d getCenter() const { return m_center; }
     osg::Vec3d getUp() const { return m_up; }
-    
-    // 根据视图类型设置相机
-    void setupCameraForView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height, SimpleOSGViewer::ViewType viewType);
-    
-    // 设置特定视图类型
-    void setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, SimpleOSGViewer::ViewType viewType);
-    
-    // 更新正交投影（用于滚轮缩放）
-    void updateOrthographicProjection(osgViewer::Viewer* viewer, int width, int height);
-    
+
 private:
-    // 视图参数
-    osg::Vec3d m_eye;
-    osg::Vec3d m_center;
-    osg::Vec3d m_up;
-    
-    // 正交投影缩放因子
-    double m_orthographicScale;
-    
     // 视图相关的辅助函数
     void setupFrontView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height);
     void setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height);
     void setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height);
     void setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height);
+    
+    // 设置视图参数
+    void setViewParameters(osg::Vec3d eye, osg::Vec3d center, osg::Vec3d up);
+
+    // 视图参数
+    osg::Vec3d m_eye;
+    osg::Vec3d m_center;
+    osg::Vec3d m_up;
 };
 
 #endif // VIEWMANAGER_H

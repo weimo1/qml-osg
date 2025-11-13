@@ -44,16 +44,14 @@ add_executable(${PROJECT_NAME}
     simpleosgviewer.h
     simpleosgrenderer.cpp
     simpleosgrenderer.h
-    shadercube.cpp
-    shadercube.h
-    shaderpbr.h
-    shaderpbr.cpp
     mousehandler.cpp
     mousehandler.h
-    uihandler.cpp
-    uihandler.h
+    SkyNode.cpp
+    SkyNode.h
     viewmanager.cpp
     viewmanager.h
+    uihandler.cpp
+    uihandler.h
     qml.qrc
 )
 
