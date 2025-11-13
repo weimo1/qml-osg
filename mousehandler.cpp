@@ -186,13 +186,7 @@ bool MouseHandler::handleWheelEvent(const QEvent* event, osgViewer::Viewer* view
         queue->mouseScroll(osgGA::GUIEventAdapter::SCROLL_DOWN);
     }
 
-    // 对于所有视图类型，现在都使用透视投影，不再需要特殊处理正交投影
-    // 滚轮事件由TrackballManipulator自动处理
-
-    // 更新视图管理器中的相机参数
-    if (viewManager) {
-        viewManager->updateViewParametersFromManipulator(viewer);
-    }
+    
 
     return true;
 }

@@ -125,8 +125,8 @@ bool SkyBoxManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
                 _distance *= (1.0 + scrollFactor);
             }
             
-            if (_distance < 1.0) _distance = 1.0;
-            if (_distance > 100.0) _distance = 100.0;
+            if (_distance < 0.1) _distance = 0.1;
+            if (_distance > 500000.0) _distance = 500000.0;
             
             us.requestRedraw();
             return true;

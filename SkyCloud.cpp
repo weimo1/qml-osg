@@ -63,7 +63,7 @@ SkyCloud::SkyCloud(osg::Camera* camera)
     // 深度测试设置
     ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0f, 1.0f));
     // 确保天空盒在最远深度渲染
-    ss->setRenderBinDetails(-2, "RenderBin");
+    ss->setRenderBinDetails(10000000, "RenderBin");
     ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 

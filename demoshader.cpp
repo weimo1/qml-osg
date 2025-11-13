@@ -634,9 +634,7 @@ osg::Node* DemoShader::createVolumeCloudSkyScene(osgViewer::Viewer* viewer)
     osg::ref_ptr<osg::Sphere> sphere = new osg::Sphere(osg::Vec3(0.0, 0.0, 0.0), 450000.0);  // 调整球体半径为1000.0
     osg::ref_ptr<osg::ShapeDrawable> drawable = new osg::ShapeDrawable(sphere);
     
-    drawable->setUseDisplayList(false);
-    drawable->setUseVertexBufferObjects(true);
-    
+
     geode->addDrawable(drawable);
     geode->setCullingActive(false);
     

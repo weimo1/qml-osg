@@ -89,6 +89,9 @@ public:
     void setDrawableColor(osg::Geometry* geom, const osg::Vec4& color);
     void highlightGeometry(osg::Geometry* geom);
     void changeGeometryColor(osg::Geometry* geom);
+    
+    // 添加光照控制方法
+    void toggleLighting(bool enabled);
 
 private:
     void initializeOSG(int width, int height);

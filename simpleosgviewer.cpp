@@ -245,7 +245,8 @@ void SimpleOSGViewer::loadOSGFile(const QString& fileName)
 {
     // 使用QMetaObject::invokeMethod确保在GUI线程中调用
     if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeLoadOSGFile", Qt::QueuedConnection, Q_ARG(QString, fileName));
+        QMetaObject::invokeMethod(this, "invokeLoadOSGFile", Qt::QueuedConnection,
+                                 Q_ARG(QString, fileName));
     }
 }
 
@@ -578,6 +579,24 @@ void SimpleOSGViewer::invokeUpdateSkyCloudParameters(float cloudDensity, float c
     if (m_renderer) {
         m_renderer->updateSkyCloudParameters(cloudDensity, cloudHeight,
                                            coverageThreshold, densityThreshold, edgeThreshold);
+    }
+}
+
+// 添加光照控制的方法
+void SimpleOSGViewer::toggleLighting(bool enabled)
+{
+    // 使用QMetaObject::invokeMethod确保在GUI线程中调用
+    if (m_renderer) {
+        QMetaObject::invokeMethod(this, "invokeToggleLighting", Qt::QueuedConnection,
+                                 Q_ARG(bool, enabled));
+    }
+}
+
+// 实际调用渲染器光照控制的方法
+void SimpleOSGViewer::invokeToggleLighting(bool enabled)
+{
+    if (m_renderer) {
+        m_renderer->toggleLighting(enabled);
     }
 }
 

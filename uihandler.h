@@ -86,6 +86,11 @@ public:
     void updateSkyCloudParameters(osgViewer::Viewer* viewer, osg::Group* rootNode,
                                   float cloudDensity, float cloudHeight,
                                             float coverageThreshold, float densityThreshold, float edgeThreshold);
+                                            
+    // 添加文件加载相关的函数声明
+    void loadSingleOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName);
+    void loadOSGFilesFromDirectory(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& dirPath);
+
 private:
     ViewManager m_viewManager;
     osg::ref_ptr<DemoShader> m_demoShader;

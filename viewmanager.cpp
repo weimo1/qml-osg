@@ -36,6 +36,9 @@ void ViewManager::updateViewParametersFromManipulator(osgViewer::Viewer* viewer)
         
         // 从矩阵中提取eye, center, up参数
         matrix.getLookAt(m_eye, m_center, m_up);
+        
+        // 设置缩放限制，允许更近的缩放距离
+        manipulator->setMinimumDistance(0.0001, true);  // 设置最小距离为0.0001，true表示相对值
     }
     
     // 确保设置透视投影矩阵
@@ -45,8 +48,9 @@ void ViewManager::updateViewParametersFromManipulator(osgViewer::Viewer* viewer)
         osg::Viewport* viewport = camera->getViewport();
         if (viewport) {
             double aspectRatio = static_cast<double>(viewport->width()) / static_cast<double>(viewport->height());
-            // 设置透视投影
-            camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 1.0, 10000.0);
+            // 设置透视投影，调整近裁剪面和远裁剪面以适应大气渲染场景
+            // 近裁剪面设置为0.1，远裁剪面设置为500000.0以适应大尺度天空盒
+            camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 500000.0);
         }
     }
 }
@@ -142,10 +146,13 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
         manipulator->setHomePosition(eye, center, up);
         
         // 对于所有视图类型，都不固定垂直轴以获得更好的旋转体验
-        manipulator->setVerticalAxisFixed(false);
+        manipulator->setVerticalAxisFixed(true);
         
         // 禁止投掷效果，避免自动旋转
         manipulator->setAllowThrow(false);
+        
+        // 设置缩放限制，允许更近的缩放距离
+        manipulator->setMinimumDistance(0.0001, true);  // 设置最小距离为0.0001，true表示相对值
         
         // 立即应用home位置
         manipulator->home(0.0);
@@ -206,8 +213,8 @@ void ViewManager::setupFrontView(osgViewer::Viewer* viewer, osg::Group* rootNode
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置透视投影（不再使用正交投影）
-    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 1.0, 10000.0);
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 0.1, 500000.0);
 }
 
 void ViewManager::setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -252,8 +259,8 @@ void ViewManager::setupSideView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置透视投影（不再使用正交投影）
-    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 1.0, 10000.0);
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 0.1, 500000.0);
 }
 
 void ViewManager::setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -298,8 +305,8 @@ void ViewManager::setupTopView(osgViewer::Viewer* viewer, osg::Group* rootNode, 
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置透视投影（不再使用正交投影）
-    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 1.0, 10000.0);
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, static_cast<double>(width) / static_cast<double>(height), 0.1, 500000.0);
 }
 
 void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode, int width, int height)
@@ -321,8 +328,8 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 更新视图参数
     setViewParameters(eye, center, up);
     
-    // 设置透视投影
-    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 1.0, 10000.0);
+    // 设置透视投影，调整裁剪面以适应大气渲染场景
+    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 1.0, 500000.0);
     
     // 确保深度测试正确配置
     osg::StateSet* stateset = camera->getOrCreateStateSet();

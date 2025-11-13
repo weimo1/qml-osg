@@ -411,93 +411,174 @@ void UIHandler::loadOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, con
             return;
         }
         
-        // 处理相对路径 - 尝试在当前工作目录和应用程序目录中查找文件
-        QString fullPath = fileName;
-        QFile file(fullPath);
+        // 处理QML传来的file:// URL格式
+        QString localFileName = fileName;
+        if (localFileName.startsWith("file://")) {
+            // 移除file://前缀
+            localFileName = localFileName.mid(7);
+            // 处理Windows路径中的额外斜杠
+            if (localFileName.startsWith("/")) {
+                localFileName = localFileName.mid(1);
+            }
+        }
         
-        // 如果文件不存在，尝试在应用程序目录中查找
+        QFileInfo fileInfo(localFileName);
+        if (fileInfo.isDir()) {
+            // 如果是目录，则遍历目录下的所有OSG相关文件
+            loadOSGFilesFromDirectory(viewer, rootNode, localFileName);
+        } else {
+            // 如果是单个文件，则加载该文件
+            loadSingleOSGFile(viewer, rootNode, localFileName);
+        }
+    }
+}
+
+// 加载单个OSG文件
+void UIHandler::loadSingleOSGFile(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& fileName)
+{
+    // 检查文件名是否为空
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    // 处理相对路径 - 尝试在当前工作目录和应用程序目录中查找文件
+    QString fullPath = fileName;
+    QFile file(fullPath);
+    
+    // 如果文件不存在，尝试在应用程序目录中查找
+    if (!file.exists()) {
+        QString appDir = QCoreApplication::applicationDirPath();
+        fullPath = appDir + "/" + fileName;
+        file.setFileName(fullPath);
+        
+        // 如果仍然不存在，尝试在应用程序目录的上一级目录中查找
         if (!file.exists()) {
-            QString appDir = QCoreApplication::applicationDirPath();
-            fullPath = appDir + "/" + fileName;
+            fullPath = appDir + "/../" + fileName;
             file.setFileName(fullPath);
-            
-            // 如果仍然不存在，尝试在应用程序目录的上一级目录中查找
-            if (!file.exists()) {
-                fullPath = appDir + "/../" + fileName;
-                file.setFileName(fullPath);
-            }
         }
+    }
+    
+    if (!file.exists()) {
+        return;
+    }
+    
+    // 将QString转换为std::string
+    std::string stdFileName = fullPath.toStdString();
+    
+    try {
+        // 使用osgDB加载模型
+        osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFile(stdFileName);
         
-        if (!file.exists()) {
-            return;
-        }
-        
-        // 将QString转换为std::string
-        std::string stdFileName = fullPath.toStdString();
-        
-        try {
-            // 使用osgDB加载模型
-            osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFile(stdFileName);
+        if (loadedModel) {
+            // 不再清空现有场景，直接添加加载的模型到场景
+            rootNode->addChild(loadedModel);
             
-            if (loadedModel) {
-                // 不再清空现有场景，直接添加加载的模型到场景
-                rootNode->addChild(loadedModel);
+            // 获取模型的包围球，用于计算合适的相机位置
+            osg::BoundingSphere bs = loadedModel->getBound();
+            double radius = bs.radius();
+            osg::Vec3d center = bs.center();
+            
+            // 如果模型有有效的边界球，则调整相机位置确保能看到整个模型
+            if (radius > 0) {
+                // 计算合适的视距，确保模型完整显示
+                double viewDistance = radius * 3.0;
                 
-                // 获取模型的包围球，用于计算合适的相机位置
-                osg::BoundingSphere bs = loadedModel->getBound();
-                double radius = bs.radius();
-                osg::Vec3d center = bs.center();
+                // 设置相机方向向上为Z轴
+                osg::Vec3d up(0.0, 0.0, 1.0);
                 
-                // 如果模型有有效的边界球，则调整相机位置确保能看到整个模型
-                if (radius > 0) {
-                    // 计算合适的视距，确保模型完整显示
-                    double viewDistance = radius * 3.0;
+                // 从前方观察模型（稍微偏下的角度）
+                osg::Vec3d viewDirection(0.0, -1.0, 0.3);
+                viewDirection.normalize();
+                
+                // 相机位置 = 模型中心 + 视线方向 * 距离
+                osg::Vec3d eye = center + viewDirection * viewDistance;
+                
+                // 更新视图管理器中的相机参数
+                m_viewManager.setViewParameters(eye, center, up);
+                
+                // 同时更新操作器的home位置，确保视角正确
+                osgGA::TrackballManipulator* manipulator = dynamic_cast<osgGA::TrackballManipulator*>(viewer->getCameraManipulator());
+                if (manipulator) {
+                    manipulator->setHomePosition(eye, center, up);
+                    // 立即应用home位置
+                    manipulator->home(0.0);
                     
-                    // 设置相机方向向上为Z轴
-                    osg::Vec3d up(0.0, 0.0, 1.0);
-                    
-                    // 从前方观察模型（稍微偏下的角度）
-                    osg::Vec3d viewDirection(0.0, -1.0, 0.3);
-                    viewDirection.normalize();
-                    
-                    // 相机位置 = 模型中心 + 视线方向 * 距离
-                    osg::Vec3d eye = center + viewDirection * viewDistance;
-                    
-                    // 更新视图管理器中的相机参数
-                    m_viewManager.setViewParameters(eye, center, up);
-                    
-                    // 同时更新操作器的home位置，确保视角正确
-                    osgGA::TrackballManipulator* manipulator = dynamic_cast<osgGA::TrackballManipulator*>(viewer->getCameraManipulator());
-                    if (manipulator) {
-                        manipulator->setHomePosition(eye, center, up);
-                        // 立即应用home位置
-                        manipulator->home(0.0);
-                    }
-                    
-                    // 调整投影矩阵以适应模型大小
-                    float aspectRatio = static_cast<float>(viewer->getCamera()->getViewport()->width()) / 
-                                       static_cast<float>(viewer->getCamera()->getViewport()->height());
-                    viewer->getCamera()->setProjectionMatrixAsPerspective(
-                        30.0f, aspectRatio, radius * 0.1f, radius * 100.0f);
+                    // 设置缩放限制，允许更近的缩放距离
+                    manipulator->setMinimumDistance(0.0001, true);  // 设置最小距离为0.0001，true表示相对值
                 }
-                // 注意：如果模型没有有效的边界球，我们不改变当前的相机位置
                 
-                // 强制更新视图
-                viewer->advance();
-                viewer->requestRedraw();
+                // 调整投影矩阵以适应模型大小
+                float aspectRatio = static_cast<float>(viewer->getCamera()->getViewport()->width()) / 
+                                   static_cast<float>(viewer->getCamera()->getViewport()->height());
+                // 调整投影矩阵以适应模型大小，增加远裁剪面以防止模型消失
+                // 远裁剪面从radius * 100.0f调整为radius * 1000.0f以提供更大的可视范围
+                viewer->getCamera()->setProjectionMatrixAsPerspective(
+                    30.0f, aspectRatio, radius * 0.1f, radius * 1000.0f);
             }
-        }
-        catch (const std::exception& e) {
-            // 如果加载失败，不执行任何操作
-            // 保持现有场景不变
-        }
-        catch (...) {
-            // 如果加载失败，重新创建默认场景
-            rootNode->removeChildren(0, rootNode->getNumChildren());
+            // 注意：如果模型没有有效的边界球，我们不改变当前的相机位置
+            
+            // 强制更新视图
             viewer->advance();
             viewer->requestRedraw();
         }
     }
+    catch (const std::exception& e) {
+        // 如果加载失败，不执行任何操作
+        // 保持现有场景不变
+    }
+    catch (...) {
+        // 如果加载失败，重新创建默认场景
+        rootNode->removeChildren(0, rootNode->getNumChildren());
+        viewer->advance();
+        viewer->requestRedraw();
+    }
+}
+
+// 从目录加载所有OSG相关文件
+void UIHandler::loadOSGFilesFromDirectory(osgViewer::Viewer* viewer, osg::Group* rootNode, const QString& dirPath)
+{
+    QDir dir(dirPath);
+    if (!dir.exists()) {
+        // qDebug() << "Directory does not exist:" << dirPath;
+        return;
+    }
+
+    // 支持的OSG文件扩展名
+    QStringList filters;
+    filters << "*.osg" << "*.osgt" << "*.osgb";
+    
+    // 获取目录中所有匹配的文件
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::Readable | QDir::NoDotAndDotDot);
+    
+    // 获取所有子目录
+    QFileInfoList subDirList = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+    
+    // 先加载当前目录中的文件
+    for (const QFileInfo& fileInfo : fileList) {
+        loadSingleOSGFile(viewer, rootNode, fileInfo.absoluteFilePath());
+    }
+    
+    // 只加载子目录中与子目录同名的一个OSG文件，不加载子目录底下的其他文件
+    for (const QFileInfo& subDirInfo : subDirList) {
+        QString subDirName = subDirInfo.fileName();
+        // 构造与子目录同名的OSG文件路径
+        QString osgFileName = subDirInfo.absoluteFilePath() + "/" + subDirName + ".osg";
+        QString osgtFileName = subDirInfo.absoluteFilePath() + "/" + subDirName + ".osgt";
+        QString osgbFileName = subDirInfo.absoluteFilePath() + "/" + subDirName + ".osgb";
+        
+        // 检查是否存在同名的OSG文件并加载，只加载第一个找到的文件
+        if (QFile::exists(osgFileName)) {
+            loadSingleOSGFile(viewer, rootNode, osgFileName);
+        } else if (QFile::exists(osgtFileName)) {
+            loadSingleOSGFile(viewer, rootNode, osgtFileName);
+        } else if (QFile::exists(osgbFileName)) {
+            loadSingleOSGFile(viewer, rootNode, osgbFileName);
+        }
+        
+        // 不再递归加载子目录中的其他文件
+    }
+    
+    // 注意：这里没有调用fitToView()，因为UIHandler中可能没有这个方法
 }
 
 void UIHandler::setShapeColor(osg::Geode* shapeNode, float r, float g, float b, float a)

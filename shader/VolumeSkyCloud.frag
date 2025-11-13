@@ -97,18 +97,26 @@ float generateCloudShape(vec2 uv) {
     }
     
     // 在有云的区域生成云的形状细节
-    float cloudShape = 0.0;
+    float cloudShape = 0.1;
     
-    // 主云图噪声
-    cloudShape += sampleCloudMap(uv * 0.5) * 0.5;     // 大尺度云朵形状
-    cloudShape += sampleCloudMap(uv * 1.0) * 0.3;     // 中等尺度云朵细节
-    cloudShape += sampleCloudMap(uv * 2.0) * 0.2;     // 小尺度云朵细节
+    // 主云图噪声 - 增加更多层次
+    cloudShape += sampleCloudMap(uv * 0.25) * 0.4;    // 超大尺度云朵形状
+    cloudShape += sampleCloudMap(uv * 0.5) * 0.6;     // 大尺度云朵形状
+    cloudShape += sampleCloudMap(uv * 1.0) * 0.5;     // 中等尺度云朵细节
+    cloudShape += sampleCloudMap(uv * 2.0) * 0.4;     // 小尺度云朵细节
+    cloudShape += sampleCloudMap(uv * 4.0) * 0.3;     // 细小尺度云朵细节
     
-    // 添加细节噪声层
-    cloudShape += sampleDetailMap(uv * 1.0) * 0.4;
-    cloudShape += sampleDetailMap(uv * 2.0) * 0.3;
-    cloudShape += sampleDetailMap(uv * 4.0) * 0.2;
-    cloudShape += sampleDetailMap(uv * 8.0) * 0.1;
+    // 添加细节噪声层 - 增加更多层次并控制强度
+    cloudShape += sampleDetailMap(uv * 0.5) * 0.3;    // 超大尺度细节
+    cloudShape += sampleDetailMap(uv * 1.0) * 0.25;   // 大尺度细节
+    cloudShape += sampleDetailMap(uv * 2.0) * 0.2;    // 中等尺度细节
+    cloudShape += sampleDetailMap(uv * 4.0) * 0.15;   // 小尺度细节
+    cloudShape += sampleDetailMap(uv * 8.0) * 0.1;    // 细小尺度细节
+    cloudShape += sampleDetailMap(uv * 16.0) * 0.08;  // 高频细节
+    cloudShape += sampleDetailMap(uv * 32.0) * 0.05;  // 超高频细节
+    
+    // 使用clamp控制云形状值，避免过曝
+    cloudShape = clamp(cloudShape, 0.0, 1.2);
     
     // 用coverage调制云的密度
     float cloudPresence = (coverage - coverageThreshold) / (1.0 - coverageThreshold);
@@ -170,7 +178,7 @@ float getCloudAlpha(vec3 direction) {
     float cloudFade = smoothstep(0.0, 0.1, rotatedDirection.y);
     
     // 应用云密度参数
-    float finalDensity = cloudShape * cloudFade * vCloudDensity * 0.025;
+    float finalDensity = cloudShape * cloudFade * vCloudDensity * 0.0195;
     
     return finalDensity;
 }

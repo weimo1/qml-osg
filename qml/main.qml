@@ -41,6 +41,9 @@ ApplicationWindow {
     // 大气参数
     property real sunZenithAngle: 0.5
     property real sunAzimuthAngle: 0.0
+    
+    // 光照状态
+    property bool lightingEnabled: true
 
     // 工具栏
     header: Rectangle {
@@ -237,36 +240,29 @@ ApplicationWindow {
                         osgViewer.createSkyboxAtmosphereWithPBRScene()
                     }
                 }
-            }
-            
-            // 状态指示器
-            Rectangle {
-                width: 100
-                height: 30
-                color: "#27ae60"
-                radius: 15
-                
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 5
-                    
-                    Rectangle {
-                        width: 10
-                        height: 10
-                        color: "#2ecc71"
-                        radius: 5
-                        anchors.verticalCenter: parent.verticalCenter
+                //光照控制
+                Button {
+                    text: lightingEnabled ? "禁用光照" : "启用光照"
+                    background: Rectangle {
+                        color: "#f1c40f"
+                        radius: 4
                     }
-                    
-                    Text {
-                        text: "就绪"
+                    contentItem: Text {
+                        text: "禁用光照"
                         color: "white"
-                        font.pixelSize: 12
-                        anchors.verticalCenter: parent.verticalCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Toggle Lighting button clicked")
+                        // 切换光照状态
+                        lightingEnabled = !lightingEnabled
+                        osgViewer.toggleLighting(lightingEnabled)
                     }
                 }
             }
-        }
+            }
+            
     }
     
     // 主要内容区域 - 使用绝对定位确保完全填充
@@ -545,20 +541,39 @@ ApplicationWindow {
                         spacing: 10
                         
                         Button {
-                            text: "加载"
-                            Layout.fillWidth: true
+                            text: "加载模型"
+                            width: parent.width
+                            background: Rectangle {
+                                color: "#9b59b6"
+                                radius: 4
+                            }
+                            contentItem: Text {
+                                text: "加载模型"
+                                color: "white"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
                             onClicked: {
-                                console.log("Load File button clicked, file path: " + filePath)
-                                osgViewer.loadOSGFile(filePath)
+                                console.log("Load Model from sidebar clicked")
+                                fileDialog.open()
                             }
                         }
-                        
                         Button {
-                            text: "选择"
-                            Layout.fillWidth: true
+                            text: "加载目录"
+                            width: parent.width
+                            background: Rectangle {
+                                color: "#8e44ad"
+                                radius: 4
+                            }
+                            contentItem: Text {
+                                text: "加载目录"
+                                color: "white"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
                             onClicked: {
-                                console.log("Select File button clicked")
-                                osgViewer.openFileSelector()
+                                console.log("Load Directory from default controls clicked")
+                                folderDialog.open()
                             }
                         }
                     }
@@ -619,7 +634,7 @@ ApplicationWindow {
             
             // 云层参数控制组件
             Component {
-                id: lightControls
+                id: volumeCloudControls
                 
                 Column {
                     width: parent.width
@@ -1533,7 +1548,7 @@ ApplicationWindow {
                         color: "#bdc3c7"
                     }
                     
-                    // 覆盖率阈值控制
+                    // �ab覆盖率阈值控制
                     Text {
                         text: "覆盖率阈值 (Coverage Threshold)"
                         font.pixelSize: 14
@@ -1824,19 +1839,24 @@ ApplicationWindow {
     
     // 文件选择对话框
     FileDialog {
-        id: fileDialog
-        title: "请选择OSG文件"
-        nameFilters: ["OSG文件 (*.osg *.osgt *.osgb)", "所有文件 (*)"]
-        onAccepted: {
-            // 获取选择的文件路径并更新文本框
-            var selectedFile = fileDialog.selectedFile.toString();
-            // 移除 "file:///" 前缀
-            if (selectedFile.startsWith("file:///")) {
-                selectedFile = selectedFile.substring(8);
+                id: fileDialog
+                title: "请选择OSG文件"
+                nameFilters: ["OSG文件 (*.osg *.osgt *.osgb)", "所有文件 (*)"]
+                onAccepted: {
+                    console.log("选择的文件: " + fileDialog.selectedFile)
+                    // 调用OSG视图组件加载文件
+                    osgViewer.loadOSGFile(fileDialog.selectedFile)
+                }
             }
-            // 通过window的属性访问filePath（不能直接访问filePathInput，因为不在同一作用域）
-            window.filePath = selectedFile;
-            console.log("选择的文件: " + selectedFile);
+    
+    // 添加目录对话框
+    FolderDialog {
+        id: folderDialog
+        title: "请选择包含OSG文件的目录"
+        onAccepted: {
+            console.log("选择的目录: " + folderDialog.selectedFolder)
+            // 调用OSG视图组件加载目录
+            osgViewer.loadOSGFile(folderDialog.selectedFolder)
         }
     }
     

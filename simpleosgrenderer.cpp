@@ -98,8 +98,13 @@ void SimpleOSGRenderer::initializeOSG(int width, int height)
         osg::ref_ptr<osgGA::TrackballManipulator> manipulator = new osgGA::TrackballManipulator;
         
         // 设置操作器参数以改善旋转体验
-        manipulator->setVerticalAxisFixed(false);  // 不固定垂直轴
+        manipulator->setVerticalAxisFixed(true);  // 不固定垂直轴
         manipulator->setAllowThrow(false);         // 禁止投掷效果，避免自动旋转
+        
+        // 设置缩放限制，允许更近的缩放距离
+        // 通过反射机制设置最小距离，因为setMinimumDistance是受保护的方法
+        // 使用更小的最小距离值，允许相机更靠近目标点
+        manipulator->setMinimumDistance(0.0001, true);  // 设置最小距离为0.0001，true表示相对值
         
         m_viewer->setCameraManipulator(manipulator.get());
         
@@ -169,6 +174,9 @@ void SimpleOSGRenderer::createPBRScene()
             osg::Vec3d center(0.0, 0.0, 0.0);
             osg::Vec3d up(0.0, 0.0, 1.0);
             manipulator->setHomePosition(eye, center, up);
+            
+            // 设置缩放限制，允许更近的缩放距离
+            manipulator->setMinimumDistance(0.0001, true);  // 设置最小距离为0.0001，true表示相对值
         }
     }
 }
@@ -808,6 +816,27 @@ void SimpleOSGRenderer::updateSkyCloudParameters(float cloudDensity, float cloud
                                             coverageThreshold,densityThreshold,edgeThreshold
                                             );
 }
+}
+
+// 添加光照控制方法
+void SimpleOSGRenderer::toggleLighting(bool enabled)
+{
+    if (!m_rootNode) return;
+
+    // 遍历场景图，启用或禁用光照
+    osg::StateSet* stateSet = m_rootNode->getOrCreateStateSet();
+    if (enabled) {
+        stateSet->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        qDebug() << "Lighting enabled";
+    } else {
+        stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+        qDebug() << "Lighting disabled";
+    }
+
+    // 强制更新视图
+    if (m_viewer) {
+        m_viewer->requestRedraw();
+    }
 }
 
 // 已详替换为DemoShader中的辧段 - updateTexturedAtmosphereParameters不再使用
