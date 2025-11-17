@@ -52,6 +52,8 @@ add_executable(${PROJECT_NAME}
     viewmanager.h
     uihandler.cpp
     uihandler.h
+    AtmosphereDemo.cpp
+    AtmosphereDemo.h
     qml.qrc
 )
 

@@ -1,20 +1,21 @@
 #include "simpleosgviewer.h"
 #include "simpleosgrenderer.h"
-#include <QQuickWindow>
-#include <QDebug>
-#include <QTimer>
+#include <QOpenGLFramebufferObject>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QHoverEvent>
-#include <QFileDialog>
-#include <QCoreApplication>
-#include <QMetaObject>
-#include <QKeyEvent>  // 添加键盘事件头文件
+#include <QKeyEvent>
+#include <QDebug>
+#include <QTimer>
 
 SimpleOSGViewer::SimpleOSGViewer(QQuickItem *parent)
-    : QQuickFramebufferObject(parent), m_renderer(nullptr), m_viewType(MainView), m_mouseX(0), m_mouseY(0)
+    : QQuickFramebufferObject(parent)
+    , m_renderer(nullptr)
+    , m_viewType(MainView)
+    , m_mouseX(0)
+    , m_mouseY(0)
 {
-    setMirrorVertically(true);//osg和qml的Y轴朝向是反的
+     setMirrorVertically(true);//osg和qml的Y轴朝向是反的
     setTextureFollowsItemSize(true);
     setAcceptedMouseButtons(Qt::AllButtons);
     setAcceptHoverEvents(true);
@@ -24,97 +25,71 @@ SimpleOSGViewer::SimpleOSGViewer(QQuickItem *parent)
     // 使用定时器定期更新，避免线程问题
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &SimpleOSGViewer::update);
-    timer->start(16); // 约60 FPS
+    timer->start(16);
 }
 
 QQuickFramebufferObject::Renderer *SimpleOSGViewer::createRenderer() const
 {
-    m_renderer = new SimpleOSGRenderer(m_viewType);
-    return m_renderer;
+    // 创建渲染器实例
+    SimpleOSGViewer* self = const_cast<SimpleOSGViewer*>(this);
+    self->m_renderer = new SimpleOSGRenderer(m_viewType);
+    // 设置viewer引用
+    self->m_renderer->setViewer(self);
+    return self->m_renderer;
 }
 
-void SimpleOSGViewer::setViewType(ViewType viewType)
-{
-    if (m_viewType != viewType) {
-        m_viewType = viewType;
-        emit viewTypeChanged();
-        
-        // 通知渲染器更新视图类型
-        if (m_renderer) {
-            QMetaObject::invokeMethod(this, "invokeSetViewType", Qt::QueuedConnection, Q_ARG(SimpleOSGViewer::ViewType, viewType));
-        }
-        
-        // 强制更新视图
-        update();
-    }
-}
-
-SimpleOSGViewer::ViewType SimpleOSGViewer::viewType() const
-{
-    return m_viewType;
-}
-
- 
+// 添加鼠标事件处理函数
 void SimpleOSGViewer::mousePressEvent(QMouseEvent *event)
 {
-    // 更新鼠标位置
     m_mouseX = event->x();
     m_mouseY = event->y();
     emit mousePositionChanged();
     
-    // 将所有鼠标按下事件传递给渲染器
     if (m_renderer) {
         m_renderer->processEvent(event);
     }
-    // 不调用父类的mousePressEvent，避免事件被拦截
-    // QQuickFramebufferObject::mousePressEvent(event);
-    event->setAccepted(true); // 标记事件已被处理
+    
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
 }
 
 void SimpleOSGViewer::mouseMoveEvent(QMouseEvent *event)
 {
-    // 更新鼠标位置
     m_mouseX = event->x();
     m_mouseY = event->y();
     emit mousePositionChanged();
     
-    // 将所有鼠标移动事件传递给渲染器
     if (m_renderer) {
         m_renderer->processEvent(event);
     }
-    event->setAccepted(true); // 标记事件已被处理
+    
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
 }
 
 void SimpleOSGViewer::mouseReleaseEvent(QMouseEvent *event)
 {
-    // 更新鼠标位置
     m_mouseX = event->x();
     m_mouseY = event->y();
     emit mousePositionChanged();
     
-    // 将所有鼠标释放事件传递给渲染器
     if (m_renderer) {
         m_renderer->processEvent(event);
     }
-    event->setAccepted(true); // 标记事件已被处理
+    
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
 }
 
 void SimpleOSGViewer::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    // 处理双击事件，特别是左键双击回归视角
-    if (event->button() == Qt::LeftButton) {
-        if (m_renderer) {
-            // 调用回归视角功能
-            QMetaObject::invokeMethod(this, "invokeResetView", Qt::QueuedConnection);
-        }
-    }
-    
-    // 将双击事件也传递给渲染器
+    // 双击事件处理
     if (m_renderer) {
         m_renderer->processEvent(event);
     }
     
-    event->setAccepted(true);
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
 }
 
 void SimpleOSGViewer::wheelEvent(QWheelEvent *event)
@@ -122,120 +97,150 @@ void SimpleOSGViewer::wheelEvent(QWheelEvent *event)
     if (m_renderer) {
         m_renderer->processEvent(event);
     }
-    // 不调用父类的wheelEvent，避免事件被拦截
-    // QQuickFramebufferObject::wheelEvent(event);
-    event->setAccepted(true); // 标记事件已被处理
+    
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
+}
+
+void SimpleOSGViewer::keyPressEvent(QKeyEvent *event)
+{
+    if (m_renderer) {
+        m_renderer->processEvent(event);
+    }
+    
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
+}
+
+void SimpleOSGViewer::keyReleaseEvent(QKeyEvent *event)
+{
+    if (m_renderer) {
+        m_renderer->processEvent(event);
+    }
+    
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
 }
 
 void SimpleOSGViewer::hoverMoveEvent(QHoverEvent *event)
 {
-    // 更新鼠标位置
     m_mouseX = event->pos().x();
     m_mouseY = event->pos().y();
     emit mousePositionChanged();
     
-    // 将悬停事件也传递给渲染器
     if (m_renderer) {
-        // 创建一个模拟的鼠标移动事件
-        QMouseEvent mouseEvent(QEvent::MouseMove, event->pos(), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
-        m_renderer->processEvent(&mouseEvent);
-    }
-    QQuickFramebufferObject::hoverMoveEvent(event);
-}
-
-// 添加键盘按下事件处理函数
-void SimpleOSGViewer::keyPressEvent(QKeyEvent *event)
-{
-    if (m_renderer) {
-        // 将键盘事件传递给渲染器处理
         m_renderer->processEvent(event);
     }
     
-    // 调用父类处理确保事件被正确处理
-    QQuickFramebufferObject::keyPressEvent(event);
+    // 不要设置event->setAccepted(true)，让事件继续传播
+    // event->setAccepted(true);
 }
 
-// 添加键盘释放事件处理函数
-void SimpleOSGViewer::keyReleaseEvent(QKeyEvent *event)
+// 视图类型属性的getter和setter
+SimpleOSGViewer::ViewType SimpleOSGViewer::viewType() const
 {
-    if (m_renderer) {
-        // 将键盘事件传递给渲染器处理
-        m_renderer->processEvent(event);
-    }
-    
-    // 调用父类处理确保事件被正确处理
-    QQuickFramebufferObject::keyReleaseEvent(event);
+    return m_viewType;
 }
 
-// 实现重置视图功能
-void SimpleOSGViewer::resetToHomeView()
+void SimpleOSGViewer::setViewType(ViewType viewType)
 {
-    if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeResetView", Qt::QueuedConnection);
+    if (m_viewType != viewType) {
+        m_viewType = viewType;
+        emit viewTypeChanged();
     }
 }
 
-// 实现适应视图功能
-void SimpleOSGViewer::fitToView()
-{
-    if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeFitToView", Qt::QueuedConnection);
-    }
-}
-
-// 实现加载OSG文件功能
+// 添加公共方法供QML调用
 void SimpleOSGViewer::loadOSGFile(const QString& fileName)
-{
-    if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeLoadOSGFile", Qt::QueuedConnection, Q_ARG(QString, fileName));
-    }
-} 
- 
-
-// 添加光照控制功能
-void SimpleOSGViewer::toggleLighting(bool enabled)
-{
-    if (m_renderer) {
-        QMetaObject::invokeMethod(this, "invokeToggleLighting", Qt::QueuedConnection, Q_ARG(bool, enabled));
-    }
-}
-
-// 添加invokeResetView槽函数的实现
-void SimpleOSGViewer::invokeResetView()
-{
-    if (m_renderer) {
-        m_renderer->resetToHomeView();
-    }
-}
-
-// 添加invokeSetViewType槽函数的实现
-void SimpleOSGViewer::invokeSetViewType(SimpleOSGViewer::ViewType viewType)
-{
-    if (m_renderer) {
-        m_renderer->setViewType(viewType);
-    }
-}
-
-// 添加invokeLoadOSGFile槽函数的实现
-void SimpleOSGViewer::invokeLoadOSGFile(const QString& fileName)
 {
     if (m_renderer) {
         m_renderer->loadOSGFile(fileName);
     }
 }
 
-// 添加invokeFitToView槽函数的实现
-void SimpleOSGViewer::invokeFitToView()
+void SimpleOSGViewer::resetToHomeView()
+{
+    if (m_renderer) {
+        m_renderer->resetToHomeView();
+    }
+}
+
+void SimpleOSGViewer::fitToView()
 {
     if (m_renderer) {
         m_renderer->fitToView();
     }
 }
 
-// 添加invokeToggleLighting槽函数的实现
-void SimpleOSGViewer::invokeToggleLighting(bool enabled)
+void SimpleOSGViewer::toggleLighting(bool enabled)
 {
     if (m_renderer) {
         m_renderer->toggleLighting(enabled);
+    }
+}
+
+void SimpleOSGViewer::createAtmosphere()
+{
+    if (m_renderer) {
+        m_renderer->createAtmosphere();
+    }
+}
+
+// 添加MRT测试方法
+void SimpleOSGViewer::testMRT()
+{
+    if (m_renderer) {
+        m_renderer->testMRT();
+    }
+}
+
+// 添加内部调用的槽函数
+void SimpleOSGViewer::invokeResetView()
+{
+    resetToHomeView();
+}
+
+void SimpleOSGViewer::invokeSetViewType(ViewType viewType)
+{
+    setViewType(viewType);
+    if (m_renderer) {
+        m_renderer->setViewType(viewType);
+    }
+}
+
+void SimpleOSGViewer::invokeLoadOSGFile(const QString& fileName)
+{
+    loadOSGFile(fileName);
+}
+
+void SimpleOSGViewer::invokeFitToView()
+{
+    fitToView();
+}
+
+void SimpleOSGViewer::invokeToggleLighting(bool enabled)
+{
+    toggleLighting(enabled);
+}
+
+void SimpleOSGViewer::invokeCreateAtmosphere()
+{
+    createAtmosphere();
+}
+
+// 添加MRT测试槽函数
+void SimpleOSGViewer::invokeTestMRT()
+{
+    testMRT();
+}
+
+// 更新相机位置的方法
+void SimpleOSGViewer::updateCameraPosition(double x, double y, double z)
+{
+    if (m_cameraX != x || m_cameraY != y || m_cameraZ != z) {
+        m_cameraX = x;
+        m_cameraY = y;
+        m_cameraZ = z;
+        emit cameraPositionChanged();
     }
 }

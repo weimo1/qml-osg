@@ -38,7 +38,7 @@
 #include <QDebug>
 #include "osg/Shape"
 #include "SkyNode.h"
- 
+#include "uihandler.h"  // 添加UIHandler头文件
 
 enum NM_NODEMASK
 {
@@ -68,6 +68,8 @@ enum NM_NODEMASK
 
 SimpleOSGRenderer::SimpleOSGRenderer(SimpleOSGViewer::ViewType viewType)
     : m_initialized(false)
+    , m_uiHandler(new UIHandler)  // 初始化UIHandler
+    , m_osgViewer(nullptr)
 {
     m_mouseHandler = new MouseHandler;    
 }
@@ -75,6 +77,7 @@ SimpleOSGRenderer::SimpleOSGRenderer(SimpleOSGViewer::ViewType viewType)
 SimpleOSGRenderer::~SimpleOSGRenderer()
 {
     delete m_mouseHandler;    
+    delete m_uiHandler;  // 释放UIHandler
 }
 
 
@@ -218,8 +221,6 @@ osg::ref_ptr<osg::Geode> SimpleOSGRenderer::createShape(osg::Vec3 center)
 
  
 }
-
-
 
 void SimpleOSGRenderer::initializeOSG(int width, int height)
 {
@@ -380,6 +381,13 @@ void SimpleOSGRenderer::render()
         }        
         // 使用OSG进行渲染
         m_viewer->frame();
+        
+        // 获取相机位置并更新到QML
+        if (m_osgViewer && m_viewer->getCameraManipulator()) {
+            osg::Vec3d eye, center, up;
+            m_viewer->getCameraManipulator()->getMatrix().getLookAt(eye, center, up);
+            m_osgViewer->updateCameraPosition(eye.x(), eye.y(), eye.z());
+        }
     } 
 }
 
@@ -480,5 +488,21 @@ void SimpleOSGRenderer::toggleLighting(bool enabled)
 {
     if (m_viewer && m_rootNode && m_uiHandler) {
         m_uiHandler->toggleLighting(m_viewer, m_rootNode, enabled);
+    }
+}
+
+// 实现大气渲染功能
+void SimpleOSGRenderer::createAtmosphere()
+{
+    if (m_viewer && m_rootNode && m_uiHandler) {
+        m_uiHandler->createAtmosphere(m_viewer, m_rootNode);
+    }
+}
+
+// 实现MRT测试功能
+void SimpleOSGRenderer::testMRT()
+{
+    if (m_viewer && m_rootNode && m_uiHandler) {
+        m_uiHandler->testMRT(m_viewer, m_rootNode);
     }
 }

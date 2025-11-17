@@ -145,6 +145,44 @@ ApplicationWindow {
                         osgViewer.toggleLighting(toolbarLightingButton.lightingEnabled)
                     }
                 }
+                
+                // 添加大气渲染按钮
+                Button {
+                    text: "大气渲染"
+                    background: Rectangle {
+                        color: "#f39c12"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "大气渲染"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Atmosphere rendering button clicked")
+                        osgViewer.createAtmosphere()
+                    }
+                }
+                
+                // 添加MRT测试按钮
+                Button {
+                    text: "MRT测试"
+                    background: Rectangle {
+                        color: "#9b59b6"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "MRT测试"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("MRT test button clicked")
+                        osgViewer.testMRT()
+                    }
+                }
             }
             
             // 添加文件对话框

@@ -28,7 +28,6 @@ public:
     
     // 添加获取viewer和viewManager的方法
     osgViewer::Viewer* getViewer() const { return m_viewer; }     
-    
 
     void resetToHomeView();
     void fitToView();  // 添加适应视图功能
@@ -37,6 +36,8 @@ public:
     void setViewType(SimpleOSGViewer::ViewType viewType);
     
     void toggleLighting(bool enabled);  // 添加光照控制方法
+    void createAtmosphere();  // 添加大气渲染方法
+    void testMRT();  // 添加MRT测试方法
 
     // 添加模型选择相关方法
     void selectModel(int x, int y);
@@ -44,6 +45,9 @@ public:
     
     // 获取UIHandler实例
     UIHandler* getUIHandler() { return m_uiHandler; }
+    
+    // 设置viewer引用
+    void setViewer(SimpleOSGViewer* viewer) { m_osgViewer = viewer; }
     
 private:
     void initializeOSG(int width, int height);
@@ -55,6 +59,7 @@ private:
     bool m_initialized;    
     MouseHandler* m_mouseHandler;
     UIHandler* m_uiHandler;
+    SimpleOSGViewer* m_osgViewer;  // 添加对SimpleOSGViewer的引用
 };
 
 #endif // SIMPLEOSGRENDERER_H

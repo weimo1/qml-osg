@@ -13,6 +13,10 @@ class SimpleOSGViewer : public QQuickFramebufferObject
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(ViewType viewType READ viewType WRITE setViewType NOTIFY viewTypeChanged)
+    // 添加相机位置属性
+    Q_PROPERTY(double cameraX READ cameraX NOTIFY cameraPositionChanged)
+    Q_PROPERTY(double cameraY READ cameraY NOTIFY cameraPositionChanged)
+    Q_PROPERTY(double cameraZ READ cameraZ NOTIFY cameraPositionChanged)
 
 public:
     explicit SimpleOSGViewer(QQuickItem *parent = nullptr);
@@ -52,35 +56,45 @@ public:
     int mouseX() const { return m_mouseX; }
     int mouseY() const { return m_mouseY; }
     
-    
-    
-     
-signals:
-    void viewTypeChanged();
-    void mousePositionChanged();
-    void cameraPositionChanged();
+    // 获取相机位置
+    double cameraX() const { return m_cameraX; }
+    double cameraY() const { return m_cameraY; }
+    double cameraZ() const { return m_cameraZ; }
     
 public slots:
     // 添加公共方法供QML调用
-   
     void loadOSGFile(const QString& fileName);
     void resetToHomeView();
     void fitToView();
     void toggleLighting(bool enabled);  // 添加光照控制方法
+    void createAtmosphere();  // 添加大气渲染方法
+    void testMRT();  // 添加MRT测试方法
     
     // 添加内部调用的槽函数
-    
     void invokeResetView();
     void invokeSetViewType(ViewType viewType);
     void invokeLoadOSGFile(const QString& fileName);
     void invokeFitToView();
     void invokeToggleLighting(bool enabled);  // 添加光照控制槽函数
+    void invokeCreateAtmosphere();  // 添加大气渲染槽函数
+    void invokeTestMRT();  // 添加MRT测试槽函数
 
+    // 更新相机位置的方法
+    void updateCameraPosition(double x, double y, double z);
+
+signals:
+    void viewTypeChanged();
+    void mousePositionChanged();
+    void cameraPositionChanged();
+    
 private:
     mutable SimpleOSGRenderer* m_renderer;  // 保存渲染器引用
     ViewType m_viewType;  // 视图类型
     int m_mouseX;  // 鼠标X坐标
     int m_mouseY;  // 鼠标Y坐标
+    double m_cameraX;  // 相机X坐标
+    double m_cameraY;  // 相机Y坐标
+    double m_cameraZ;  // 相机Z坐标
  
 };
 

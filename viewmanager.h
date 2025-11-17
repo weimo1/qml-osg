@@ -25,6 +25,9 @@ public:
     osg::Vec3d getEye() const { return m_eye; }
     osg::Vec3d getCenter() const { return m_center; }
     osg::Vec3d getUp() const { return m_up; }
+    
+    // 添加获取相机位置的方法
+    osg::Vec3d getCameraPosition(osgViewer::Viewer* viewer) const;
 
 private:
     // 视图相关的辅助函数

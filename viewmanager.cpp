@@ -130,7 +130,7 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
         manipulator->setHomePosition(eye, center, up);
         
         // 对于所有视图类型，都不固定垂直轴以获得更好的旋转体验
-        manipulator->setVerticalAxisFixed(true);
+        manipulator->setVerticalAxisFixed(false);  // 修改这里，不固定垂直轴
         
         // 禁止投掷效果，避免自动旋转
         manipulator->setAllowThrow(false);
@@ -367,4 +367,21 @@ void ViewManager::fitToView(osgViewer::Viewer* viewer, osg::Group* rootNode)
         // 如果没有有效的包围盒，重置到默认视角
         resetToHomeView(viewer);
     }
+}
+
+// 添加获取相机位置的方法
+osg::Vec3d ViewManager::getCameraPosition(osgViewer::Viewer* viewer) const
+{
+    if (!viewer) return osg::Vec3d(0, 0, 0);
+    
+    // 从相机操纵器获取当前视角位置
+    osgGA::CameraManipulator* manipulator = viewer->getCameraManipulator();
+    if (manipulator) {
+        osg::Matrixd matrix = manipulator->getMatrix();
+        osg::Vec3d eye, center, up;
+        matrix.getLookAt(eye, center, up);
+        return eye;
+    }
+    
+    return osg::Vec3d(0, 0, 0);
 }

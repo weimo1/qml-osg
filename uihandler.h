@@ -10,6 +10,7 @@
 #include "simpleosgviewer.h"
 #include "SkyNode.h"
 #include "viewmanager.h"
+#include "AtmosphereDemo.h"
 
 class UIHandler : public QObject
 {
@@ -38,12 +39,22 @@ public:
     // 天空盒相关方法
     void createSkyBox(osgViewer::Viewer* viewer, osg::Group* rootNode);
     
+    // 大气渲染相关方法
+    void createAtmosphere(osgViewer::Viewer* viewer, osg::Group* rootNode);
+    
+    // MRT测试方法
+    void testMRT(osgViewer::Viewer* viewer, osg::Group* rootNode);
+    
     // 获取ViewManager实例
-    ViewManager* getViewManager();
+    ViewManager* getViewManager(){ return &m_viewManager;}
+
+    osg::ref_ptr<AtmosphereDemo> getAtmosphereDemo(){ return m_atmosphereDemo;}
 
 private:
     ViewManager m_viewManager;
     osg::ref_ptr<SkyBoxThree> m_skyBox;
+    osg::ref_ptr<osg::Group> m_sceneRoot;
+    osg::ref_ptr<AtmosphereDemo> m_atmosphereDemo;
 };
 
 #endif // UIHANDLER_H
