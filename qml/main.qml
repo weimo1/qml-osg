@@ -430,6 +430,17 @@ ApplicationWindow {
                 y: parent.height - height - 10
                 z: 100  // 确保在最上层显示
             }
+            
+            // 添加相机位置显示（右上角）
+            Text {
+                id: cameraPosition
+                text: "相机: x=" + osgViewer.cameraX.toFixed(2) + " y=" + osgViewer.cameraY.toFixed(2) + " z=" + osgViewer.cameraZ.toFixed(2)
+                color: "white"
+                font.pixelSize: 12
+                x: parent.width - width - 10
+                y: 10
+                z: 100  // 确保在最上层显示
+            }
         }
     } 
     

@@ -14,6 +14,9 @@ uniform sampler3D single_mie_scattering_texture;
 uniform sampler2D irradiance_texture;
 uniform sampler2D groundTexture;  // 地球表面模型，原始材质
 
+// 屏幕分辨率
+uniform vec2 iResolution;
+
 in vec3 view_ray;
 in vec2 auv;
 out vec4 color;
@@ -645,7 +648,7 @@ vec3 GetSunAndSkyIrradiance(vec3 p, vec3 normal, vec3 sun_direction,out vec3 sky
 
 const float kLengthUnitInMeters = 1000.000000;
 const vec3  kSphereCenter = vec3(0.0, 0.0, 1000.0) / kLengthUnitInMeters;
-const float kSphereRadius = 000.0 / kLengthUnitInMeters;
+const float kSphereRadius = 1000.0 / kLengthUnitInMeters;
 const vec3 kSphereAlbedo = vec3(0.8);
 const vec3 kGroundAlbedo = vec3(0.0, 0.0, 0.04);
 
@@ -714,90 +717,250 @@ void GetSphereShadowInOut(vec3 view_direction, vec3 sun_direction, out float d_i
   }
 }
 
+// ============ 局部云盒参数 ============
+
+// 使用地心坐标系定义云盒位置
+
+// 云盒中心位置（地心坐标系，单位：km）
+const vec3 kCloudBoxCenter = vec3(0.0, 0.0, 6364.0);  // 地表上方4km
+
+// 云盒尺寸（单位：km）
+const vec3 kCloudBoxSize = vec3(500.0, 500.0, 6.0);  // 50x50x6 km的云盒
+
+// 云的外观参数
+const vec3 kCloudAlbedo = vec3(0.95, 0.95, 0.95);
+const float kCloudExtinction = 0.08;
+
+// 云纹理采样器
+uniform sampler2D cloudTexture;      // 2D云纹理图（天气图）
+uniform sampler2D cloudShapeTexture; // 主体形状2D噪声图
+uniform sampler2D blueNoiseTexture;  // 蓝噪声纹理，用于消除云渲染分层
+
+
+// ============ 云密度函数 ============
+float GetCloudDensity(vec3 point_earth_space) {
+    // 1. 将点转换到云盒局部坐标系
+    vec3 local_pos = point_earth_space - kCloudBoxCenter;
+    
+    // 2. 检查是否在盒子内
+    vec3 half_size = kCloudBoxSize * 0.5;
+    if (abs(local_pos.x) > half_size.x || 
+        abs(local_pos.y) > half_size.y || 
+        abs(local_pos.z) > half_size.z) {
+        return 0.0;  // 在盒子外，密度为0
+    }
+    
+    // 3. 计算UV坐标用于采样天气图
+    vec2 weatherUV = local_pos.xz / kCloudBoxSize.xz + 0.5;  // 转换到[0,1]范围
+    // 增加天气图的缩放，使云分布更加分散
+    weatherUV *= 0.5;  // 缩放UV坐标，使天气图的特征更大，云朵更分散
+    
+    // 4. 采样天气图控制云的分布
+    vec4 weatherMap = texture2D(cloudTexture, weatherUV);
+    
+    // 5. 采样形状纹理生成云的细节形状 - 多重采样
+    // 使用更复杂的UV坐标组合来增强细节
+    vec2 shapeUV1 = local_pos.xy * 0.0025;
+    vec2 shapeUV2 = local_pos.yz * 0.0025;
+    vec2 shapeUV3 = (local_pos.xz + local_pos.xy * 0.5) * 0.0025;
+    
+    // 多重采样不同坐标的纹理
+    float shape1 = texture2D(cloudShapeTexture, shapeUV1).x;
+    float shape2 = texture2D(cloudShapeTexture, shapeUV2).x;
+    float shape3 = texture2D(cloudShapeTexture, shapeUV3).x;
+    
+    // 混合不同坐标的采样结果
+    float shape = (shape1 * 0.5 + shape2 * 0.5 + shape3 * 0.2);
+    
+    // 增加更多的细节层次
+    shape += texture2D(cloudShapeTexture, shapeUV1 * 2.0).x * 0.25;
+    shape += texture2D(cloudShapeTexture, shapeUV1 * 4.0).x * 0.125;
+    shape += texture2D(cloudShapeTexture, shapeUV1 * 8.0).x * 0.0625;
+
+
+    
+    
+    // 6. 边缘软化（让云边缘柔和过渡）
+    vec3 edge_factor = 1.0 - abs(local_pos) / half_size;  // 0(边缘) -> 1(中心)
+    float edge_fade = min(min(edge_factor.x, edge_factor.y), edge_factor.z);
+    edge_fade = smoothstep(0.0, 0.05, edge_fade);  // 进一步减少边缘软化区域，使中心更实
+    
+    // 7. 高度衰减（底部密集，顶部稀疏）
+    float height_fraction = (local_pos.z + half_size.z) / kCloudBoxSize.z;  // 0(底部) -> 1(顶部)
+    // 调整高度衰减参数，使云的中部更密集
+    float height_gradient = smoothstep(0.0, 0.15, height_fraction) *  // 底部渐入
+                           smoothstep(1.0, 0.85, height_fraction);    // 顶部渐出，保留更多中部区域
+    
+    // 8. 组合所有因素
+    // 分别控制天气图和形状纹理的影响
+    float weatherInfluence = weatherMap.r;  // 天气图控制云的分布
+    float shapeInfluence = shape;  // 形状纹理控制云的细节
+    
+    // 调整天气图的影响，使云分布更加分散但中心更实
+    weatherInfluence = pow(weatherInfluence, 0.3);  // 适度降低天气图的对比度
+    weatherInfluence *= 0.7;  // 适度降低整体密度
+    
+    // 增强形状纹理的影响
+    shapeInfluence = pow(shapeInfluence, 0.75);  // 增强形状纹理对比度
+    
+    float density = weatherInfluence * shapeInfluence * 2.0;  // 适度调整整体密度
+    density *= height_gradient;  // 应用高度衰减
+    density *= edge_fade;        // 应用边缘软化
+    
+    // 9. 增加对比度使云朵更清晰
+    density = pow(density, 2.2);
+    
+    // 10. 设置密度阈值，过滤掉太小的密度值
+    if (density < 0.1) {  // 提高阈值，过滤掉更小的云朵
+        density = 0.0;
+    }
+    
+    return clamp(density, 0.0, 1.0);
+
+}
+
+// ============ 射线与云盒相交测试（轴对齐包围盒AABB） ============
+bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out float t_max) {
+    // 1. 计算盒子的最小和最大角点
+    vec3 box_min = kCloudBoxCenter - kCloudBoxSize * 0.5;
+    vec3 box_max = kCloudBoxCenter + kCloudBoxSize * 0.5;
+    
+    // 2. 计算与六个平面的交点（Slab方法）
+    vec3 inv_dir = 1.0 / ray_dir;  // 避免除法
+    
+    vec3 t0 = (box_min - ray_origin) * inv_dir;
+    vec3 t1 = (box_max - ray_origin) * inv_dir;
+    
+    // 3. 确保t0是近点，t1是远点
+    vec3 t_near = min(t0, t1);
+    vec3 t_far = max(t0, t1);
+    
+    // 4. 找到最远的近点和最近的远点
+    t_min = max(max(t_near.x, t_near.y), t_near.z);
+    t_max = min(min(t_far.x, t_far.y), t_far.z);
+    
+    // 5. 确保交点在相机前方
+    t_min = max(t_min, 0.0);
+    
+    // 6. 检查是否有效相交
+    return t_max > t_min && t_max > 0.0;
+}
+
+// ============ 云层渲染主函数 ============
+void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
+    // 第1步：相交测试（完全对应球体代码的相交测试）
+    vec3 camera_earth_space = camera - earth_center;
+    float t_min, t_max;
+    
+    if (!RayIntersectCloudBox(camera_earth_space, view_direction, t_min, t_max)) {
+        return;  // 未击中云盒，直接返回（对应球体的 discriminant < 0.0）
+    }
+    
+    // 获取蓝噪声值用于步进偏移
+    vec2 screenUV = gl_FragCoord.xy / iResolution;
+    vec2 blueNoiseUV = screenUV * 8.0; // 调整蓝噪声纹理的缩放
+    float blueNoise = texture2D(blueNoiseTexture, blueNoiseUV).r;
+    
+    // 第2步：光线步进（对应球体的单点着色，但这里是区间积分）
+    const int STEPS = 64;  // 使用较低的步进次数，通过蓝噪声消除分层
+    float step_size = (t_max - t_min) / float(STEPS);
+    
+    vec3 cloud_light = vec3(0.0);  // 初始化为黑色
+    float cloud_transmittance = 1.0;
+    
+    for (int i = 0; i < STEPS; i++) {
+        // 提前退出优化（云已经完全不透明）
+        if (cloud_transmittance < 0.01) break;
+        
+        // 使用蓝噪声对步进起始点做偏移
+        float t = t_min + (float(i) + blueNoise) * step_size;
+        vec3 sample_pos = camera_earth_space + view_direction * t;
+        
+        // 2.2 采样云密度（对应球体的隐式密度=1.0）
+        float density = GetCloudDensity(sample_pos);
+        
+        if (density > 0.01) {  // 降低阈值使更多细节可见
+            // 2.3 简单的白色云渲染（无光照）
+            vec3 point_light = vec3(1.0); // 纯白色
+            
+            // 2.4 Beer-Lambert衰减定律（体积渲染核心）
+            float optical_depth = density * step_size * kCloudExtinction;
+            float absorption = exp(-optical_depth);
+            
+            // 2.5 累积光照和透明度
+            // 使用更平滑的累积方式
+            vec3 contribution = point_light * (1.0 - absorption) * cloud_transmittance;
+            cloud_light += contribution;
+            cloud_transmittance *= absorption;
+        }
+    }
+    
+    // 第3步：混合到场景
+    radiance = mix(radiance, cloud_light, 1.0 - cloud_transmittance);
+}
 
 void main() 
 {
+  
   vec3 view_direction = normalize(view_ray);
-
-  float fragment_angular_size =  length(dFdx(view_ray) + dFdy(view_ray)) / length(view_ray);
+  float fragment_angular_size =
+      length(dFdx(view_ray) + dFdy(view_ray)) / length(view_ray);
   float shadow_in;
   float shadow_out;
-
   GetSphereShadowInOut(view_direction, sun_direction, shadow_in, shadow_out);
+  float lightshaft_fadein_hack = smoothstep(
+      0.02, 0.04, dot(normalize(camera - earth_center), sun_direction));
 
-  float lightshaft_fadein_hack = smoothstep(0.02, 0.04, dot(normalize(camera - earth_center), sun_direction));
 
   vec3 p = camera - kSphereCenter;
   float p_dot_v = dot(p, view_direction);
   float p_dot_p = dot(p, p);
   float ray_sphere_center_squared_distance = p_dot_p - p_dot_v * p_dot_v;
-
-  float distance_to_intersection = -p_dot_v - sqrt(kSphereRadius * kSphereRadius - ray_sphere_center_squared_distance);
-
+  float discriminant =
+      kSphereRadius * kSphereRadius -ray_sphere_center_squared_distance;
   float sphere_alpha = 0.0;
   vec3 sphere_radiance = vec3(0.0);
-
-  if (distance_to_intersection > 0.0)
-  {
-    float ray_sphere_distance = kSphereRadius - sqrt(ray_sphere_center_squared_distance);
-    float ray_sphere_angular_distance = -ray_sphere_distance / p_dot_v;
-    sphere_alpha = min(ray_sphere_angular_distance / fragment_angular_size, 1.0);
-    vec3 point = camera + view_direction * distance_to_intersection;
-    vec3 normal = normalize(point - kSphereCenter);
-    vec3 sky_irradiance;
-    vec3 sun_irradiance = GetSunAndSkyIrradiance( point - earth_center, normal, sun_direction, sky_irradiance);
-    sphere_radiance = kSphereAlbedo * (1.0 / PI) * (sun_irradiance + sky_irradiance);
-    float shadow_length = max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) * lightshaft_fadein_hack;
-    vec3 transmittance;
-
-    vec3 in_scatter = GetSkyRadianceToPoint(camera - earth_center,point - earth_center, shadow_length, sun_direction, transmittance);
-    sphere_radiance = sphere_radiance * transmittance + in_scatter;
+  if (discriminant >= 0.0) {
+    float distance_to_intersection = -p_dot_v - sqrt(discriminant);
+    if (distance_to_intersection > 0.0) {
+      float ray_sphere_distance =
+          kSphereRadius - sqrt(ray_sphere_center_squared_distance);
+      float ray_sphere_angular_distance = -ray_sphere_distance / p_dot_v;
+      sphere_alpha =
+          min(ray_sphere_angular_distance / fragment_angular_size, 1.0);
+      vec3 point = camera + view_direction * distance_to_intersection;
+      vec3 normal = normalize(point - kSphereCenter);
+      vec3 sky_irradiance;
+      vec3 sun_irradiance = GetSunAndSkyIrradiance(
+          point - earth_center, normal, sun_direction, sky_irradiance);
+      sphere_radiance =
+          kSphereAlbedo * (1.0 / PI) * (sun_irradiance + sky_irradiance);
+      float shadow_length =
+          max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) *
+          lightshaft_fadein_hack;
+      vec3 transmittance;
+      vec3 in_scatter = GetSkyRadianceToPoint(camera - earth_center,
+          point - earth_center, shadow_length, sun_direction, transmittance);
+      sphere_radiance = sphere_radiance * transmittance + in_scatter;
+    }
   }
 
-  p = camera - earth_center;
-  p_dot_v = dot(p, view_direction);
-  p_dot_p = dot(p, p);
-
-  float ray_earth_center_squared_distance = p_dot_p - p_dot_v * p_dot_v;
-
-  distance_to_intersection = -p_dot_v - sqrt( earth_center.z * earth_center.z - ray_earth_center_squared_distance);
-
-  float ground_alpha = 0.0;
-  vec3 ground_radiance = vec3(0.0);
-
-  if (distance_to_intersection > 0.0)
-  {
-    vec3 point = camera + view_direction * distance_to_intersection;
-    vec3 normal = normalize(point - earth_center);
-    vec3 sky_irradiance;
-    vec3 sun_irradiance = GetSunAndSkyIrradiance(point - earth_center, normal, sun_direction, sky_irradiance);
-    ground_radiance =  kGroundAlbedo * (1.0 / PI) * (sun_irradiance * GetSunVisibility(point,sun_direction)+sky_irradiance * GetSkyVisibility(point));
-   
-	  float shadow_length =max(0.0, min(shadow_out, distance_to_intersection) - shadow_in) * lightshaft_fadein_hack;
-    vec3 transmittance;
-
-    vec3 in_scatter = GetSkyRadianceToPoint(camera - earth_center, point - earth_center, shadow_length, sun_direction, transmittance);
-    ground_radiance = ground_radiance * transmittance + in_scatter;
-	  ground_alpha = 1.0;
-  }
-
-  float shadow_length = max(0.0, shadow_out - shadow_in) *lightshaft_fadein_hack;
+  float shadow_length = max(0.0, shadow_out - shadow_in) *
+      lightshaft_fadein_hack;
   vec3 transmittance;
-
-  vec3 radiance = GetSkyRadiance(camera - earth_center, view_direction, shadow_length, sun_direction,transmittance);
- 
-
-  if (dot(view_direction, sun_direction) > sun_size.y) 
-  {
-    radiance = radiance + transmittance * GetSolarRadiance() ;
+  vec3 radiance = GetSkyRadiance(
+      camera - earth_center, view_direction, shadow_length, sun_direction,
+      transmittance);
+  if (dot(view_direction, sun_direction) > sun_size.y) {
+    radiance = radiance + transmittance * GetSolarRadiance();
   }
 
 
-  radiance = mix(radiance, ground_radiance, ground_alpha);
+
+  RenderCloudBox(view_direction, radiance);
   radiance = mix(radiance, sphere_radiance, sphere_alpha);
 
-  vec3 baseColor = texture(groundTexture,auv).rgb;
-  
-  color.rgb = pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
-  color.a = 1.0; 
+  color.rgb = 
+      pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
+  color.a = 1.0;
 }

@@ -77,6 +77,9 @@ public:
     void setExposure(float exposure);
     static osg::Camera* createRTTCamera(osg::ref_ptr<osg::Texture2D>& tex);
 
+    // 添加云纹理初始化函数声明
+    void initializeCloudTextures(osg::StateSet* ss);
+
 private:
     // 创建纹理
     osg::Texture* createTexture(int format, const std::string& fileName, int nW, int nH, int nT);

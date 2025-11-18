@@ -66,6 +66,9 @@ osg::Node* AtmosphereDemo::createAtmosphere(osg::Node* subgraph, osg::Camera* ca
     if (pT3) ss->setTextureAttributeAndModes(2, pT3);
 
     createAtmosphereEffect(ss, camera);
+    
+    // 初始化云纹理
+    initializeCloudTextures(ss);
 
     quad->addDrawable(geom);
     // // 设置节点掩码以避免计算包围盒
@@ -243,71 +246,19 @@ osg::Texture* AtmosphereDemo::createTexture(int format, const std::string& fileN
 osg::Camera* AtmosphereDemo::createRTTCamera(osg::ref_ptr<osg::Texture2D>& tex)
 {
     osg::ref_ptr<osg::Camera> camera = new osg::Camera;
-    // 设置一个更明显的背景颜色，便于调试
-    camera->setClearColor(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // 红色背景
+    camera->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
     camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     camera->setRenderOrder(osg::Camera::PRE_RENDER);
-    // 使用相对参考框架
-    camera->setReferenceFrame(osg::Transform::RELATIVE_RF);
 
-    // 添加调试信息
-    printf("RTT Camera render target implementation: %d\n", camera->getRenderTargetImplementation());
-    printf("RTT Camera render order: %d\n", camera->getRenderOrder());
-    printf("RTT Camera reference frame: %d\n", camera->getReferenceFrame());
-    
     tex = new osg::Texture2D;
     tex->setTextureSize(1024, 1024);
     tex->setInternalFormat(GL_RGBA);
     tex->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
     tex->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 
-    // 先设置纹理大小，再创建视口
-    camera->setViewport(new osg::Viewport(0, 0, 1024, 1024));
-    
-    // 添加调试信息
-    if (camera->getViewport()) {
-        printf("RTT Camera viewport set: %d x %d\n", 
-               (int)camera->getViewport()->width(), 
-               (int)camera->getViewport()->height());
-    } else {
-        printf("RTT Camera viewport not set\n");
-    }
-    
+    camera->setViewport(0, 0, tex->getTextureWidth(), tex->getTextureHeight());
     camera->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0), tex.get());
-    
-    // 添加调试信息
-    printf("RTT Camera attached texture: %p\n", tex.get());
-    
-    // 检查纹理附件
-    osg::Camera::BufferAttachmentMap& bufferAttachments = camera->getBufferAttachmentMap();
-    printf("RTT Camera buffer attachments: %zu\n", bufferAttachments.size());
-    for (osg::Camera::BufferAttachmentMap::iterator it = bufferAttachments.begin(); it != bufferAttachments.end(); ++it) {
-        printf("Buffer attachment: %d\n", it->first);
-        if (it->second._texture.valid()) {
-            printf("Texture attached: %p\n", it->second._texture.get());
-        }
-    }
-    
-    // 检查相机状态
-    printf("RTT Camera is valid: %s\n", camera->referenceCount() > 0 ? "true" : "false");
-    
-    // 检查相机的视图和投影矩阵
-    osg::Matrix viewMatrix = camera->getViewMatrix();
-    osg::Matrix projMatrix = camera->getProjectionMatrix();
-    printf("RTT Camera view matrix:\n");
-    for (int i = 0; i < 4; ++i) {
-        printf("  Row %d: %f %f %f %f\n", i, 
-               viewMatrix(i,0), viewMatrix(i,1), 
-               viewMatrix(i,2), viewMatrix(i,3));
-    }
-    printf("RTT Camera projection matrix:\n");
-    for (int i = 0; i < 4; ++i) {
-        printf("  Row %d: %f %f %f %f\n", i, 
-               projMatrix(i,0), projMatrix(i,1), 
-               projMatrix(i,2), projMatrix(i,3));
-    }
-
     return camera.release();
 }
 
@@ -348,11 +299,76 @@ void AtmosphereDemo::createAtmosphereEffect(osg::StateSet* ss, osg::Camera* came
     
     ss->setAttributeAndModes(atmosphereProgram);
  
-    // 只设置我们需要的uniform - groundTexture使用纹理单元3
-     ss->setUpdateCallback(new AtmoCallBackX(camera));
+    // 设置纹理单元 - groundTexture使用纹理单元3
+    ss->setUpdateCallback(new AtmoCallBackX(camera));
     ss->addUniform(new osg::Uniform("groundTexture", 3));
 
     printf("Simple atmosphere shaders loaded and configured successfully\n");
+}
+
+// 添加云纹理初始化函数
+void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
+{
+    // 加载云纹理图（天气图）
+    osg::ref_ptr<osg::Texture2D> cloudTexture = new osg::Texture2D;
+    osg::ref_ptr<osg::Image> cloudImage = osgDB::readImageFile("E:/W.png");
+    
+    if (cloudImage.valid()) {
+        cloudTexture->setImage(cloudImage);
+        cloudTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+        cloudTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+        cloudTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        cloudTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        
+        // 将云纹理绑定到纹理单元4
+        ss->setTextureAttributeAndModes(4, cloudTexture);
+        ss->addUniform(new osg::Uniform("cloudTexture", 4));
+        
+        printf("Cloud texture loaded and configured successfully\n");
+    } else {
+        printf("Failed to load cloud texture\n");
+    }
+    
+    // 加载云形状纹理
+    osg::ref_ptr<osg::Texture2D> cloudShapeTexture = new osg::Texture2D;
+    osg::ref_ptr<osg::Image> cloudShapeImage = osgDB::readImageFile("E:/wea.png");
+    
+    if (cloudShapeImage.valid()) {
+        cloudShapeTexture->setImage(cloudShapeImage);
+        cloudShapeTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+        cloudShapeTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+        cloudShapeTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        cloudShapeTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        
+        // 将云形状纹理绑定到纹理单元5
+        ss->setTextureAttributeAndModes(5, cloudShapeTexture);
+        ss->addUniform(new osg::Uniform("cloudShapeTexture", 5));
+        
+        printf("Cloud shape texture loaded and configured successfully\n");
+    } else {
+        printf("Failed to load cloud shape texture\n");
+    }
+    
+    // 加载蓝噪声纹理
+    osg::ref_ptr<osg::Texture2D> blueNoiseTexture = new osg::Texture2D;
+    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/b.png");
+    
+    if (blueNoiseImage.valid()) {
+        blueNoiseTexture->setImage(blueNoiseImage);
+        blueNoiseTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+        blueNoiseTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+        blueNoiseTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        blueNoiseTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        
+        // 将蓝噪声纹理绑定到纹理单元6
+        ss->setTextureAttributeAndModes(6, blueNoiseTexture);
+        ss->addUniform(new osg::Uniform("blueNoiseTexture", 6));
+        
+        printf("Blue noise texture loaded and configured successfully\n");
+    } else {
+        printf("Failed to load blue noise texture\n");
+    }
+
 }
 
 // AtmoCallBackX类的实现
@@ -371,6 +387,9 @@ void AtmoCallBackX::process(osg::StateSet* ss)
             ss->addUniform(iResolution);
         }
      
+        // 更新时间uniform变量
+        float currentTime = nFrame * 0.016f; // 假设60FPS
+        ss->getOrCreateUniform("time", osg::Uniform::FLOAT)->set(currentTime);
 
         osg::Matrixf vieMat     = m_camera->getViewMatrix();
         osg::Matrixf projectMat = m_camera->getProjectionMatrix();
@@ -380,23 +399,22 @@ void AtmoCallBackX::process(osg::StateSet* ss)
         if (pCamera_)
             pCamera_->getViewMatrixAsLookAt(eye, center, up);
         //
-
         osg::Matrixf viewInverse    = vieMat.inverse(vieMat);
         osg::Matrixf projectInverse = projectMat.inverse(projectMat);
 
         ss->getOrCreateUniform("model_from_view", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
         ss->getOrCreateUniform("view_from_clip",  osg::Uniform::FLOAT_MAT4)->set(projectInverse);
 
-        ss->getOrCreateUniform("camera",      osg::Uniform::FLOAT_VEC3)->set(eye*0.001);
+        ss->getOrCreateUniform("camera",      osg::Uniform::FLOAT_VEC3)->set(eye*0.01);
 
       
-         ss->getOrCreateUniform("earth_center", osg::Uniform::FLOAT_VEC3)->set((eye - osg::Vec3(0, 0, 6360000))*0.001);
+        ss->getOrCreateUniform("earth_center", osg::Uniform::FLOAT_VEC3)->set((eye - osg::Vec3(0, 0, 6360000))*0.001);
 
     // 设置太阳方向
     float acos, asin, zcos, zsin;
     const double PI = 3.14159265358979323846;
     double AO = 0.5 * PI;
-    double ZO = 0.5*(1.0 - sin(nFrame * 0.0001)) * PI;
+    double ZO = 0.5*(1.0 - sin(1200 * 0.0001)) * PI;
      
     asin = sin(AO);
     acos = cos(AO);

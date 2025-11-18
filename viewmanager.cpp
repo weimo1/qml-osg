@@ -6,7 +6,7 @@
 #include <QDebug>
 
 ViewManager::ViewManager()
-    : m_eye(0.0, -5.0, 0.0)
+    : m_eye(0.0, -10.0, 5.0)  // 调整初始相机位置，提高Z坐标避免贴近地面
     , m_center(0.0, 0.0, 0.0)
     , m_up(0.0, 0.0, 1.0)
 {
@@ -114,8 +114,8 @@ void ViewManager::setViewType(osgViewer::Viewer* viewer, osg::Group* rootNode, S
         break;
     case SimpleOSGViewer::MainView:  // 主视图 (默认视角)
     default:
-        // 主视图使用稍微偏下的角度观察
-        eye.set(center.x(), center.y() - viewDistance, center.z() + viewDistance * 0.2);
+        // 主视图使用稍微偏下的角度观察，提高相机高度避免贴近地面
+        eye.set(center.x(), center.y() - viewDistance, center.z() + viewDistance * 0.5); // 增加Z坐标偏移
         up.set(0.0f, 0.0f, 1.0f);
         break;
     }
@@ -299,8 +299,8 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     // 计算宽高比
     double aspectRatio = static_cast<double>(width) / static_cast<double>(height);
     
-    // 主视图设置
-    osg::Vec3 eye(0.0f, -5.0f, 0.0f);   // 从前方偏下位置观察
+    // 主视图设置，调整相机位置避免贴近地面
+    osg::Vec3 eye(0.0f, -15.0f, 8.0f);   // 进一步调整相机位置，提高Z坐标避免贴近地面
     osg::Vec3 center(0.0f, 0.0f, 0.0f);  // 看向原点
     osg::Vec3 up(0.0f, 0.0f, 1.0f);      // Z轴向上
     camera->setViewMatrixAsLookAt(eye, center, up);
@@ -352,8 +352,8 @@ void ViewManager::fitToView(osgViewer::Viewer* viewer, osg::Group* rootNode)
                 radius = 1.0f;
             }
             
-            // 设置合适的相机距离
-            osg::Vec3 eye = center + osg::Vec3(0, -radius * 2.5f, radius * 0.5f);
+            // 设置合适的相机距离，提高相机高度避免贴近地面
+            osg::Vec3 eye = center + osg::Vec3(0, -radius * 2.5f, radius * 1.5f); // 增加Z坐标偏移
             osg::Vec3 up(0.0f, 0.0f, 1.0f);
             
             manipulator->setHomePosition(eye, center, up);

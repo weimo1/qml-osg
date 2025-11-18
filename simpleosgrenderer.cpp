@@ -236,10 +236,24 @@ void SimpleOSGRenderer::initializeOSG(int width, int height)
         
         // 创建根节点
         m_rootNode = new osg::Group();
+
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
+        traits->x = 0;
+        traits->y = 0;
+        traits->width = width;
+        traits->height = height;
+        traits->windowDecoration = false;
+        traits->doubleBuffer = true;
+        traits->sharedContext = nullptr;
+        traits->pbuffer = false;
+        traits->alpha = 8;
+        traits->depth = 24;
+
         
         // 创建图形环境
-        osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> graphicsWindow =      new osgViewer::GraphicsWindowEmbedded(0, 0, width, height);
+        osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> graphicsWindow =new osgViewer::GraphicsWindowEmbedded(traits.get());
         
+
         // 设置相机
         osg::Camera* camera = m_viewer->getCamera();
         camera->setGraphicsContext(graphicsWindow.get());      
