@@ -14,6 +14,12 @@ uniform sampler3D single_mie_scattering_texture;
 uniform sampler2D irradiance_texture;
 uniform sampler2D groundTexture;  // 地球表面模型，原始材质
 
+// 体积云纹理
+uniform sampler3D _ShapeNoiceTex;      // 3D基础形状纹理（包含Perlin和Worley噪声）
+uniform sampler3D _DetailNoiceTex;     // 3D细节纹理（高频Worley噪声）
+uniform sampler2D _WeatherNoiceTex;    // 2D天气纹理（控制云的覆盖率等属性）
+uniform sampler2D blueNoiseTexture;    // 蓝噪声纹理，用于消除云渲染分层
+
 // 屏幕分辨率
 uniform vec2 iResolution;
 
@@ -652,7 +658,22 @@ const float kSphereRadius = 1000.0 / kLengthUnitInMeters;
 const vec3 kSphereAlbedo = vec3(0.8);
 const vec3 kGroundAlbedo = vec3(0.0, 0.0, 0.04);
 
- 
+
+// 前向声明云相关的函数
+float GetCloudDensity(vec3 point_earth_space);
+bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out float t_max);
+void RenderCloudBox(vec3 view_direction, inout vec3 radiance);
+float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir);
+vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir);
+float HenyeyGreensteinPhase(float g, float cosTheta);
+float DualLobPhase(float g0, float g1, float w, float cosTheta);
+float Remap(float value, float lo, float ho, float ln, float hn);
+float GetDensityHeightGradient(vec3 pos, float min, float max);
+
+// 云的外观参数
+const vec3 kCloudColor = vec3(0.85, 0.85, 0.9);  // 偏白色的基色
+const vec3 kCloudShade = vec3(0.5, 0.5, 0.6);    // 偏灰的阴影色
+const float kCloudExtinction = 0.12;             // 消光系数
 
 float GetSunVisibility(vec3 point, vec3 sun_direction) 
 {
@@ -725,17 +746,21 @@ void GetSphereShadowInOut(vec3 view_direction, vec3 sun_direction, out float d_i
 const vec3 kCloudBoxCenter = vec3(0.0, 0.0, 6364.0);  // 地表上方4km
 
 // 云盒尺寸（单位：km）
-const vec3 kCloudBoxSize = vec3(500.0, 500.0, 6.0);  // 50x50x6 km的云盒
+const vec3 kCloudBoxSize = vec3(500.0, 500.0, 4.0);  // 增加云盒高度到6km
 
-// 云的外观参数
-const vec3 kCloudAlbedo = vec3(0.95, 0.95, 0.95);
-const float kCloudExtinction = 0.08;
+// 体积云的相位函数（Henyey-Greenstein）
+float HenyeyGreensteinPhase(float g, float cosTheta) {
+    float g2 = g * g;
+    float numerator = 1.0 - g2;
+    float denominator = pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5);
+    return (1.0 / (4.0 * PI)) * (numerator / denominator);
+}
 
-// 云纹理采样器
-uniform sampler2D cloudTexture;      // 2D云纹理图（天气图）
-uniform sampler2D cloudShapeTexture; // 主体形状2D噪声图
-uniform sampler2D blueNoiseTexture;  // 蓝噪声纹理，用于消除云渲染分层
-
+// ============ 双瓣相位函数 ============
+float DualLobPhase(float g0, float g1, float w, float cosTheta) {
+    return mix(HenyeyGreensteinPhase(g0, cosTheta), 
+               HenyeyGreensteinPhase(g1, cosTheta), w);
+}
 
 // ============ 云密度函数 ============
 float GetCloudDensity(vec3 point_earth_space) {
@@ -756,67 +781,165 @@ float GetCloudDensity(vec3 point_earth_space) {
     weatherUV *= 0.5;  // 缩放UV坐标，使天气图的特征更大，云朵更分散
     
     // 4. 采样天气图控制云的分布
-    vec4 weatherMap = texture2D(cloudTexture, weatherUV);
+    vec4 weatherMap = texture(_WeatherNoiceTex, weatherUV);
     
-    // 5. 采样形状纹理生成云的细节形状 - 多重采样
-    // 使用更复杂的UV坐标组合来增强细节
-    vec2 shapeUV1 = local_pos.xy * 0.0025;
-    vec2 shapeUV2 = local_pos.yz * 0.0025;
-    vec2 shapeUV3 = (local_pos.xz + local_pos.xy * 0.5) * 0.0025;
+    // 5. 构造基础形状 - 使用FBM技术
+    // 计算基础形状UV坐标
+    vec3 sampleShapeUV = local_pos * 0.0025;
     
-    // 多重采样不同坐标的纹理
-    float shape1 = texture2D(cloudShapeTexture, shapeUV1).x;
-    float shape2 = texture2D(cloudShapeTexture, shapeUV2).x;
-    float shape3 = texture2D(cloudShapeTexture, shapeUV3).x;
+    // 获取低频 Perlin-Worley 和 Worley 噪声
+    vec4 shapeNoice = texture(_ShapeNoiceTex, sampleShapeUV);
     
-    // 混合不同坐标的采样结果
-    float shape = (shape1 * 0.5 + shape2 * 0.5 + shape3 * 0.2);
+    // 计算不同频率 Worley 噪声所构成的 FBM 为基础形状添加细节
+    // FBM 是一系列噪声的叠加，每一个噪声都有更高的频率和更低的幅度。
+    float shapeFBM = dot(shapeNoice.gba, normalize(vec3(1.0, 1.0, 1.0)));
     
-    // 增加更多的细节层次
-    shape += texture2D(cloudShapeTexture, shapeUV1 * 2.0).x * 0.25;
-    shape += texture2D(cloudShapeTexture, shapeUV1 * 4.0).x * 0.125;
-    shape += texture2D(cloudShapeTexture, shapeUV1 * 8.0).x * 0.0625;
-
-
+    // 使用 FBM 重映射体积云的密度
+    float density = Remap(shapeNoice.r, clamp(1.0 - shapeFBM, 0.0, 1.0), 1.0, 0.0, 1.0);
     
+    // 6. 获取高度百分比
+    float heightGradient = GetDensityHeightGradient(local_pos, -half_size.y, half_size.y);
     
-    // 6. 边缘软化（让云边缘柔和过渡）
-    vec3 edge_factor = 1.0 - abs(local_pos) / half_size;  // 0(边缘) -> 1(中心)
-    float edge_fade = min(min(edge_factor.x, edge_factor.y), edge_factor.z);
-    edge_fade = smoothstep(0.0, 0.05, edge_fade);  // 进一步减少边缘软化区域，使中心更实
+    // 形状变化因子
+    // 圆化云的底部
+    float roundBottom = clamp(Remap(heightGradient, 0.0, 0.07, 0.0, 1.0), 0.0, 1.0);
+    // 圆化云的顶部
+    float roundTop = clamp(Remap(heightGradient, 0.2, 1.0, 1.0, 0.0), 0.0, 1.0);
+    float roundFac = roundBottom * roundTop;
     
-    // 7. 高度衰减（底部密集，顶部稀疏）
-    float height_fraction = (local_pos.z + half_size.z) / kCloudBoxSize.z;  // 0(底部) -> 1(顶部)
-    // 调整高度衰减参数，使云的中部更密集
-    float height_gradient = smoothstep(0.0, 0.15, height_fraction) *  // 底部渐入
-                           smoothstep(1.0, 0.85, height_fraction);    // 顶部渐出，保留更多中部区域
+    // 应用高度因子
+    density *= roundFac;
     
-    // 8. 组合所有因素
-    // 分别控制天气图和形状纹理的影响
-    float weatherInfluence = weatherMap.r;  // 天气图控制云的分布
-    float shapeInfluence = shape;  // 形状纹理控制云的细节
+    // 7. 添加天气纹理影响
+    // 云层覆盖率 - 增加云的分布
+    float cloudCoverage = weatherMap.r;
+    cloudCoverage = mix(0.3, 1.0, cloudCoverage); // 增加基础覆盖率
+    density *= cloudCoverage;
     
-    // 调整天气图的影响，使云分布更加分散但中心更实
-    weatherInfluence = pow(weatherInfluence, 0.3);  // 适度降低天气图的对比度
-    weatherInfluence *= 0.7;  // 适度降低整体密度
+    // 8. 添加细节 - 通过腐蚀原密度增加细节
+    // 为云添加细节
+    vec3 sampleDetailUV = local_pos * 0.005;
+    // 获取高频的 Worley 噪声
+    vec3 detailNoice = texture(_DetailNoiceTex, sampleDetailUV).rgb;
     
-    // 增强形状纹理的影响
-    shapeInfluence = pow(shapeInfluence, 0.75);  // 增强形状纹理对比度
+    // 计算 Worley 噪声的FBM
+    float detailFBM = dot(detailNoice, normalize(vec3(1.0, 1.0, 1.0)));
+    float detailErode = (1.0 - detailFBM) * 0.3; // 减少腐蚀强度
+    density -= detailErode;
     
-    float density = weatherInfluence * shapeInfluence * 2.0;  // 适度调整整体密度
-    density *= height_gradient;  // 应用高度衰减
-    density *= edge_fade;        // 应用边缘软化
+    // 9. 确保密度非负
+    density = max(0.0, density);
     
-    // 9. 增加对比度使云朵更清晰
-    density = pow(density, 2.2);
-    
-    // 10. 设置密度阈值，过滤掉太小的密度值
-    if (density < 0.1) {  // 提高阈值，过滤掉更小的云朵
+    // 10. 设置密度阈值，过滤掉太小的密度值 - 降低阈值增加云量
+    if (density < 0.05) { // 从0.1降低到0.05
         density = 0.0;
     }
     
-    return clamp(density, 0.0, 1.0);
+    return clamp(density * 1.5, 0.0, 1.0); // 增加整体密度
+}
 
+// ============ 计算云的自阴影 ============
+float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir) {
+    // 简单的自阴影模型 - 从采样点向太阳方向步进
+    const int SHADOW_STEPS = 8;
+    float shadow_step_size = 0.5;  // 步长
+    float shadow_transmittance = 1.0;
+    
+    vec3 shadow_pos = sample_pos;
+    
+    for (int i = 0; i < SHADOW_STEPS; i++) {
+        shadow_pos += sun_dir * shadow_step_size;
+        
+        // 检查是否还在云盒内
+        vec3 local_pos = shadow_pos - kCloudBoxCenter;
+        vec3 half_size = kCloudBoxSize * 0.5;
+        if (abs(local_pos.x) > half_size.x || 
+            abs(local_pos.y) > half_size.y || 
+            abs(local_pos.z) > half_size.z) {
+            break;  // 已经出了云盒
+        }
+        
+        // 采样密度并累积透射率
+        float shadow_density = GetCloudDensity(shadow_pos);
+        shadow_transmittance *= exp(-shadow_density * shadow_step_size * kCloudExtinction);
+        
+        // 提前退出优化
+        if (shadow_transmittance < 0.01) break;
+    }
+    
+    return shadow_transmittance;
+}
+
+// ============ 计算步进点的散射光照 ============
+vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir) {
+    // 计算自阴影
+    float sun_visibility = ComputeCloudSelfShadowing(sample_pos, sun_dir);
+    
+    // 计算太阳光影响
+    float sunLight = dot(normalize(sample_pos - kCloudBoxCenter), sun_dir);
+    
+    // 使用基础颜色与阴影颜色混合
+    vec3 cloudColor = mix(kCloudShade, kCloudColor, sunLight * 0.5 + 0.5);
+    
+    // 应用自阴影
+    cloudColor *= sun_visibility;
+    
+    return cloudColor;
+}
+
+// ============ 云层渲染主函数 ============
+void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
+    // 第1步：相交测试
+    vec3 camera_earth_space = camera - earth_center;
+    float t_min, t_max;
+    
+    if (!RayIntersectCloudBox(camera_earth_space, view_direction, t_min, t_max)) {
+        return;  // 未击中云盒，直接返回
+    }
+    
+    // 第2步：光线步进 - 体积积分
+    const int STEPS = 64;
+    float step_size = (t_max - t_min) / float(STEPS);
+    
+    // 获取蓝噪声值用于步进偏移
+    vec2 screenUV = gl_FragCoord.xy / iResolution;
+    vec2 blueNoiseUV = screenUV * 8.0; // 调整蓝噪声纹理的缩放
+    float blueNoise = texture(blueNoiseTexture, blueNoiseUV).r;
+    
+    // 体积渲染核心变量
+    vec3 cloud_color = vec3(0.0);      // 云颜色累积
+    float transmittance = 1.0;         // 透射率累积
+    
+    // 当前位置
+    vec3 curr_pos = camera_earth_space + view_direction * (t_min + blueNoise * step_size);
+    vec3 ray_step = view_direction * step_size;
+    
+    // 光线步进主循环
+    for (int i = 0; i < STEPS; i++) {
+        // 提前退出优化
+        if (transmittance < 0.01) break;
+        
+        // 计算当前点的密度
+        float density = GetCloudDensity(curr_pos);
+        
+        if (density > 0.001) {
+            // 计算当前点的云颜色
+            vec3 step_color = ComputeStepScattering(curr_pos, view_direction, sun_direction);
+            
+            // 计算步进透射率（Beer定律）
+            float step_transmittance = exp(-density * step_size * kCloudExtinction);
+            
+            // 累积云颜色和透射率
+            cloud_color += step_color * density * step_size * transmittance;
+            transmittance *= step_transmittance;
+        }
+        
+        // 更新当前位置
+        curr_pos += ray_step;
+    }
+    
+    // 第3步：混合到场景
+    radiance = mix(radiance, cloud_color, 1.0 - transmittance);
 }
 
 // ============ 射线与云盒相交测试（轴对齐包围盒AABB） ============
@@ -846,58 +969,20 @@ bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out fl
     return t_max > t_min && t_max > 0.0;
 }
 
-// ============ 云层渲染主函数 ============
-void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
-    // 第1步：相交测试（完全对应球体代码的相交测试）
-    vec3 camera_earth_space = camera - earth_center;
-    float t_min, t_max;
-    
-    if (!RayIntersectCloudBox(camera_earth_space, view_direction, t_min, t_max)) {
-        return;  // 未击中云盒，直接返回（对应球体的 discriminant < 0.0）
-    }
-    
-    // 获取蓝噪声值用于步进偏移
-    vec2 screenUV = gl_FragCoord.xy / iResolution;
-    vec2 blueNoiseUV = screenUV * 8.0; // 调整蓝噪声纹理的缩放
-    float blueNoise = texture2D(blueNoiseTexture, blueNoiseUV).r;
-    
-    // 第2步：光线步进（对应球体的单点着色，但这里是区间积分）
-    const int STEPS = 64;  // 使用较低的步进次数，通过蓝噪声消除分层
-    float step_size = (t_max - t_min) / float(STEPS);
-    
-    vec3 cloud_light = vec3(0.0);  // 初始化为黑色
-    float cloud_transmittance = 1.0;
-    
-    for (int i = 0; i < STEPS; i++) {
-        // 提前退出优化（云已经完全不透明）
-        if (cloud_transmittance < 0.01) break;
-        
-        // 使用蓝噪声对步进起始点做偏移
-        float t = t_min + (float(i) + blueNoise) * step_size;
-        vec3 sample_pos = camera_earth_space + view_direction * t;
-        
-        // 2.2 采样云密度（对应球体的隐式密度=1.0）
-        float density = GetCloudDensity(sample_pos);
-        
-        if (density > 0.01) {  // 降低阈值使更多细节可见
-            // 2.3 简单的白色云渲染（无光照）
-            vec3 point_light = vec3(1.0); // 纯白色
-            
-            // 2.4 Beer-Lambert衰减定律（体积渲染核心）
-            float optical_depth = density * step_size * kCloudExtinction;
-            float absorption = exp(-optical_depth);
-            
-            // 2.5 累积光照和透明度
-            // 使用更平滑的累积方式
-            vec3 contribution = point_light * (1.0 - absorption) * cloud_transmittance;
-            cloud_light += contribution;
-            cloud_transmittance *= absorption;
-        }
-    }
-    
-    // 第3步：混合到场景
-    radiance = mix(radiance, cloud_light, 1.0 - cloud_transmittance);
+// ============ 重映射函数 ============
+float Remap(float value, float lo, float ho, float ln, float hn) {
+    return ln + (value - lo) * (hn - ln) / (ho - lo);
 }
+
+// ============ 高度百分比函数 ============
+float GetDensityHeightGradient(vec3 pos, float min, float max) {
+    float heightGradient = (pos.y - min) / (max - min);
+    return clamp(heightGradient, 0.0, 1.0);  // saturate函数的GLSL实现
+}
+
+// ============ 双瓣Henyey-Greenstein相位函数 ============
+
+// ============ 光线步进计算光照透射率 ============
 
 void main() 
 {

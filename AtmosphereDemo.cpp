@@ -309,49 +309,71 @@ void AtmosphereDemo::createAtmosphereEffect(osg::StateSet* ss, osg::Camera* came
 // 添加云纹理初始化函数
 void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
 {
-    // 加载云纹理图（天气图）
-    osg::ref_ptr<osg::Texture2D> cloudTexture = new osg::Texture2D;
-    osg::ref_ptr<osg::Image> cloudImage = osgDB::readImageFile("E:/W.png");
+    // 加载3D基础形状纹理
+    osg::ref_ptr<osg::Texture3D> shapeNoiseTexture = new osg::Texture3D;
+    osg::ref_ptr<osg::Image> shapeNoiseImage = osgDB::readImageFile("E:/cloud1/Weather_No3DTex.png");
     
-    if (cloudImage.valid()) {
-        cloudTexture->setImage(cloudImage);
-        cloudTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
-        cloudTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
-        cloudTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-        cloudTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+    if (shapeNoiseImage.valid()) {
+        shapeNoiseTexture->setImage(shapeNoiseImage);
+        shapeNoiseTexture->setFilter(osg::Texture3D::MIN_FILTER, osg::Texture3D::LINEAR);
+        shapeNoiseTexture->setFilter(osg::Texture3D::MAG_FILTER, osg::Texture3D::LINEAR);
+        shapeNoiseTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        shapeNoiseTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        shapeNoiseTexture->setWrap(osg::Texture::WRAP_R, osg::Texture::REPEAT);
         
-        // 将云纹理绑定到纹理单元4
-        ss->setTextureAttributeAndModes(4, cloudTexture);
-        ss->addUniform(new osg::Uniform("cloudTexture", 4));
+        // 将基础形状纹理绑定到纹理单元7
+        ss->setTextureAttributeAndModes(4, shapeNoiseTexture);
+        ss->addUniform(new osg::Uniform("_ShapeNoiceTex", 4));
         
-        printf("Cloud texture loaded and configured successfully\n");
+        printf("3D Shape noise texture loaded and configured successfully\n");
     } else {
-        printf("Failed to load cloud texture\n");
+        printf("Failed to load 3D shape noise texture\n");
     }
     
-    // 加载云形状纹理
-    osg::ref_ptr<osg::Texture2D> cloudShapeTexture = new osg::Texture2D;
-    osg::ref_ptr<osg::Image> cloudShapeImage = osgDB::readImageFile("E:/wea.png");
+    // 加载3D细节纹理
+    osg::ref_ptr<osg::Texture3D> detailNoiseTexture = new osg::Texture3D;
+    osg::ref_ptr<osg::Image> detailNoiseImage = osgDB::readImageFile("E:/cloud1/Weather_No3DTex2.png");
     
-    if (cloudShapeImage.valid()) {
-        cloudShapeTexture->setImage(cloudShapeImage);
-        cloudShapeTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
-        cloudShapeTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
-        cloudShapeTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-        cloudShapeTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+    if (detailNoiseImage.valid()) {
+        detailNoiseTexture->setImage(detailNoiseImage);
+        detailNoiseTexture->setFilter(osg::Texture3D::MIN_FILTER, osg::Texture3D::LINEAR);
+        detailNoiseTexture->setFilter(osg::Texture3D::MAG_FILTER, osg::Texture3D::LINEAR);
+        detailNoiseTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        detailNoiseTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        detailNoiseTexture->setWrap(osg::Texture::WRAP_R, osg::Texture::REPEAT);
         
-        // 将云形状纹理绑定到纹理单元5
-        ss->setTextureAttributeAndModes(5, cloudShapeTexture);
-        ss->addUniform(new osg::Uniform("cloudShapeTexture", 5));
+        // 将细节纹理绑定到纹理单元8
+        ss->setTextureAttributeAndModes(5, detailNoiseTexture);
+        ss->addUniform(new osg::Uniform("_DetailNoiceTex", 5));
         
-        printf("Cloud shape texture loaded and configured successfully\n");
+        printf("3D Detail noise texture loaded and configured successfully\n");
     } else {
-        printf("Failed to load cloud shape texture\n");
+        printf("Failed to load 3D detail noise texture\n");
     }
     
-    // 加载蓝噪声纹理
+    // 加载2D天气纹理
+    osg::ref_ptr<osg::Texture2D> weatherTexture = new osg::Texture2D;
+    osg::ref_ptr<osg::Image> weatherImage = osgDB::readImageFile("E:/cloud1/Weather.png");
+    
+    if (weatherImage.valid()) {
+        weatherTexture->setImage(weatherImage);
+        weatherTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+        weatherTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+        weatherTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        weatherTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        
+        // 将天气纹理绑定到纹理单元9
+        ss->setTextureAttributeAndModes(6, weatherTexture);
+        ss->addUniform(new osg::Uniform("_WeatherNoiceTex", 6));
+        
+        printf("Weather texture loaded and configured successfully\n");
+    } else {
+        printf("Failed to load weather texture\n");
+    }
+    
+    // 加载蓝噪声纹理，用于消除云渲染分层
     osg::ref_ptr<osg::Texture2D> blueNoiseTexture = new osg::Texture2D;
-    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/b.png");
+    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/cloud1/BlueNoise.png");
     
     if (blueNoiseImage.valid()) {
         blueNoiseTexture->setImage(blueNoiseImage);
@@ -360,9 +382,9 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
         blueNoiseTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
         blueNoiseTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
         
-        // 将蓝噪声纹理绑定到纹理单元6
-        ss->setTextureAttributeAndModes(6, blueNoiseTexture);
-        ss->addUniform(new osg::Uniform("blueNoiseTexture", 6));
+        // 将蓝噪声纹理绑定到纹理单元10
+        ss->setTextureAttributeAndModes(7, blueNoiseTexture);
+        ss->addUniform(new osg::Uniform("blueNoiseTexture", 7));
         
         printf("Blue noise texture loaded and configured successfully\n");
     } else {
