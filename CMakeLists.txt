@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(SimpleQMLApp)
+project(SkyApp)
 
 # 设置C++标准
 set(CMAKE_CXX_STANDARD 17)
@@ -41,19 +41,12 @@ set(CMAKE_AUTOUIC ON)
 add_executable(${PROJECT_NAME}
     main.cpp
     simpleosgviewer.cpp
-    simpleosgviewer.h
     simpleosgrenderer.cpp
-    simpleosgrenderer.h
     mousehandler.cpp
-    mousehandler.h
-    SkyNode.cpp
-    SkyNode.h
     viewmanager.cpp
-    viewmanager.h
     uihandler.cpp
-    uihandler.h
+    SkyNode.cpp
     AtmosphereDemo.cpp
-    AtmosphereDemo.h
     qml.qrc
 )
 

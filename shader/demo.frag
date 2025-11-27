@@ -46,7 +46,7 @@ const int IRRADIANCE_TEXTURE_WIDTH = 64;
 const int IRRADIANCE_TEXTURE_HEIGHT = 16;
 
 #define COMBINED_SCATTERING_TEXTURES
- 
+
 const float m  = 1.0;
 const float nm = 1.0;
 const float rad = 1.0;
@@ -138,7 +138,7 @@ float SafeSqrt(float a) {
 }
 
 ///////////r p点的高程， mu cos sita角， 视线方向和竖直线的
-float DistanceToTopAtmosphereBoundary(IN(AtmosphereParameters) atmosphere, float r, float mu) 
+float DistanceToTopAtmosphereBoundary(IN(AtmosphereParameters) atmosphere,  float r, float mu) 
 {
   assert(r <= atmosphere.top_radius);
   assert(mu >= -1.0 && mu <= 1.0);
@@ -146,7 +146,7 @@ float DistanceToTopAtmosphereBoundary(IN(AtmosphereParameters) atmosphere, float
   float discriminant = r * r * (mu * mu - 1.0) + atmosphere.top_radius * atmosphere.top_radius;
   return ClampDistance(-r * mu + SafeSqrt(discriminant));
 }
- 
+
 
 bool RayIntersectsGround(IN(AtmosphereParameters) atmosphere, float r, float mu) 
 {
@@ -172,7 +172,7 @@ float GetProfileDensity(IN(DensityProfile) profile, float altitude)
 
  
 
- 
+
 float GetTextureCoordFromUnitRange(float x, int texture_size)
 {
   return 0.5 / float(texture_size) + x * (1.0 - 1.0 / float(texture_size));
@@ -221,7 +221,7 @@ void GetRMuFromTransmittanceTextureUv(IN(AtmosphereParameters) atmosphere, IN(ve
   mu = d == 0.0 * m ? float(1.0) : (H * H - rho * rho - d * d) / (2.0 * r * d);
   mu = ClampCosine(mu);
 }
- 
+
 
 vec3 GetTransmittanceToTopAtmosphereBoundary(IN(AtmosphereParameters) atmosphere,IN(sampler2D) transmittance_texture,float r, float mu) 
 {
@@ -272,7 +272,7 @@ vec3 GetTransmittanceToSun(IN(AtmosphereParameters) atmosphere,IN(sampler2D) tra
 }
 
   
- 
+
 float RayleighPhaseFunction(float nu)
 {
   float k = 3.0 / (16.0 * PI * sr);
@@ -392,7 +392,7 @@ void GetRMuMuSNuFromScatteringTextureFragCoord(
 
   nu = clamp(nu, mu * mu_s - sqrt((1.0 - mu * mu) * (1.0 - mu_s * mu_s)), mu * mu_s + sqrt((1.0 - mu * mu) * (1.0 - mu_s * mu_s)));
 }
- 
+
 
 vec3 GetScattering(IN(AtmosphereParameters) atmosphere, IN(sampler3D) scattering_texture, float r, float mu, float mu_s, float nu, bool ray_r_mu_intersects_ground) 
 {
@@ -423,14 +423,13 @@ vec3 GetScattering(
   if (scattering_order == 1)
   {
     vec3 rayleigh = GetScattering(atmosphere, single_rayleigh_scattering_texture, r, mu, mu_s, nu,ray_r_mu_intersects_ground);
-
     vec3 mie = GetScattering(atmosphere, single_mie_scattering_texture, r, mu, mu_s, nu,ray_r_mu_intersects_ground);
 
-    return rayleigh * RayleighPhaseFunction(nu) +mie * MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
+  return rayleigh * RayleighPhaseFunction(nu) +mie * MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
   }
   else 
   {
-    return GetScattering(atmosphere, multiple_scattering_texture, r, mu, mu_s, nu,ray_r_mu_intersects_ground);
+   return GetScattering(atmosphere, multiple_scattering_texture, r, mu, mu_s, nu,ray_r_mu_intersects_ground);
   }
 }
 
@@ -447,10 +446,10 @@ vec2 GetIrradianceTextureUvFromRMuS(IN(AtmosphereParameters) atmosphere, float r
   float x_mu_s = mu_s * 0.5 + 0.5;
   return vec2(GetTextureCoordFromUnitRange(x_mu_s, IRRADIANCE_TEXTURE_WIDTH), GetTextureCoordFromUnitRange(x_r, IRRADIANCE_TEXTURE_HEIGHT));
 }
- 
+
 
 const vec2 IRRADIANCE_TEXTURE_SIZE =  vec2(IRRADIANCE_TEXTURE_WIDTH, IRRADIANCE_TEXTURE_HEIGHT);
- 
+
   
 
 vec3 GetIrradiance(IN(AtmosphereParameters) atmosphere, IN(sampler2D) irradiance_texture, float r, float mu_s) 
@@ -468,7 +467,7 @@ vec3 GetIrradiance(IN(AtmosphereParameters) atmosphere, IN(sampler2D) irradiance
 
   return scattering.rgb * scattering.a / scattering.r * (atmosphere.rayleigh_scattering.r / atmosphere.mie_scattering.r) *  (atmosphere.mie_scattering / atmosphere.rayleigh_scattering);
 }
- 
+
 vec3 GetCombinedScattering(
     IN(AtmosphereParameters) atmosphere,
     IN(sampler3D) scattering_texture,
@@ -488,12 +487,12 @@ vec3 GetCombinedScattering(
   vec3 uvw1 = vec3((tex_x + 1.0 + uvwz.y) / float(SCATTERING_TEXTURE_NU_SIZE),
       uvwz.z, uvwz.w);
 
- 
+
   vec4 combined_scattering =    texture(scattering_texture, uvw0) * (1.0 - lerp) +   texture(scattering_texture, uvw1) * lerp;
 
   vec3 scattering = vec3(combined_scattering);
   single_mie_scattering = GetExtrapolatedSingleMieScattering(atmosphere, combined_scattering);
-  
+
   return scattering;
 }
 
@@ -503,10 +502,10 @@ vec3 GetSkyRadiance(
     IN(sampler3D) scattering_texture,
     IN(sampler3D) single_mie_scattering_texture,
     vec3 camera,
-	IN(vec3) view_ray,
-	float shadow_length,
+  IN(vec3) view_ray,
+  float shadow_length,
     IN(vec3) sun_direction,
-	OUT(vec3) transmittance) 
+  OUT(vec3) transmittance) 
 {
   float r = length(camera);
   float rmu = dot(camera, view_ray);
@@ -546,13 +545,11 @@ vec3 GetSkyRadiance(
     float r_p =  ClampRadius(atmosphere, sqrt(d * d + 2.0 * r * mu * d + r * r));
     float mu_p = (r * mu + d) / r_p;
     float mu_s_p = (r * mu_s + d * nu) / r_p;
-
     scattering = GetCombinedScattering(atmosphere, scattering_texture, single_mie_scattering_texture, r_p, mu_p, mu_s_p, nu, ray_r_mu_intersects_ground,single_mie_scattering);
 
-    vec3 shadow_transmittance = GetTransmittance(atmosphere, transmittance_texture,r, mu, shadow_length, ray_r_mu_intersects_ground);
+   vec3 shadow_transmittance = GetTransmittance(atmosphere, transmittance_texture,r, mu, shadow_length, ray_r_mu_intersects_ground);
 
-    scattering = scattering * shadow_transmittance;
-    single_mie_scattering = single_mie_scattering * shadow_transmittance;
+   scattering = scattering * shadow_transmittance;   single_mie_scattering = single_mie_scattering * shadow_transmittance;
   }
   return scattering * RayleighPhaseFunction(nu) + single_mie_scattering *  MiePhaseFunction(atmosphere.mie_phase_function_g, nu);
 }
@@ -563,10 +560,10 @@ vec3 GetSkyRadianceToPoint(
     IN(sampler3D) scattering_texture,
     IN(sampler3D) single_mie_scattering_texture,
     vec3 camera, 
-	IN(vec3) point,
-	float shadow_length,
+  IN(vec3) point,
+  float shadow_length,
     IN(vec3) sun_direction,
-	OUT(vec3) transmittance) 
+  OUT(vec3) transmittance) 
 {
   vec3 view_ray = normalize(point - camera);
   float r = length(camera);
@@ -621,8 +618,8 @@ vec3 GetSunAndSkyIrradiance(
     IN(sampler2D) transmittance_texture,
     IN(sampler2D) irradiance_texture,
     IN(vec3) point, 
-	IN(vec3) normal,
-	IN(vec3) sun_direction,
+  IN(vec3) normal,
+  IN(vec3) sun_direction,
     OUT(vec3) sky_irradiance) 
 {
   float r = length(point);
@@ -652,34 +649,22 @@ vec3 GetSunAndSkyIrradiance(vec3 p, vec3 normal, vec3 sun_direction,out vec3 sky
     return GetSunAndSkyIrradiance(ATMOSPHERE, transmittance_texture,irradiance_texture, p, normal, sun_direction, sky_irradiance);
 }  
 
+
+
+
+
+
+
+
+
+
+
+
 const float kLengthUnitInMeters = 1000.000000;
 const vec3  kSphereCenter = vec3(0.0, 0.0, 1000.0) / kLengthUnitInMeters;
-const float kSphereRadius = 1000.0 / kLengthUnitInMeters;
+const float kSphereRadius = 0.0 / kLengthUnitInMeters;
 const vec3 kSphereAlbedo = vec3(0.8);
 const vec3 kGroundAlbedo = vec3(0.0, 0.0, 0.04);
-
-
-// 前向声明云相关的函数
-float GetCloudDensity(vec3 point_earth_space);
-bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out float t_max);
-void RenderCloudBox(vec3 view_direction, inout vec3 radiance);
-float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir);
-vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir);
-float HenyeyGreensteinPhase(float g, float cosTheta);
-float DualLobPhase(float g0, float g1, float w, float cosTheta);
-float Remap(float value, float lo, float ho, float ln, float hn);
-float GetDensityHeightGradient(vec3 pos, float min, float max);
-
-// 云的外观参数
-const vec3 kCloudColor = vec3(1.0, 1.0, 1.0);         // 纯白色
-const vec3 kCloudShade = vec3(0.8, 0.8, 0.8);         // 浅灰色阴影
-const float kCloudExtinction = 0.15;                   // 增加消光系数
-
-// ============ 改进的云盒参数 ============
-
-// 云盒中心和尺寸（增加高度）
-const vec3 kCloudBoxCenter = vec3(0.0, 0.0, 6365.0);  // 提高1km
-const vec3 kCloudBoxSize = vec3(500.0, 500.0, 4.0);   // 增加到8km厚度
 
 float GetSunVisibility(vec3 point, vec3 sun_direction) 
 {
@@ -693,9 +678,8 @@ float GetSunVisibility(vec3 point, vec3 sun_direction)
   if (distance_to_intersection > 0.0) 
   {
     float ray_sphere_distance = kSphereRadius - sqrt(ray_sphere_center_squared_distance);
-
-    float ray_sphere_angular_distance = -ray_sphere_distance / p_dot_v;
-    return smoothstep(1.0, 0.0, ray_sphere_angular_distance / sun_size.x);
+   float ray_sphere_angular_distance = -ray_sphere_distance / p_dot_v;
+   return smoothstep(1.0, 0.0, ray_sphere_angular_distance / sun_size.x);
   }
   return 1.0;
 }
@@ -727,12 +711,12 @@ void GetSphereShadowInOut(vec3 view_direction, vec3 sun_direction, out float d_i
     float d_base = -pos_dot_sun / view_dot_sun;
     float d_apex = -(pos_dot_sun + kSphereRadius / k) / view_dot_sun;
     if (view_dot_sun > 0.0) 
-	{
+  {
       d_in = max(d_in, d_apex);
       d_out = a > 0.0 ? min(d_out, d_base) : d_base;
     } 
-	else
-	{
+  else
+  {
       d_in = a > 0.0 ? max(d_in, d_base) : d_base;
       d_out = min(d_out, d_apex);
     }
@@ -743,15 +727,442 @@ void GetSphereShadowInOut(vec3 view_direction, vec3 sun_direction, out float d_i
     d_out = 0.0;
   }
 }
+// ============================================================
+// 与大气散射一致的地平线雾系统
+// ============================================================
+const float HEIGHT_FOG_THICKNESS = 2.0 * km;    // 雾层厚度
+const float HEIGHT_FOG_BASE_DENSITY = 0.3;     // 基础密度
+const vec3 HEIGHT_FOG_COLOR = vec3(135, 206, 245) / 255.0; // 雾颜色
+// ============================================================
+// 球体相交
+// ============================================================
+vec2 SphereIntersection(vec3 rayStart, vec3 rayDir, vec3 sphereCenter, float sphereRadius) {
+    vec3 oc = rayStart - sphereCenter;
+    float b = dot(oc, rayDir);
+    float c = dot(oc, oc) - sphereRadius * sphereRadius;
+    float h = b * b - c;
+    
+    if (h < 0.0) {
+        return vec2(-1.0, -1.0);
+    } else {
+        h = sqrt(h);
+        return vec2(-b - h, -b + h);
+    }
+}
 
-// ============ 局部云盒参数 ============
+// ============================================================
+// 计算雾权重
+// ============================================================
+float GetFogWeight(vec3 ro, vec3 rd) {
+    // 只在看向地面时计算雾
+    vec2 ground_hit = SphereIntersection(ro, rd, vec3(0.0), ATMOSPHERE.bottom_radius);
+    if (ground_hit.x <= 0.0) {
+        return 0.0;
+    }
+    
+    float fog_top = ATMOSPHERE.bottom_radius + HEIGHT_FOG_THICKNESS;
+    float camera_r = length(ro);
+    
+    // 计算射线穿过雾层的范围
+    float t_start, t_end;
+    
+    if (camera_r > fog_top) {
+        vec2 fog_hit = SphereIntersection(ro, rd, vec3(0.0), fog_top);
+        if (fog_hit.x < 0.0) return 0.0;
+        t_start = fog_hit.x;
+        t_end = min(fog_hit.y, ground_hit.x);
+    } else if (camera_r > ATMOSPHERE.bottom_radius) {
+        t_start = 0.0;
+        vec2 fog_hit = SphereIntersection(ro, rd, vec3(0.0), fog_top);
+        t_end = (fog_hit.y > 0.0) ? min(fog_hit.y, ground_hit.x) : ground_hit.x;
+    } else {
+        return 0.0;
+    }
+    
+    if (t_end <= t_start) return 0.0;
+    
+    // 光学深度积分
+    const int SAMPLES = 6;
+    float step = (t_end - t_start) / float(SAMPLES);
+    float optical_depth = 0.0;
+    
+    for (int i = 0; i < SAMPLES; i++) {
+        float t = t_start + (float(i) + 0.5) * step;
+        vec3 pos = ro + rd * t;
+        float r = length(pos);
+        float altitude = r - ATMOSPHERE.bottom_radius;
+        float h = clamp(altitude / HEIGHT_FOG_THICKNESS, 0.0, 1.0);
+        float density = exp(-h * 4.0);
+        optical_depth += density * step;
+    }
+    
+    float extinction = optical_depth * HEIGHT_FOG_BASE_DENSITY;
+    float transmittance = exp(-extinction);
+    
+    return clamp(1.0 - transmittance, 0.0, 0.95);
+}
 
-// 使用地心坐标系定义云盒位置
+// ============================================================
+// 地平线增强版本
+// ============================================================
+float GetFogWeightHorizon(vec3 ro, vec3 rd) {
+    float base_fog = GetFogWeight(ro, rd);
+    if (base_fog < 0.001) return 0.0;
+    
+    vec3 up = normalize(ro);
+    float elevation = dot(rd, up);
+    float horizon = 1.0 - abs(elevation);
+    horizon = pow(horizon, 2.0);
+    
+    float final_fog = base_fog * (0.2 + 0.8 * horizon);
+    return clamp(final_fog, 0.0, 0.95);
+}
 
-// 云盒中心位置（地心坐标系，单位：km）
-// 云盒尺寸（单位：km）
+vec3 GetFogScatteringc(vec3 ro, vec3 rd, vec3 sun_dir, float fog_weight) {
+    // 基础雾颜色
+    vec3 fog_base = HEIGHT_FOG_COLOR;
+    
+    // 太阳光方向影响
+    float sun_dot = dot(rd, sun_dir);
+    float phase = 0.5 + 0.5 * max(sun_dot, 0.0);
+    
+    // 采样雾层中点获取大气照明
+    vec2 ground_hit = SphereIntersection(ro, rd, vec3(0.0), ATMOSPHERE.bottom_radius);
+    float sample_t = ground_hit.x * 0.2; // 采样靠近相机的位置
+    vec3 sample_pos = ro + rd * sample_t;
+    
+    float r = length(sample_pos);
+    float mu_s = dot(normalize(sample_pos), sun_dir);
+    
+    // 获取太阳透射率
+    vec3 sun_transmittance = GetTransmittanceToSun(
+        ATMOSPHERE,
+        transmittance_texture,
+        r,
+        mu_s
+    );
+    
+    // 组合光照
+    vec3 ambient = vec3(0.1, 0.12, 0.15);  // 弱环境光
+    vec3 sun = sun_transmittance * phase * 0.4;
+    
+    vec3 fog_radiance = fog_base * (ambient + sun);
+    
+    return fog_radiance * fog_weight;
+}
 
-// 体积云的相位函数（Henyey-Greenstein）
+
+// ============================================================
+// 🔥 关键修改：使用大气散射颜色作为雾色
+// ============================================================
+vec3 GetFogScattering(vec3 ro, vec3 rd, vec3 sun_dir, float fog_weight) {
+    // 1. 在雾层中采样一个代表点
+    vec2 ground_hit = SphereIntersection(ro, rd, vec3(0.0), ATMOSPHERE.bottom_radius);
+    
+    // 采样距离：在雾层的前30%位置（靠近相机，颜色更接近天空）
+    float fog_top = ATMOSPHERE.bottom_radius + HEIGHT_FOG_THICKNESS;
+    vec2 fog_hit = SphereIntersection(ro, rd, vec3(0.0), fog_top);
+    
+    float t_start = max(0.0, fog_hit.x);
+    float t_end = min(fog_hit.y, ground_hit.x);
+    float sample_t = mix(t_start, t_end, 0.3); // 采样靠近相机的位置
+    
+    vec3 sample_pos = ro + rd * sample_t;
+    
+    // 2. 🔥 直接使用大气散射系统计算该点的天空颜色
+    float r = length(sample_pos);
+    float rmu = dot(sample_pos, rd);
+    float mu = rmu / r;
+    float mu_s = dot(sample_pos, sun_dir) / r;
+    float nu = dot(rd, sun_dir);
+    
+    bool ray_intersects_ground = RayIntersectsGround(ATMOSPHERE, r, mu);
+    
+    // 获取大气散射颜色（这就是雾应该有的颜色）
+    vec3 single_mie;
+    vec3 fog_color = GetCombinedScattering(
+        ATMOSPHERE,
+        scattering_texture,
+        single_mie_scattering_texture,
+        r, mu, mu_s, nu,
+        ray_intersects_ground,
+        single_mie
+    );
+    
+    // 应用相位函数
+    fog_color = fog_color * RayleighPhaseFunction(nu) + 
+                single_mie * MiePhaseFunction(ATMOSPHERE.mie_phase_function_g, nu);
+    
+    // 3. 归一化并调整强度
+    // 雾的强度应该比天空稍弱，避免过曝
+    fog_color *= fog_weight * 0.8;
+    
+    return fog_color;
+}
+
+// ============================================================
+// 简化版：直接采样天空颜色
+// ============================================================
+vec3 GetFogScatteringSimple(vec3 ro, vec3 rd, vec3 sun_dir, float fog_weight) {
+    // 在雾层中采样点
+    vec2 ground_hit = SphereIntersection(ro, rd, vec3(0.0), ATMOSPHERE.bottom_radius);
+    float sample_distance = ground_hit.x * 0.2; // 20%的距离处
+    
+    vec3 sample_pos = ro + rd * sample_distance;
+    
+    // 🔥 直接调用天空散射函数
+    vec3 dummy_transmittance;
+    vec3 fog_color = GetSkyRadiance(
+        sample_pos,     // 采样点位置
+        rd,             // 视线方向
+        0.0,            // 无阴影
+        sun_dir,        // 太阳方向
+        dummy_transmittance
+    );
+    
+    return fog_color * fog_weight;
+}
+
+// ============================================================
+// 高级版本：多点采样平均（更平滑的颜色过渡）
+// ============================================================
+vec3 GetFogScatteringAdvanced(vec3 ro, vec3 rd, vec3 sun_dir, float fog_weight) {
+    vec2 ground_hit = SphereIntersection(ro, rd, vec3(0.0), ATMOSPHERE.bottom_radius);
+    if (ground_hit.x <= 0.0) return vec3(0.0);
+    
+    // 在雾层内采样3个点，平均它们的散射颜色
+    vec3 fog_color_sum = vec3(0.0);
+    const int SAMPLES = 3;
+    
+    for (int i = 0; i < SAMPLES; i++) {
+        float t = ground_hit.x * (0.1 + 0.3 * float(i) / float(SAMPLES - 1));
+        vec3 sample_pos = ro + rd * t;
+        
+        vec3 dummy_trans;
+        vec3 sample_color = GetSkyRadiance(
+            sample_pos,
+            rd,
+            0.0,
+            sun_dir,
+            dummy_trans
+        );
+        
+        fog_color_sum += sample_color;
+    }
+    
+    vec3 fog_color = fog_color_sum / float(SAMPLES);
+    return fog_color * fog_weight;
+}
+
+
+
+// ============================================================
+// 应用体积雾
+// ============================================================
+void ApplyVolumetricFog(vec3 view_direction, inout vec3 radiance, inout vec3 transmittance) {
+    vec3 ro = camera - earth_center;
+    
+    float fog_weight = GetFogWeight(ro, view_direction);
+    
+    if (fog_weight > 0.001) {
+        // 🔥 使用与大气散射一致的雾颜色
+        vec3 fog_scatter = GetFogScatteringc(ro, view_direction, sun_direction, fog_weight);
+        
+        // 混合
+        radiance = radiance * (1.0 - fog_weight) + fog_scatter;
+        transmittance *= (1.0 - fog_weight);
+    }
+}
+
+// ============================================================
+// 调试可视化
+// ============================================================
+vec3 DebugFogDensity(vec3 view_direction) {
+    vec3 ro = camera - earth_center;
+    
+    vec2 ground_hit = SphereIntersection(ro, view_direction, vec3(0.0), ATMOSPHERE.bottom_radius);
+    float fog_weight = GetFogWeightHorizon(ro, view_direction);
+    
+    vec3 color = vec3(0.0);
+    
+    if (ground_hit.x > 0.0) {
+        // 绿色 = 击中地面
+        color.g = 0.3;
+        // 红色 = 雾密度
+        color.r = fog_weight;
+        
+        // 如果雾密度很高，显示为白色
+        if (fog_weight > 0.5) {
+            color = vec3(fog_weight);
+        }
+    } else {
+        // 蓝色 = 看向天空
+        color.b = 0.5;
+    }
+    
+    return color;
+}
+
+
+
+
+
+
+// 前向声明云相关的函数
+float GetCloudDensity(vec3 point_earth_space);
+bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out float t_max);
+void RenderCloudBox(vec3 view_direction, inout vec3 radiance);
+float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir);
+vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir);
+float HenyeyGreensteinPhase(float g, float cosTheta);
+float DualLobPhase(float g0, float g1, float w, float cosTheta);
+float Remap(float value, float lo, float ho, float ln, float hn);
+
+
+// ============ 云的外观参数 ============
+// 云的外观参数
+const vec3 kCloudColor = vec3(1.0, 1.0, 1.0);         // 纯白色
+const vec3 kCloudShade = vec3(0.8, 0.8, 0.8);         // 浅灰色阴影
+const float kCloudExtinction = 0.25;                   // 增加消光系数
+
+// ============ 改进的云盒参数 ============
+
+// 云盒中心和尺寸（增加高度）
+const vec3 kCloudBoxCenter = vec3(0.0, 0.0, 6365.0);  // 提高1km
+const vec3 kCloudBoxSize = vec3(500.0, 500.0, 4.0);   // 增加到8km厚度
+
+
+
+
+// ============ 云密度函数 ============
+
+// ============ 完全重写的密度函数（增加体积感）============
+float GetCloudDensity(vec3 point_earth_space) {
+    // 1. 边界检查 (保持不变)
+    // ... (保持不变)
+    vec3 local_pos = point_earth_space - kCloudBoxCenter;
+    vec3 half_size = kCloudBoxSize * 0.5;
+    if (abs(local_pos.x) > half_size.x || 
+        abs(local_pos.y) > half_size.y || 
+        abs(local_pos.z) > half_size.z) {
+        return 0.0;
+    }
+    // 2. 归一化坐标 & 归一化高度 h [0, 1]
+    vec3 normalized_pos = local_pos / half_size;  // [-1, 1]
+    float h = normalized_pos.y * 0.5 + 0.5;       // [0, 1]
+
+    // 3. 统一天气图采样
+    // 采样频率与参考代码接近: normalized_pos.xz * 0.8 / 2.0 = 0.4
+    vec2 weather_uv = normalized_pos.xz * 0.4 + 0.5; 
+    vec4 weather_value = texture(_WeatherNoiceTex, weather_uv);
+
+    // 从天气图计算覆盖率（借鉴您的逻辑）
+    float coverage = pow(weather_value.r, 3); // r通道用于基础覆盖
+
+// --- I. 垂直密度剖面 (高度曲线) ---
+
+    // 1. 高度偏移 (云底/云顶扰动)
+    // 采样频率保持不变：normalized_pos.xz * 0.3 + 0.5 (使用G通道)
+    float base_height_offset = texture(_WeatherNoiceTex, normalized_pos.xz * 0.3 + 0.5).g;
+    base_height_offset = (base_height_offset - 0.5) * 0.9;
+    // 
+    // 仅使用 base_height_offset 调整高度，简化高度细节扰动
+    float bottom = 0.05 + base_height_offset;
+    float top = 0.95 - base_height_offset * 0.5; 
+    // 核心垂直调整：模拟云层压缩/拉伸 (等同于您代码中的 adjusted_height/modulated_height 的效果)
+    // 注意：我们将 h 直接用于 smoothstep，不再使用 adjusted_height/modulated_height
+    float bottom_fade = smoothstep(bottom, bottom + 0.25, h);
+    float top_fade = 1.0 - smoothstep(top - 0.25, top, h);
+    float height_density_curve = bottom_fade * top_fade;
+
+    // 2. 中部鼓包 (积云特征) - **保留并简化**
+    float mid_boost = smoothstep(0.2, 0.5, h) * smoothstep(0.8, 0.5, h);
+    height_density_curve = mix(height_density_curve, 1.0, mid_boost * 0.6);
+
+    // 3. 垂直厚度乘子 (天气图B通道)
+    float cloud_thickness = 0.8 + weather_value.b * 0.6; // 频率与 weather_uv (0.4) 接近
+    height_density_curve *= cloud_thickness; 
+// --- II. 3D 形状噪声 (基础形状) ---
+
+    // 沿用您的FBM/Worley噪声混合，但变量名和流程更清晰
+    vec3 shape_uv = normalized_pos * 0.5 + 0.5;
+    vec4 shape_low = texture(_ShapeNoiceTex, shape_uv * 0.5); 
+    vec4 shape_mid = texture(_ShapeNoiceTex, shape_uv * 1.5); 
+
+    // FBM 叠加 (保持您的权重调整)
+    float base_shape = shape_low.r * 1.5 + // 低频
+                        shape_mid.r * 1.2 ; // 中频
+    // Worley噪声侵蚀 (保持您的强度调整)
+    //base_shape *=2;
+    float worley_fbm = dot(shape_low.gba, vec3(0.625, 0.25, 0.125));
+    // remap(base_shape, 1.0 - worley_fbm * 0.6, 1.0, 0.0, 1.0)
+    // 解释：将 base_shape 从 [1.0 - worley_fbm * 0.6, 1.0] 映射到 [0.0, 1.0]
+    float density = Remap(base_shape, 1.0 - worley_fbm * 0.4, 1.0, 0.0, 1.0); 
+
+// --- III. 形状与密度曲线组合 (Shape + Height) ---
+
+    // 垂直扰动 (取代 3D噪声调制 的厚度变化)
+    // 3D 噪声调制: 借鉴参考代码中 detailNoiseMixByHeight 的思路，用高度混合
+    vec3 shape_3d_uv = normalized_pos * 2.0 + 0.5;
+    float shape_3d = texture(_ShapeNoiceTex, shape_3d_uv).g;
+    // 使用 shape_3d 噪声来影响垂直密度曲线 (您原有逻辑)
+    float shape_influence = smoothstep(0.3, 0.7, density);
+    height_density_curve *= mix(0.5, 1.0, shape_3d * shape_influence + (1.0 - shape_influence));
+
+    // 垂直扰动 (用于云顶细节，保持您的逻辑，但移除 modulated_height 依赖)
+    vec3 curl_uv1 = normalized_pos * 0.8 + 0.5;
+    vec3 curl_uv2 = normalized_pos * 2.0 + 0.5;
+    float curl1 = texture(_ShapeNoiceTex, curl_uv1).r - 0.5;
+    float curl2 = texture(_DetailNoiceTex, curl_uv2).g - 0.5;
+    
+    float vertical_distortion = (curl1 * 0.6 + curl2 * 0.3);
+    // 扰动权重只在云层中部发挥作用，使用 h 代替 modulated_height
+    float distortion_weight = smoothstep(0.1, 0.3, h) * smoothstep(0.9, 0.7, h); 
+    height_density_curve = clamp(height_density_curve + vertical_distortion * distortion_weight, 0.0, 1.0);
+    // 组合形状噪声和垂直密度
+    density *= height_density_curve;
+// --- IV. 后处理与细节侵蚀 ---
+
+    // 1. 覆盖率混合 (借鉴参考代码中的 remap(basicCloudNoise, 1.0 - coverage, 1, 0, 1))
+    // Remap(density, coverage_threshold * (1.0 - coverage), 1.0, 0.0, 1.0)
+       // 解释：将 density 从 [0.1 * (1 - coverage), 1.0] 映射到 [0.0, 1.0]
+    float coverage_threshold = 0.1; 
+    density = Remap(density, coverage_threshold * (1.0 - coverage), 1.0, 0.0, 1.0);
+    density = clamp(density, 0.0, 1.0);
+
+
+    vec3 edge_factor = 1.0 - abs(normalized_pos);
+    float edge_fade = min(min(edge_factor.x, edge_factor.y), edge_factor.z);
+    edge_fade = smoothstep(0.0, 0.15, edge_fade);
+    density *= edge_fade;
+
+
+    // 2. 细节侵蚀 (保持您的逻辑，但使用 h 代替 modulated_height)
+    if (density > 0.05) { 
+        vec3 detail_uv = normalized_pos * 0.5 + 0.5; 
+        vec3 detail_noise = texture(_DetailNoiceTex, detail_uv).rgb;
+        float detail_fbm = dot(detail_noise, vec3(0.625, 0.25, 0.125));
+    
+    // 侵蚀强度依赖于高度 h
+    float erode_strength = mix(0.35, 0.65, h); 
+    float erode = (1.0 - detail_fbm) * erode_strength;
+    density -= erode * density; 
+    }
+    // 3. 最终裁剪和输出
+    if (density < 0.4) { 
+        return 0.0;
+    }
+    // 最终密度增强
+    density = clamp(density, 0.0, 1.0);
+  return density * 1.3; // 整体增强
+}
+// ============================================================
+// 高级云光照系统 - 完整实现
+// ============================================================
+
+// ============================================================
+// 基础相位函数
+// ============================================================
 float HenyeyGreensteinPhase(float g, float cosTheta) {
     float g2 = g * g;
     float numerator = 1.0 - g2;
@@ -759,236 +1170,269 @@ float HenyeyGreensteinPhase(float g, float cosTheta) {
     return (1.0 / (4.0 * PI)) * (numerator / denominator);
 }
 
-// ============ 双瓣相位函数 ============
+// ============================================================
+// 双瓣相位函数 (前向+后向散射)
+// ============================================================
 float DualLobPhase(float g0, float g1, float w, float cosTheta) {
-    return mix(HenyeyGreensteinPhase(g0, cosTheta), 
-               HenyeyGreensteinPhase(g1, cosTheta), w);
+    return mix(
+        HenyeyGreensteinPhase(g0, cosTheta),  // 前向散射
+        HenyeyGreensteinPhase(g1, cosTheta),  // 后向散射
+        w
+    );
+}
+// ============================================================
+// Beer-Powder 效应 (云边缘增亮效果)
+// ============================================================
+float BeerPowder(float density, float cosTheta) {
+    // Beer定律基础衰减
+    float beer = exp(-density);
+    
+    // Powder效应: 薄云边缘散射增强
+    float powder = 1.0 - exp(-density * 2.0);
+    
+    // 根据太阳角度调整powder强度
+    float powder_strength = 1.0 * smoothstep(0.5, 1.0, cosTheta);
+    
+    return mix(beer, powder, powder_strength);
 }
 
-// ============ 云密度函数 ============
 
-// ============ 完全重写的密度函数（增加体积感）============
-float GetCloudDensity(vec3 point_earth_space) {
-    // 1. 边界检查
-    vec3 local_pos = point_earth_space - kCloudBoxCenter;
+
+// ============================================================
+// 高度梯度光照 (上层亮,下层暗)
+// ============================================================
+float ComputeHeightGradient(vec3 sample_pos) {
+    vec3 local_pos = sample_pos - kCloudBoxCenter;
     vec3 half_size = kCloudBoxSize * 0.5;
+    float height_fraction = (local_pos.z / half_size.z) * 0.5 + 0.5;
     
-    if (abs(local_pos.x) > half_size.x || 
-        abs(local_pos.y) > half_size.y || 
-        abs(local_pos.z) > half_size.z) {
-        return 0.0;
-    }
+    // 下层0.5倍,上层1.2倍
+    float gradient = mix(0.5, 1.2, height_fraction);
     
-    // 2. 归一化坐标
-    vec3 normalized_pos = local_pos / half_size;  // [-1, 1]
+    // 云顶额外增亮(模拟大气散射)
+    gradient += smoothstep(0.7, 1.0, height_fraction) * 0.3;
     
-    // ===== 关键改进1：多尺度天气图 =====
-    vec2 weather_uv = normalized_pos.xz * 0.8 + 0.5;
-    
-    // 大尺度云团分布（覆盖率）
-    vec4 weather_large = texture(_WeatherNoiceTex, weather_uv * 0.6);
-    // 中尺度细节
-    vec4 weather_medium = texture(_WeatherNoiceTex, weather_uv * 1.0);
-    
-    // 组合天气图（大尺度主导，中尺度添加细节）
-    float coverage = weather_large.r * 0.7 + weather_medium.r * 0.3;
-    
-    // ===== 关键改进2：垂直结构（造型函数）=====
-    // 高度百分比 [0, 1]
-    float height_fraction = normalized_pos.z * 0.5 + 0.5;
-    
-    // 底部密集，中部膨胀，顶部卷曲
-    float height_density_curve = 
-        // 底部快速上升
-        smoothstep(0.0, 0.15, height_fraction) *
-        // 中部保持高密度
-        smoothstep(0.9, 0.6, height_fraction) *
-        // 增加中部的"鼓包"
-        (1.0 + 0.5 * smoothstep(0.3, 0.5, height_fraction) * smoothstep(0.7, 0.5, height_fraction));
-    
-    // ===== 关键改进3：基础形状（多频率FBM）=====
-    vec3 shape_uv = normalized_pos * 0.5 + 0.5;
-    
-    // 低频基础形状（大云团）
-    vec4 shape_low = texture(_ShapeNoiceTex, shape_uv * 0.5);
-    // 中频结构（云团内部）
-    vec4 shape_mid = texture(_ShapeNoiceTex, shape_uv * 1.5);
-    // 高频细节（云的纹理）
-    vec4 shape_high = texture(_ShapeNoiceTex, shape_uv * 4.0);
-    
-    // 构建FBM（分形布朗运动）
-    float base_shape = 
-        shape_low.r * 0.5 +      // 大尺度主导
-        shape_mid.r * 0.6 +      // 中尺度结构
-        shape_high.r * 0.4;      // 高频细节
-    
-    // ===== 关键改进4：Worley噪声侵蚀（增加蓬松感）=====
-    float worley_fbm = dot(shape_low.gba, vec3(0.625, 0.25, 0.125));
-    
-    // 基础密度
-    float density = Remap(base_shape, 1.0 - worley_fbm * 0.8, 1.0, 0.0, 1.0);
-    
-    // ===== 关键改进5：垂直扰动（打破平面感）=====
-    // 使用3D噪声扰动高度
-    vec3 curl_uv1 = normalized_pos * 0.8 + 0.5;
-    vec3 curl_uv2 = normalized_pos * 2.0 + 0.5;
-    
-    float curl1 = texture(_ShapeNoiceTex, curl_uv1).r - 0.5;
-    float curl2 = texture(_DetailNoiceTex, curl_uv2).g - 0.5;
-    
-    // 垂直扰动强度随高度变化（顶部扰动更大）
-    float vertical_distortion = (curl1 * 0.4 + curl2 * 0.2) * 
-                                smoothstep(0.3, 0.8, height_fraction);
-    
-    // 应用扰动
-    height_density_curve = clamp(height_density_curve + vertical_distortion, 0.0, 1.0);
-    
-    // ===== 关键改进6：组合所有因素 =====
-    density *= height_density_curve;
-    
-    // 应用覆盖率（增加对比度）
-    float coverage_threshold = 0.4;  // 提高阈值，减少稀疏云
-    density = Remap(density, coverage_threshold * (1.0 - coverage), 1.0, 0.0, 1.0);
-    density = clamp(density, 0.0, 1.0);
-    
-    // ===== 关键改进7：边缘软化 =====
-    vec3 edge_factor = 1.0 - abs(normalized_pos);
-    float edge_fade = min(min(edge_factor.x, edge_factor.y), edge_factor.z);
-    edge_fade = smoothstep(0.0, 0.15, edge_fade);  // 更柔和的边缘
-    
-    density *= edge_fade;
-    
-    // ===== 关键改进8：细节侵蚀（只在高密度区域）=====
-    if (density > 0.2) {
-        vec3 detail_uv = normalized_pos * 3.0 + 0.5;
-        vec3 detail_noise = texture(_DetailNoiceTex, detail_uv).rgb;
-        
-        float detail_fbm = dot(detail_noise, vec3(0.625, 0.25, 0.125));
-        
-        // 侵蚀强度随高度变化（顶部侵蚀更多，增加蓬松感）
-        float erode_strength = mix(0.2, 0.5, height_fraction);
-        float erode = (1.0 - detail_fbm) * erode_strength;
-        
-        // 应用侵蚀（保护低密度区域）
-        density = density - erode * density;
-    }
-    
-    // ===== 改进9：密度重映射（增加对比度）=====
-    // 使用幂函数增加对比度
-    density = pow(density, 1.2);
-    
-    // 硬阈值（过滤噪点）
-    if (density < 0.1) {
-        return 0.0;
-    }
-    
-    return clamp(density * 1.2, 0.0, 1.0);
+    return gradient;
 }
 
-// ============ 计算云的自阴影 ============
-float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir) {
-    // 简单的自阴影模型 - 从采样点向太阳方向步进
-    const int SHADOW_STEPS = 8;
-    float shadow_step_size = 0.5;  // 步长
-    float shadow_transmittance = 1.0;
+// ============================================================
+// 边缘光照 (Rim Light / 次表面散射)
+// ============================================================
+float ComputeRimLight(vec3 view_dir, vec3 sun_dir, float density) {
+    // 计算视线和太阳方向的夹角
+    float cosTheta = dot(view_dir, sun_dir);
+    
+    // 边缘光只在背光侧生效
+    float rim = smoothstep(0.0, -0.5, cosTheta);
+    
+    // 边缘光强度随密度衰减(厚云穿透少)
+    float density_atten = exp(-density * 2.0);
+    
+    // 边缘光锐化
+    rim = pow(rim, 4.0);
+    
+    return rim * density_atten * 0.4;
+}
+
+// ============================================================
+// 环境光遮蔽 (AO)
+// ============================================================
+float ComputeAmbientOcclusion(vec3 sample_pos, float density) {
+    // 简化的AO: 基于局部密度
+    vec3 local_pos = sample_pos - kCloudBoxCenter;
+    vec3 half_size = kCloudBoxSize * 0.5;
+    float height_fraction = (local_pos.z / half_size.z) * 0.5 + 0.5;
+    
+    // 底部遮蔽更强
+    float height_ao = mix(0.6, 1.0, height_fraction);
+    
+    // 密度越大,遮蔽越强
+    float density_ao = mix(1.0, 0.7, smoothstep(0.3, 1.0, density));
+    
+    return height_ao * density_ao;
+}
+
+// ============================================================
+// 改进的云自阴影计算
+// ============================================================
+float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir, float initial_density) {
+    const int SHADOW_STEPS = 16; // 🔥 增加步数，提高阴影精度
     
     vec3 shadow_pos = sample_pos;
+    float shadow_transmittance = 1.0;
+    float accumulated_density = 0.0;
+    
+    // 自适应步长: 高密度区域用小步长
+    // 🔥 调整 adaptive_step 的影响范围，确保步长不会太小影响性能
+    float adaptive_step = 0.5 * mix(1.0, 0.7, initial_density);
+    float shadow_step_size = adaptive_step; 
+    // 1. 获取抖动值 (使用像素 UV 和 时间/哈希 来确保每条射线不同)
+    vec2 screenUV = gl_FragCoord.xy / iResolution.xy; 
+    
+    // 🔥 关键：使用哈希函数 (Hash) 或基于 UV 和 Step 的索引来采样蓝噪声，保证随机性
+    // 假设您有一个基于屏幕位置和时间的哈希函数
+    // float random_val = Hash(screenUV, Time); 
+    
+    // 更简单的做法：直接用屏幕 UV 采样，但 UV 缩放不同于主射线
+    float random_offset_0_1 = texture(blueNoiseTexture, screenUV * 4.0).g; // 换个通道和缩放
+    
+    // 2. 抖动起始位置：将起始点沿着太阳方向推离或拉近，范围 [0, 1) * step_size
+    float jitter_dist = random_offset_0_1 * shadow_step_size; 
+    shadow_pos += sun_dir * jitter_dist; // 从 sample_pos 开始，加上一个随机偏移
+    
     
     for (int i = 0; i < SHADOW_STEPS; i++) {
         shadow_pos += sun_dir * shadow_step_size;
-        
-        // 检查是否还在云盒内
+        // 边界检查
         vec3 local_pos = shadow_pos - kCloudBoxCenter;
         vec3 half_size = kCloudBoxSize * 0.5;
         if (abs(local_pos.x) > half_size.x || 
             abs(local_pos.y) > half_size.y || 
             abs(local_pos.z) > half_size.z) {
-            break;  // 已经出了云盒
+            break;
         }
         
-        // 采样密度并累积透射率
         float shadow_density = GetCloudDensity(shadow_pos);
+        accumulated_density += shadow_density * shadow_step_size;
+        
         shadow_transmittance *= exp(-shadow_density * shadow_step_size * kCloudExtinction);
         
-        // 提前退出优化
-        if (shadow_transmittance < 0.01) break;
+        if (shadow_transmittance < 0.05) break; // 提前退出阈值略微放宽
     }
     
-    return shadow_transmittance;
+    // 🔥 关键改进: 柔和阴影的近似 (防止全黑，解决阴影过硬)
+    // 使用 Soft Absorb 近似，确保最低透射率
+    float min_transmittance = 0.2; // 阴影区最低亮度 (防止全黑)
+    
+    // 柔化阴影: (1 - 柔化系数) * 硬阴影 + 柔化系数 * 柔和阴影
+    float soft_shadow = max(shadow_transmittance, min_transmittance);
+    float hard_shadow = shadow_transmittance;
+    
+    // 使用混合因子来平衡硬阴影和软阴影
+    float shadow_blend_factor = 0.7; // 更多软阴影
+    return mix(hard_shadow, soft_shadow, shadow_blend_factor);
 }
 
-// ============ 计算步进点的散射光照 ============
+// ============================================================
+// 计算步进点的散射光照 (主函数 - 重新精调)
+// ============================================================
 vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir) {
-    // 计算自阴影
-    float sun_visibility = ComputeCloudSelfShadowing(sample_pos, sun_dir);
+    float density = GetCloudDensity(sample_pos);
     
-    // 计算太阳光影响
-    float sunLight = dot(normalize(sample_pos - kCloudBoxCenter), sun_dir);
+    // ===== 1. 计算自阴影 (🔥 关键优化) =====
+    // SelfShadowing决定了有多少太阳光能到达该点
+    float sun_visibility = ComputeCloudSelfShadowing(sample_pos, sun_dir, density);
     
-    // 使用基础颜色与阴影颜色混合
-    vec3 cloudColor = mix(kCloudShade, kCloudColor, sunLight * 0.5 + 0.5);
+    // ===== 2. 相位函数 (用于单次散射) =====
+    float cosTheta = dot(view_dir, sun_dir);
+    // 使用双瓣 HG，前向 G=0.75, 后向 G=-0.45, 前向权重 W=0.8 (更聚焦)
+    float phase_term = DualLobPhase(0.75, -0.45, 0.8, cosTheta);
     
-    // 应用自阴影
-    cloudColor *= sun_visibility;
+    // ===== 3. 单次散射 (解决饱和问题) =====
+    vec3 sun_color = vec3(1.0, 0.98, 0.92); // 暖色太阳光
+    float sun_intensity = 3.0; // 🔥 降低强度，防止云核过曝 (原先可能太高)
     
-    return cloudColor;
+    // 直射光项 = 太阳光 * (自阴影衰减 + BeerPowder增亮) * 相位函数
+    // 🔥 将 BeerPowder 视为对 phase_term 的调整或增强，而不是一个独立的乘数
+    float beer_powder_factor = mix(1.0, 1.5, BeerPowder(density * 5.0, max(0.0, cosTheta))); // 薄云边缘增亮 1.5倍
+    
+    // 单次散射光
+    vec3 direct_light = sun_color * sun_intensity * sun_visibility * phase_term * beer_powder_factor;
+    
+    // ===== 4. 多重散射近似 (解决阴影区灰暗问题) =====
+    vec3 ambient_color = vec3(0.5, 0.6, 0.7); // 蓝色天空环境光
+    
+    // 🔥 多重散射贡献：在自阴影区域增加白色填充光
+    // (1.0 - sun_visibility) 代表阴影深度。
+    float ms_blend = smoothstep(0.0, 1.0, density) * 0.7; // 密度越大，多重散射越强
+    
+    vec3 multi_scatter_color = mix(ambient_color, kCloudColor, ms_blend);
+    
+    // 阴影贡献：自阴影越深，环境光和多重散射越重要
+    // 我们用 kCloudShade 作为阴影的基色，并用环境光提亮
+    vec3 ms_contribution = multi_scatter_color * ambient_color * (1.0 - sun_visibility) * 1.5; // 🔥 增大乘数 1.5
+    
+    // 环境光与 AO
+    float ambient_occlusion = ComputeAmbientOcclusion(sample_pos, density);
+    vec3 ambient_light = ambient_color * 0.3 * ambient_occlusion;
+    
+    // 组合环境光和多重散射
+    vec3 total_ambient = ambient_light + ms_contribution;
+    
+    // ===== 5. 边缘光 (Rim Light) =====
+    float rim_light = ComputeRimLight(view_dir, sun_dir, density);
+    vec3 rim_contribution = sun_color * rim_light * 2.0; // 🔥 增强 Rim Light
+    
+    // ===== 6. 高度梯度 (作为最终强度调整) =====
+    float height_gradient = ComputeHeightGradient(sample_pos);
+    
+    // ===== 7. 组合最终光照 =====
+    vec3 total_light = (direct_light + total_ambient + rim_contribution) * height_gradient;
+    
+    // ===== 8. 云基础颜色 (精简) =====
+    // 基础颜色应该保持 kCloudColor，让光照去决定最终颜色
+    vec3 cloud_base_color = kCloudColor;
+    
+    // 厚云颜色校正: 降低厚云的颜色饱和度，使其略微偏灰
+    cloud_base_color = mix(cloud_base_color, vec3(0.85, 0.85, 0.85), smoothstep(0.5, 1.0, density));
+    
+    // 🔥 最终输出：将总光照乘以消光系数，使光照符合物理衰减
+    return cloud_base_color * total_light * kCloudExtinction; 
 }
 
-
-// ============ 云层渲染主函数 ============
+// ============================================================
+// 云层渲染主函数 (改进版)
+// ============================================================
 void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
-    // 第1步：相交测试
     vec3 camera_earth_space = camera - earth_center;
     float t_min, t_max;
     
     if (!RayIntersectCloudBox(camera_earth_space, view_direction, t_min, t_max)) {
-        return;  // 未击中云盒，直接返回
+        return;
     }
     
-    // 第2步：光线步进 - 体积积分
-    const int STEPS = 64;
+    const int STEPS = 128;
     float step_size = (t_max - t_min) / float(STEPS);
     
-    // 获取蓝噪声值用于步进偏移
+    // 蓝噪声抖动
     vec2 screenUV = gl_FragCoord.xy / iResolution;
-    vec2 blueNoiseUV = screenUV * 8.0; // 调整蓝噪声纹理的缩放
+    vec2 blueNoiseUV = screenUV * 8.0;
     float blueNoise = texture(blueNoiseTexture, blueNoiseUV).r;
     
-    // 体积渲染核心变量
-    vec3 cloud_color = vec3(0.0);      // 云颜色累积
-    float transmittance = 1.0;         // 透射率累积
+    vec3 cloud_color = vec3(0.0);
+    float transmittance = 1.0;
     
-    // 光线步进主循环 - 每步都有独立的偏移
+    float initial_jitter = blueNoise * step_size;
     for (int i = 0; i < STEPS; i++) {
-        // 提前退出优化
-        if (transmittance < 0.01) break;
+        if (transmittance < 0.02) break;
         
-        // 计算当前点的位置 - 每步独立计算
-        float t = t_min + (float(i) + blueNoise) * step_size;  // 每步独立计算
-        vec3 curr_pos = camera_earth_space + view_direction * t;
+        float t = t_min + initial_jitter + float(i) * step_size;
+        vec3 curr_pos = camera - earth_center + view_direction * t;
         
-        // 计算当前点的密度
         float density = GetCloudDensity(curr_pos);
         
         if (density > 0.001) {
-            // 计算当前点的云颜色
+            // 🔥 使用改进的光照计算
             vec3 step_color = ComputeStepScattering(curr_pos, view_direction, sun_direction);
             
-            // 计算步进透射率（Beer定律）
             float step_transmittance = exp(-density * step_size * kCloudExtinction);
-            
-            // 累积云颜色和透射率
-            cloud_color += step_color * density * step_size * transmittance;
-            transmittance *= step_transmittance;
+            float extinction = density * kCloudExtinction;
+            float step_T = exp(-extinction * step_size);
+            // 体积积分
+            cloud_color += step_color * transmittance*(1.0-step_T);
+            transmittance *= step_T;
         }
     }
     
-    // 第3步：混合到场景
-    float cloud_alpha = 1.0 - transmittance;
-    radiance = mix(radiance, cloud_color, cloud_alpha);
+    
+    radiance = radiance * transmittance + cloud_color;
 }
 
-// ============ 射线与云盒相交测试（轴对齐包围盒AABB） ============
+
+// ============ 重映射函数 ============
+float Remap(float value, float lo, float ho, float ln, float hn) {
+    return ln + (value - lo) * (hn - ln) / (ho - lo);
+}
 bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out float t_max) {
     // 1. 计算盒子的最小和最大角点
     vec3 box_min = kCloudBoxCenter - kCloudBoxSize * 0.5;
@@ -1015,24 +1459,9 @@ bool RayIntersectCloudBox(vec3 ray_origin, vec3 ray_dir, out float t_min, out fl
     return t_max > t_min && t_max > 0.0;
 }
 
-// ============ 重映射函数 ============
-float Remap(float value, float lo, float ho, float ln, float hn) {
-    return ln + (value - lo) * (hn - ln) / (ho - lo);
-}
-
-// ============ 高度百分比函数 ============
-float GetDensityHeightGradient(vec3 pos, float min, float max) {
-    float heightGradient = (pos.y - min) / (max - min);
-    return clamp(heightGradient, 0.0, 1.0);  // saturate函数的GLSL实现
-}
-
-// ============ 双瓣Henyey-Greenstein相位函数 ============
-
-// ============ 光线步进计算光照透射率 ============
-
 void main() 
 {
-  
+
   vec3 view_direction = normalize(view_ray);
   float fragment_angular_size =
       length(dFdx(view_ray) + dFdy(view_ray)) / length(view_ray);
@@ -1086,12 +1515,13 @@ void main()
     radiance = radiance + transmittance * GetSolarRadiance();
   }
 
-
+  //ApplyVolumetricFog(view_direction, radiance, transmittance);
 
   RenderCloudBox(view_direction, radiance);
-  radiance = mix(radiance, sphere_radiance, sphere_alpha);
+   radiance = mix(radiance, sphere_radiance, sphere_alpha);
 
   color.rgb = 
       pow(vec3(1.0) - exp(-radiance / white_point * exposure), vec3(1.0 / 2.2));
   color.a = 1.0;
+
 }

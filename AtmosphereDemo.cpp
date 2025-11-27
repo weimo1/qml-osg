@@ -373,7 +373,7 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
     
     // 加载蓝噪声纹理，用于消除云渲染分层
     osg::ref_ptr<osg::Texture2D> blueNoiseTexture = new osg::Texture2D;
-    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/cloud1/BlueNoise.png");
+    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/cloud1/b.png");
     
     if (blueNoiseImage.valid()) {
         blueNoiseTexture->setImage(blueNoiseImage);
@@ -436,7 +436,7 @@ void AtmoCallBackX::process(osg::StateSet* ss)
     float acos, asin, zcos, zsin;
     const double PI = 3.14159265358979323846;
     double AO = 0.5 * PI;
-    double ZO = 0.5*(1.0 - sin(1200 * 0.0001)) * PI;
+    double ZO = 0.5*(1.0 - sin(2400 * 0.0001)) * PI;
      
     asin = sin(AO);
     acos = cos(AO);

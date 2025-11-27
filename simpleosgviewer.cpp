@@ -15,11 +15,11 @@ SimpleOSGViewer::SimpleOSGViewer(QQuickItem *parent)
     , m_mouseX(0)
     , m_mouseY(0)
 {
-     setMirrorVertically(true);//osg和qml的Y轴朝向是反的
+    
+    setMirrorVertically(true);//osg和qml的Y轴朝向是反的
     setTextureFollowsItemSize(true);
     setAcceptedMouseButtons(Qt::AllButtons);
     setAcceptHoverEvents(true);
-
     setFlag(QQuickItem::ItemIsFocusScope);  // 设置为焦点范围
     
     // 使用定时器定期更新，避免线程问题

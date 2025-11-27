@@ -7,10 +7,12 @@
 #include <QQuickStyle>
 #include "simpleosgviewer.h"
 
+
+
 int main(int argc, char *argv[])
 {
     // 设置OpenGL图形API - 这对于OSG集成至关重要
-    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+   QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
     
     // 设置支持自定义的样式
     QQuickStyle::setStyle("Basic");

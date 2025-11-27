@@ -15,7 +15,8 @@
 #include "AtmosphereDemo.h"
 
 UIHandler::UIHandler()
-    : m_atmosphereDemo(nullptr)  // 显式初始化为nullptr
+    : m_viewManager()  // 显式初始化ViewManager
+    , m_atmosphereDemo(nullptr)  // 显式初始化为nullptr
 {
     // 注意：我们不在构造函数中初始化AtmosphereDemo，而是在第一次使用时初始化
     // 这样可以避免在UIHandler构造时可能出现的问题
@@ -132,25 +133,38 @@ void UIHandler::loadOSGFilesFromDirectory(osgViewer::Viewer* viewer, osg::Group*
         return;
     }
 
-    // 支持的OSG文件扩展名
-    QStringList filters;
-    filters << "*.osg" << "*.osgt" << "*.osgb";
+    // 获取目录中的所有子目录
+    QFileInfoList subDirList = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
     
-    // 获取目录中所有匹配的文件
-    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::Readable);
+    bool modelsLoaded = false;
     
-    if (fileList.isEmpty()) {
-        qDebug() << "No OSG files found in directory:" << dirPath;
-        return;
+    // 遍历每个子目录
+    for (const QFileInfo& subDirInfo : subDirList) {
+        QString subDirPath = subDirInfo.absoluteFilePath();
+        QString subDirName = subDirInfo.fileName();
+        
+        qDebug() << "Checking subdirectory:" << subDirPath;
+        
+        // 检查子目录中是否存在与子目录同名的OSG文件
+        QStringList osgExtensions = {"*.osg", "*.osgt", "*.osgb"};
+        for (const QString& extension : osgExtensions) {
+            QString targetFileName = subDirName + extension.mid(1); // 移除*号
+            QString targetFilePath = subDirPath + "/" + targetFileName;
+            
+            QFileInfo targetFile(targetFilePath);
+            if (targetFile.exists() && targetFile.isFile()) {
+                qDebug() << "Found matching OSG file:" << targetFilePath;
+                loadSingleOSGFile(viewer, rootNode, targetFilePath);
+                modelsLoaded = true;
+                break; // 找到匹配的文件后跳出循环，每个子目录只加载一个文件
+            }
+        }
     }
-
-    // 遍历并加载所有文件
-    for (const QFileInfo& fileInfo : fileList) {
-        loadSingleOSGFile(viewer, rootNode, fileInfo.absoluteFilePath());
-    }
     
-    // 适应视图以显示所有加载的模型
-    fitToView(viewer, rootNode);
+    // 如果加载了模型，则适应视图以显示所有加载的模型
+    if (modelsLoaded) {
+        fitToView(viewer, rootNode);
+    }
 }
 
 // 光照控制相关方法
