@@ -20,6 +20,9 @@ uniform sampler3D _DetailNoiceTex;     // 3D细节纹理（高频Worley噪声）
 uniform sampler2D _WeatherNoiceTex;    // 2D天气纹理（控制云的覆盖率等属性）
 uniform sampler2D blueNoiseTexture;    // 蓝噪声纹理，用于消除云渲染分层
 
+
+// 时间
+uniform float time;
 // 屏幕分辨率
 uniform vec2 iResolution;
 
@@ -1023,16 +1026,13 @@ float Remap(float value, float lo, float ho, float ln, float hn);
 // 云的外观参数
 const vec3 kCloudColor = vec3(1.0, 1.0, 1.0);         // 纯白色
 const vec3 kCloudShade = vec3(0.8, 0.8, 0.8);         // 浅灰色阴影
-const float kCloudExtinction = 0.25;                   // 增加消光系数
+const float kCloudExtinction = 0.8;                   // 增加消光系数
 
 // ============ 改进的云盒参数 ============
 
 // 云盒中心和尺寸（增加高度）
-const vec3 kCloudBoxCenter = vec3(0.0, 0.0, 6365.0);  // 提高1km
-const vec3 kCloudBoxSize = vec3(500.0, 500.0, 4.0);   // 增加到8km厚度
-
-
-
+const vec3 kCloudBoxCenter = vec3(0.0, 0.0, 6361.0);  // 提高1km
+const vec3 kCloudBoxSize = vec3(10, 10.0, 0.5);   // 增加到8km厚度
 
 // ============ 云密度函数 ============
 
@@ -1139,21 +1139,22 @@ float GetCloudDensity(vec3 point_earth_space) {
 
     // 2. 细节侵蚀 (保持您的逻辑，但使用 h 代替 modulated_height)
     if (density > 0.05) { 
-        vec3 detail_uv = normalized_pos * 0.5 + 0.5; 
+        vec3 detail_uv = normalized_pos * 3.5 + 0.5; 
         vec3 detail_noise = texture(_DetailNoiceTex, detail_uv).rgb;
         float detail_fbm = dot(detail_noise, vec3(0.625, 0.25, 0.125));
     
     // 侵蚀强度依赖于高度 h
-    float erode_strength = mix(0.35, 0.65, h); 
+    float erode_strength = mix(0.1, 0.2, h); 
     float erode = (1.0 - detail_fbm) * erode_strength;
     density -= erode * density; 
     }
     // 3. 最终裁剪和输出
-    if (density < 0.4) { 
+    if (density < 0.16) { 
         return 0.0;
     }
     // 最终密度增强
     density = clamp(density, 0.0, 1.0);
+    density = pow(density, 1.3);
   return density * 1.3; // 整体增强
 }
 // ============================================================
@@ -1256,7 +1257,7 @@ float ComputeAmbientOcclusion(vec3 sample_pos, float density) {
 // 改进的云自阴影计算
 // ============================================================
 float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir, float initial_density) {
-    const int SHADOW_STEPS = 16; // 🔥 增加步数，提高阴影精度
+    const int SHADOW_STEPS = 24; // 🔥 增加步数，提高阴影精度
     
     vec3 shadow_pos = sample_pos;
     float shadow_transmittance = 1.0;
@@ -1313,9 +1314,9 @@ float ComputeCloudSelfShadowing(vec3 sample_pos, vec3 sun_dir, float initial_den
     return mix(hard_shadow, soft_shadow, shadow_blend_factor);
 }
 
-// ============================================================
-// 计算步进点的散射光照 (主函数 - 重新精调)
-// ============================================================
+
+
+
 vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir) {
     float density = GetCloudDensity(sample_pos);
     
@@ -1377,7 +1378,7 @@ vec3 ComputeStepScattering(vec3 sample_pos, vec3 view_dir, vec3 sun_dir) {
     cloud_base_color = mix(cloud_base_color, vec3(0.85, 0.85, 0.85), smoothstep(0.5, 1.0, density));
     
     // 🔥 最终输出：将总光照乘以消光系数，使光照符合物理衰减
-    return cloud_base_color * total_light * kCloudExtinction; 
+    return cloud_base_color * total_light ;
 }
 
 // ============================================================
@@ -1403,6 +1404,7 @@ void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
     float transmittance = 1.0;
     
     float initial_jitter = blueNoise * step_size;
+
     for (int i = 0; i < STEPS; i++) {
         if (transmittance < 0.02) break;
         
@@ -1411,7 +1413,7 @@ void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
         
         float density = GetCloudDensity(curr_pos);
         
-        if (density > 0.001) {
+        if (density > 0.005) {
             // 🔥 使用改进的光照计算
             vec3 step_color = ComputeStepScattering(curr_pos, view_direction, sun_direction);
             
@@ -1428,7 +1430,83 @@ void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
     radiance = radiance * transmittance + cloud_color;
 }
 
-
+void RenderCloudBox1(vec3 view_direction, inout vec3 radiance) {
+    vec3 camera_earth_space = camera - earth_center;
+    float t_min, t_max;
+    
+    // 1. 边界相交测试
+    if (!RayIntersectCloudBox(camera_earth_space, view_direction, t_min, t_max)) {
+        return;
+    }
+    
+    // 🔥 初始参数调整 (您应该在主文件头部定义这些常量)
+    const float INITIAL_SAMPLES = 256.0; // 基础步数 (用于计算初始步长)
+    float MAX_STEP_SIZE = (t_max - t_min) / INITIAL_SAMPLES; // 约等于平均步长
+    const float MIN_STEP_SCALE = 0.2; // 最小步长系数 (例如 0.2 * MAX_STEP_SIZE)
+    const int MAX_STEPS = 256; // 安全阈值，防止无限循环或步数过多
+    
+    // 2. 蓝噪声抖动 (Jitter)
+    vec2 screenUV = gl_FragCoord.xy / iResolution;
+    // 使用不同的缩放和平移来获取噪声
+    vec2 blueNoiseUV = screenUV * 8.0 + vec2(time * 0.1); 
+    float blueNoise = texture(blueNoiseTexture, blueNoiseUV).r;
+    
+    vec3 cloud_color = vec3(0.0);
+    float transmittance = 1.0;
+    
+    // 3. 初始化 Raymarch 距离
+    float t = t_min;
+    // 抖动起始点，范围 [0, MAX_STEP_SIZE]
+    t += blueNoise * MAX_STEP_SIZE;
+    
+    int step_count = 0;
+    
+    // 🔥 4. 使用 WHILE 循环进行距离迭代 (自适应步长的核心)
+    while (t < t_max && step_count < MAX_STEPS) {
+        if (transmittance < 0.005) break; // 提前退出阈值稍微收紧
+        
+        vec3 curr_pos = camera_earth_space + view_direction * t;
+        
+        float density = GetCloudDensity(curr_pos);
+        
+        // --- 计算自适应步长 ---
+        // density: [0, 1]
+        // mix(MAX_STEP_SIZE, MAX_STEP_SIZE * MIN_STEP_SCALE, smoothstep(0.0, 0.8, density))
+        // 密度高 (0.8+) 时，步长缩小到 MIN_STEP_SCALE (例如 0.2)
+        // 密度低 (0.0) 时，使用 MAX_STEP_SIZE (加速)
+        float current_step_size = mix(MAX_STEP_SIZE, MAX_STEP_SIZE * MIN_STEP_SCALE, 
+                                      smoothstep(0.0, 0.8, density));
+        
+        // 确保不会意外增大步长
+        current_step_size = min(current_step_size, MAX_STEP_SIZE * 2.0); 
+        
+        if (density > 0.005) {
+            // 🔥 使用改进的光照计算
+            vec3 step_color = ComputeStepScattering(curr_pos, view_direction, sun_direction);
+            
+            // 密度 * 消光系数 = Extinction Coefficient
+            float extinction = density * kCloudExtinction;
+            
+            // Beer-Lambert 定律计算当前步的透射率
+            float step_T = exp(-extinction * current_step_size);
+            
+            // 体积积分 (Accumulate Radiance): (In-Scattering) * Transmittance
+            // (1.0 - step_T) 近似当前步的吸收/散射 (Extinction)
+            cloud_color += step_color * transmittance * (1.0 - step_T);
+            
+            // 更新射线透射率 (Out-Scattering)
+            transmittance *= step_T;
+        }
+        
+        // 迭代到下一步
+        t += current_step_size;
+        step_count++;
+    }
+    
+    // 5. 最终混合
+    // radiance = 穿透云层的背景光 * 剩余透射率 + 云体自身光照
+    radiance = radiance * transmittance + cloud_color;
+}
 // ============ 重映射函数 ============
 float Remap(float value, float lo, float ho, float ln, float hn) {
     return ln + (value - lo) * (hn - ln) / (ho - lo);

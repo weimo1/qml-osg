@@ -332,7 +332,7 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
     
     // 加载3D细节纹理
     osg::ref_ptr<osg::Texture3D> detailNoiseTexture = new osg::Texture3D;
-    osg::ref_ptr<osg::Image> detailNoiseImage = osgDB::readImageFile("E:/cloud1/Weather_No3DTex2.png");
+    osg::ref_ptr<osg::Image> detailNoiseImage = osgDB::readImageFile("E:/cloud1/cloudnoise.png");
     
     if (detailNoiseImage.valid()) {
         detailNoiseTexture->setImage(detailNoiseImage);
@@ -353,7 +353,7 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
     
     // 加载2D天气纹理
     osg::ref_ptr<osg::Texture2D> weatherTexture = new osg::Texture2D;
-    osg::ref_ptr<osg::Image> weatherImage = osgDB::readImageFile("E:/cloud1/Weather.png");
+    osg::ref_ptr<osg::Image> weatherImage = osgDB::readImageFile("E:/cloud1/cloudweather.png");
     
     if (weatherImage.valid()) {
         weatherTexture->setImage(weatherImage);
@@ -373,7 +373,7 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
     
     // 加载蓝噪声纹理，用于消除云渲染分层
     osg::ref_ptr<osg::Texture2D> blueNoiseTexture = new osg::Texture2D;
-    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/cloud1/b.png");
+    osg::ref_ptr<osg::Image> blueNoiseImage = osgDB::readImageFile("E:/cloud1/BlueNoise.png");
     
     if (blueNoiseImage.valid()) {
         blueNoiseTexture->setImage(blueNoiseImage);
