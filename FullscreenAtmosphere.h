@@ -1,0 +1,118 @@
+#ifndef FULLSCREEN_ATMOSPHERE_H
+#define FULLSCREEN_ATMOSPHERE_H
+
+#include <osg/Geode>
+#include <osg/Uniform>
+#include <osg/Camera>
+
+// TimeCallback回调类声明
+class TimeCallback : public osg::UniformCallback
+{
+public:
+    TimeCallback() : mCurrentTime(0.0f) {}
+    
+    void operator()(osg::Uniform* uniform, osg::NodeVisitor* nv) override
+    {
+        // 更新当前时间（以秒为单位）
+        mCurrentTime += 0.016f; // 假设60FPS
+        if (mCurrentTime > 1000000.0f) // 防止数值过大
+            mCurrentTime = 0.0f;
+            
+        uniform->set(mCurrentTime);
+    }
+
+private:
+    float mCurrentTime;
+};
+
+// AtmosphereCallback回调类声明
+class AtmosphereCallback : public osg::StateSet::Callback
+{
+public:
+    explicit AtmosphereCallback(osg::Camera* camera) : m_camera(camera), nFrame(0) {}
+
+    virtual void operator()(osg::StateSet* ss, osg::NodeVisitor* nv) override
+    {    
+        process(ss);
+    }
+
+    void process(osg::StateSet* ss);
+        
+private:
+    osg::Camera* m_camera;
+    int nFrame;
+};
+
+class FullscreenAtmosphere : public osg::Geode
+{
+public:
+    FullscreenAtmosphere();
+    virtual ~FullscreenAtmosphere();
+
+    // 设置相机
+    void setCamera(osg::Camera* camera);
+    
+    // 导出LUT纹理为图像文件
+    void exportLUT(const std::string& filename);
+    
+    osg::Camera* createHUDCamera(double left, double right, double bottom, double top);
+    private:
+    // 初始化几何体
+    osg::Node* initGeometry();
+    
+    // 初始化着色器
+    void initShaders();
+    
+    // 初始化uniform变量
+    void initUniforms();
+
+    void initializeCloudTextures(osg::StateSet* ss);
+    
+    // 相机指针
+    osg::Camera* m_camera;
+    
+    // 根节点引用
+    osg::ref_ptr<osg::Node> m_rootNode;
+    
+    // 大气参数
+    double m_sunZenithAngle;
+    double m_sunAzimuthAngle;
+    float m_exposure;
+    float m_turbidity;
+    float m_rayleigh;
+    float m_mieCoefficient;
+    float m_mieDirectionalG;
+    
+    // Uniform变量（用于着色器）
+    osg::ref_ptr<osg::Uniform> _iResolution;
+    osg::ref_ptr<osg::Uniform> _sun_direction;
+    osg::ref_ptr<osg::Uniform> _exposure;
+    osg::ref_ptr<osg::Uniform> _turbidity;
+    osg::ref_ptr<osg::Uniform> _rayleigh;
+    osg::ref_ptr<osg::Uniform> _mieCoefficient;
+    osg::ref_ptr<osg::Uniform> _mie_phase_g;
+    
+    // 大气散射uniform变量
+    osg::ref_ptr<osg::Uniform> _camera_pos;
+    osg::ref_ptr<osg::Uniform> _earth_center;
+    osg::ref_ptr<osg::Uniform> _time;
+    osg::ref_ptr<osg::Uniform> _sun_size;
+    
+    // 大气参数uniform变量 (AtmosphereParameter结构体)
+    osg::ref_ptr<osg::Uniform> _seaLevel;
+    osg::ref_ptr<osg::Uniform> _planetRadius;
+    osg::ref_ptr<osg::Uniform> _atmosphereHeight;
+    osg::ref_ptr<osg::Uniform> _sunLightIntensity;
+    osg::ref_ptr<osg::Uniform> _sunLightColor;
+    osg::ref_ptr<osg::Uniform> _sunDiskAngle;
+    osg::ref_ptr<osg::Uniform> _rayleighScatteringScale;
+    osg::ref_ptr<osg::Uniform> _rayleighScatteringScalarHeight;
+    osg::ref_ptr<osg::Uniform> _mieScatteringScale;
+    osg::ref_ptr<osg::Uniform> _mieAnisotropy;
+    osg::ref_ptr<osg::Uniform> _mieScatteringScalarHeight;
+    osg::ref_ptr<osg::Uniform> _ozoneAbsorptionScale;
+    osg::ref_ptr<osg::Uniform> _ozoneLevelCenterHeight;
+    osg::ref_ptr<osg::Uniform> _ozoneLevelWidth;
+};
+
+#endif // FULLSCREEN_ATMOSPHERE_H
