@@ -513,10 +513,34 @@ void SimpleOSGRenderer::createAtmosphere()
     }
 }
 
+// 实现全屏大气渲染功能
+void SimpleOSGRenderer::createNewAtmosphere()
+{
+    if (m_viewer && m_rootNode && m_uiHandler) {
+        m_uiHandler->createNewAtmosphere(m_viewer, m_rootNode);
+    }
+}
+
 // 实现MRT测试功能
 void SimpleOSGRenderer::testMRT()
 {
     if (m_viewer && m_rootNode && m_uiHandler) {
         m_uiHandler->testMRT(m_viewer, m_rootNode);
+    }
+}
+
+// 实现TransmiteLUT功能
+void SimpleOSGRenderer::createTransmiteLUT()
+{
+    if (m_uiHandler && m_viewer && m_rootNode) {
+        m_uiHandler->createTransmiteLUT(m_viewer, m_rootNode);
+    }
+}
+
+// 添加导出LUT方法
+void SimpleOSGRenderer::exportLUT(const QString& filename)
+{
+    if (m_uiHandler) {
+        m_uiHandler->exportLUT(filename);
     }
 }

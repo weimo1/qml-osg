@@ -68,7 +68,12 @@ public slots:
     void fitToView();
     void toggleLighting(bool enabled);  // 添加光照控制方法
     void createAtmosphere();  // 添加大气渲染方法
+    void createNewAtmosphere();  // 添加全屏大气渲染方法
     void testMRT();  // 添加MRT测试方法
+    void createTransmiteLUT();  // 添加TransmiteLUT方法
+    
+    // 添加导出LUT方法
+    void exportLUT(const QString& filename);  // 添加导出LUT方法
     
     // 添加内部调用的槽函数
     void invokeResetView();
@@ -77,7 +82,10 @@ public slots:
     void invokeFitToView();
     void invokeToggleLighting(bool enabled);  // 添加光照控制槽函数
     void invokeCreateAtmosphere();  // 添加大气渲染槽函数
+    void invokeCreateNewAtmosphere();  // 添加全屏大气渲染槽函数
     void invokeTestMRT();  // 添加MRT测试槽函数
+    void invokeCreateTransmiteLUT();  // 添加TransmiteLUT槽函数
+    void invokeExportLUT(const QString& filename);  // 添加导出LUT槽函数
 
     // 更新相机位置的方法
     void updateCameraPosition(double x, double y, double z);

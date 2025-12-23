@@ -1036,113 +1036,126 @@ const vec3 kCloudBoxSize = vec3(10, 10.0, 0.5);   // 增加到8km厚度
 
 // ============ 云密度函数 ============
 
-
-const vec3 kCloudBoxMin = kCloudBoxCenter - kCloudBoxSize * 0.5;
-const vec3 kCloudBoxMax = kCloudBoxCenter + kCloudBoxSize * 0.5;
-
-
-// 辅助函数
-float saturate(float x) { return clamp(x, 0.0, 1.0); }
-float remap(float value, float lo, float ho, float ln, float hn) {
-    return ln + (value - lo) * (hn - ln) / (ho - lo);
-}
-float GetDensityHeightGradient(vec3 pos, float min, float max)
-{
-    float heightGradient = (pos.y - min) / (max - min);
-    return saturate(heightGradient);
-}
 // ============ 完全重写的密度函数（增加体积感）============
 float GetCloudDensity(vec3 point_earth_space) {
-
-    float density=0.0;
-    
-    // 计算在云盒中的UV坐标
-    vec3 localPos = (point_earth_space - kCloudBoxMin) / kCloudBoxSize;
-    
-    // 确保在云盒内
-    if (any(lessThan(localPos, vec3(0.0))) || any(greaterThan(localPos, vec3(1.0)))) {
+    // 1. 边界检查 (保持不变)
+    // ... (保持不变)
+    vec3 local_pos = point_earth_space - kCloudBoxCenter;
+    vec3 half_size = kCloudBoxSize * 0.5;
+    if (abs(local_pos.x) > half_size.x || 
+        abs(local_pos.y) > half_size.y || 
+        abs(local_pos.z) > half_size.z) {
         return 0.0;
     }
+    // 2. 归一化坐标 & 归一化高度 h [0, 1]
+    vec3 normalized_pos = local_pos / half_size;  // [-1, 1]
+    float h = normalized_pos.y * 0.5 + 0.5;       // [0, 1]
+
+    // 3. 统一天气图采样
+    // 采样频率与参考代码接近: normalized_pos.xz * 0.8 / 2.0 = 0.4
+    vec2 weather_uv = normalized_pos.xz * 0.4 + 0.5; 
+    vec4 weather_value = texture(_WeatherNoiceTex, weather_uv);
+
+    // 从天气图计算覆盖率（借鉴您的逻辑）
+    float coverage = pow(weather_value.r, 3); // r通道用于基础覆盖
+
+// --- I. 垂直密度剖面 (高度曲线) ---
+
+    // 1. 高度偏移 (云底/云顶扰动)
+    // 采样频率保持不变：normalized_pos.xz * 0.3 + 0.5 (使用G通道)
+    float base_height_offset = texture(_WeatherNoiceTex, normalized_pos.xz * 0.3 + 0.5).g;
+    base_height_offset = (base_height_offset - 0.5) * 0.9;
+    // 
+    // 仅使用 base_height_offset 调整高度，简化高度细节扰动
+    float bottom = 0.05 + base_height_offset;
+    float top = 0.95 - base_height_offset * 0.5; 
+    // 核心垂直调整：模拟云层压缩/拉伸 (等同于您代码中的 adjusted_height/modulated_height 的效果)
+    // 注意：我们将 h 直接用于 smoothstep，不再使用 adjusted_height/modulated_height
+    float bottom_fade = smoothstep(bottom, bottom + 0.25, h);
+    float top_fade = 1.0 - smoothstep(top - 0.25, top, h);
+    float height_density_curve = bottom_fade * top_fade;
+
+    // 2. 中部鼓包 (积云特征) - **保留并简化**
+    float mid_boost = smoothstep(0.2, 0.5, h) * smoothstep(0.8, 0.5, h);
+    height_density_curve = mix(height_density_curve, 1.0, mid_boost * 0.6);
+
+    // 3. 垂直厚度乘子 (天气图B通道)
+    float cloud_thickness = 0.8 + weather_value.b * 0.6; // 频率与 weather_uv (0.4) 接近
+    height_density_curve *= cloud_thickness; 
+// --- II. 3D 形状噪声 (基础形状) ---
+
+    // 沿用您的FBM/Worley噪声混合，但变量名和流程更清晰
+    vec3 shape_uv = normalized_pos * 0.5 + 0.5;
+    vec4 shape_low = texture(_ShapeNoiceTex, shape_uv * 0.5); 
+    vec4 shape_mid = texture(_ShapeNoiceTex, shape_uv * 1.5); 
+
+    // FBM 叠加 (保持您的权重调整)
+    float base_shape = shape_low.r * 1.5 + // 低频
+                        shape_mid.r * 1.2 ; // 中频
+    // Worley噪声侵蚀 (保持您的强度调整)
+    //base_shape *=2;
+    float worley_fbm = dot(shape_low.gba, vec3(0.625, 0.25, 0.125));
+    // remap(base_shape, 1.0 - worley_fbm * 0.6, 1.0, 0.0, 1.0)
+    // 解释：将 base_shape 从 [1.0 - worley_fbm * 0.6, 1.0] 映射到 [0.0, 1.0]
+    float density = Remap(base_shape, 1.0 - worley_fbm * 0.4, 1.0, 0.0, 1.0); 
+
+// --- III. 形状与密度曲线组合 (Shape + Height) ---
+
+    // 垂直扰动 (取代 3D噪声调制 的厚度变化)
+    // 3D 噪声调制: 借鉴参考代码中 detailNoiseMixByHeight 的思路，用高度混合
+    vec3 shape_3d_uv = normalized_pos * 2.0 + 0.5;
+    float shape_3d = texture(_ShapeNoiceTex, shape_3d_uv).g;
+    // 使用 shape_3d 噪声来影响垂直密度曲线 (您原有逻辑)
+    float shape_influence = smoothstep(0.3, 0.7, density);
+    height_density_curve *= mix(0.5, 1.0, shape_3d * shape_influence + (1.0 - shape_influence));
+
+    // 垂直扰动 (用于云顶细节，保持您的逻辑，但移除 modulated_height 依赖)
+    vec3 curl_uv1 = normalized_pos * 0.8 + 0.5;
+    vec3 curl_uv2 = normalized_pos * 2.0 + 0.5;
+    float curl1 = texture(_ShapeNoiceTex, curl_uv1).r - 0.5;
+    float curl2 = texture(_DetailNoiceTex, curl_uv2).g - 0.5;
     
+    float vertical_distortion = (curl1 * 0.6 + curl2 * 0.3);
+    // 扰动权重只在云层中部发挥作用，使用 h 代替 modulated_height
+    float distortion_weight = smoothstep(0.1, 0.3, h) * smoothstep(0.9, 0.7, h); 
+    height_density_curve = clamp(height_density_curve + vertical_distortion * distortion_weight, 0.0, 1.0);
+    // 组合形状噪声和垂直密度
+    density *= height_density_curve;
+// --- IV. 后处理与细节侵蚀 ---
 
-    vec4 lowshape = texture(_ShapeNoiceTex, localPos*0.8);
-    float shapeFBM = lowshape.g * 0.525 + lowshape.b * 0.25 + lowshape.a * 0.125;
-
-    density = remap(lowshape.r, saturate(1.0 - shapeFBM), 1.0, 0.0, 1.0);
-
-
-    float _DensityOffset=0.01;
-
-    float heightGradient = GetDensityHeightGradient(point_earth_space, kCloudBoxMin.y, kCloudBoxMax.y);
-    float roundButton = saturate(remap(heightGradient, 0, 0.07, 0, 1));
-    // 圆化云的顶部
-    float roundTop = saturate(remap(heightGradient, 0.2, 1, 1, 0));
-    float roundFac = roundButton * roundTop;
-    // 密度变化因子
-    float densityButton = heightGradient * saturate(remap(heightGradient, 0, _DensityOffset, 0, 1));
-    float densityTop = saturate(remap(heightGradient, 1 - _DensityOffset, 1, 1, 0));
-    float densityFac = densityButton * densityTop * 2;
-
-    density *= roundFac * densityFac;
-   
-
-   if(density > 0) {
-        // 为体积云添加天气属性
-        vec2 weatherUV = (point_earth_space.xz - kCloudBoxMin.xz) / max(kCloudBoxSize.x, kCloudBoxSize.z);
-        weatherUV = point_earth_space.xz * 0.0038;
-        // 获取天气纹理, r 通道存取体积云的覆盖百分比，g 通道存取云层降雨的可能性， b 通道存取云的类型
-        vec4 weather = texture(_WeatherNoiceTex, weatherUV);
-        // 云层覆盖率
-
-        float _CloudCoverage = 0.8;
-        float cloudCoverage = weather.r;
-        cloudCoverage = mix(cloudCoverage, 1, _CloudCoverage);
-        cloudCoverage = mix(0, cloudCoverage, _CloudCoverage);
-        //density *= cloudCoverage;
-
-        bool enableDetail = true;
-
-        if(density > 0 && enableDetail){
-
-            // 获取高频的 Worley 噪声
-            vec3 sampleDetailUV = point_earth_space.xyz *0.014;
-            vec3 detailNoise = texture(_DetailNoiceTex, sampleDetailUV).rgb;
-            // 计算 Worley 噪声的FBM
-            float detailFBM = detailNoise.r * 0.5 + detailNoise.g * 0.25 + detailNoise.b * 0.125;
-
-            float densityScale = 1.0;
-            float _DetailScale = 1.0;
-            
-            float detailErode = (1 - detailFBM) * densityScale * 0.1 * _DetailScale;
-            density -= detailErode;
-        }
+    // 1. 覆盖率混合 (借鉴参考代码中的 remap(basicCloudNoise, 1.0 - coverage, 1, 0, 1))
+    // Remap(density, coverage_threshold * (1.0 - coverage), 1.0, 0.0, 1.0)
+       // 解释：将 density 从 [0.1 * (1 - coverage), 1.0] 映射到 [0.0, 1.0]
+    float coverage_threshold = 0.1; 
+    density = Remap(density, coverage_threshold * (1.0 - coverage), 1.0, 0.0, 1.0);
+    density = clamp(density, 0.0, 1.0);
 
 
-   }
+    vec3 edge_factor = 1.0 - abs(normalized_pos);
+    float edge_fade = min(min(edge_factor.x, edge_factor.y), edge_factor.z);
+    edge_fade = smoothstep(0.0, 0.15, edge_fade);
+    density *= edge_fade;
+
+
+    // 2. 细节侵蚀 (保持您的逻辑，但使用 h 代替 modulated_height)
+    if (density > 0.05) { 
+        vec3 detail_uv = normalized_pos * 3.5 + 0.5; 
+        vec3 detail_noise = texture(_DetailNoiceTex, detail_uv).rgb;
+        float detail_fbm = dot(detail_noise, vec3(0.625, 0.25, 0.125));
     
-    density *= 0.15;
-    // 设置密度阈值，低于阈值的密度设为0
-    const float densityThreshold = 0.004;
-    if (density < densityThreshold) {
-        density = 0.0;
+    // 侵蚀强度依赖于高度 h
+    float erode_strength = mix(0.1, 0.2, h); 
+    float erode = (1.0 - detail_fbm) * erode_strength;
+    density -= erode * density; 
     }
-    float _DensityScale = 1.0;
-    float _DensityMultiplier = 1.3;
-    
-    density = max(0, density - densityThreshold * _DensityScale) * _DensityMultiplier;
-
-// density = max(0.0, density - 0.02);
-// density = pow(density, 0.9);  // 轻微提对比度
-// density *= 1.3;
-    // 应用对比度调整
-    // const float contrast = 2.2;
-    // density = pow(density, contrast);
-    
-    // // 应用密度参数调整
-    // const float densityParam = 0.8;
-    // density *= densityParam;
-
-    return density*3;
+    // 3. 最终裁剪和输出
+    if (density < 0.16) { 
+        return 0.0;
+    }
+    // 最终密度增强
+    density = clamp(density, 0.0, 1.0);
+    density = pow(density, 1.3);
+  return density * 1.3; // 整体增强
 }
 // ============================================================
 // 高级云光照系统 - 完整实现
@@ -1395,7 +1408,7 @@ void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
     for (int i = 0; i < STEPS; i++) {
         if (transmittance < 0.02) break;
         
-        float t = t_min + (initial_jitter + float(i)) * step_size;
+        float t = t_min + initial_jitter + float(i) * step_size;
         vec3 curr_pos = camera - earth_center + view_direction * t;
         
         float density = GetCloudDensity(curr_pos);
@@ -1408,7 +1421,7 @@ void RenderCloudBox(vec3 view_direction, inout vec3 radiance) {
             float extinction = density * kCloudExtinction;
             float step_T = exp(-extinction * step_size);
             // 体积积分
-            cloud_color += step_color * transmittance*(1.0-step_T)*4.4;
+            cloud_color += step_color * transmittance*(1.0-step_T);
             transmittance *= step_T;
         }
     }
@@ -1583,7 +1596,7 @@ void main()
 
   //ApplyVolumetricFog(view_direction, radiance, transmittance);
 
-  RenderCloudBox(view_direction, radiance);
+  // RenderCloudBox(view_direction, radiance);
    radiance = mix(radiance, sphere_radiance, sphere_alpha);
 
   color.rgb = 

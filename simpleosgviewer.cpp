@@ -186,11 +186,35 @@ void SimpleOSGViewer::createAtmosphere()
     }
 }
 
+// 添加全屏大气渲染方法
+void SimpleOSGViewer::createNewAtmosphere()
+{
+    if (m_renderer) {
+        m_renderer->createNewAtmosphere();
+    }
+}
+
 // 添加MRT测试方法
 void SimpleOSGViewer::testMRT()
 {
     if (m_renderer) {
         m_renderer->testMRT();
+    }
+}
+
+// 添加TransmiteLUT方法
+void SimpleOSGViewer::createTransmiteLUT()
+{
+    if (m_renderer) {
+        m_renderer->createTransmiteLUT();
+    }
+}
+
+// 添加导出LUT方法
+void SimpleOSGViewer::exportLUT(const QString& filename)
+{
+    if (m_renderer) {
+        m_renderer->exportLUT(filename);
     }
 }
 
@@ -228,10 +252,28 @@ void SimpleOSGViewer::invokeCreateAtmosphere()
     createAtmosphere();
 }
 
+// 添加全屏大气渲染槽函数
+void SimpleOSGViewer::invokeCreateNewAtmosphere()
+{
+    createNewAtmosphere();
+}
+
 // 添加MRT测试槽函数
 void SimpleOSGViewer::invokeTestMRT()
 {
     testMRT();
+}
+
+// 添加TransmiteLUT槽函数
+void SimpleOSGViewer::invokeCreateTransmiteLUT()
+{
+    createTransmiteLUT();
+}
+
+// 添加导出LUT槽函数
+void SimpleOSGViewer::invokeExportLUT(const QString& filename)
+{
+    exportLUT(filename);
 }
 
 // 更新相机位置的方法

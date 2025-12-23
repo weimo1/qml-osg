@@ -36,7 +36,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Quick Widgets QuickControls2 Qml OpenG
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # 添加可执行文件
 add_executable(${PROJECT_NAME}
     main.cpp
@@ -47,6 +47,8 @@ add_executable(${PROJECT_NAME}
     uihandler.cpp
     SkyNode.cpp
     AtmosphereDemo.cpp
+    FullscreenAtmosphere.cpp
+    TransmiteLUT.cpp
     qml.qrc
 )
 

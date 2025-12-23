@@ -37,7 +37,10 @@ public:
     
     void toggleLighting(bool enabled);  // 添加光照控制方法
     void createAtmosphere();  // 添加大气渲染方法
+    void createNewAtmosphere();  // 添加全屏大气渲染方法
     void testMRT();  // 添加MRT测试方法
+    void createTransmiteLUT();  // 添加TransmiteLUT方法
+    void exportLUT(const QString& filename);  // 添加导出LUT方法
 
     // 添加模型选择相关方法
     void selectModel(int x, int y);

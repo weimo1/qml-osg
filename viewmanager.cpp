@@ -6,7 +6,7 @@
 #include <QDebug>
 
 ViewManager::ViewManager()
-    : m_eye(0.0, -10.0, 5.0)  // 调整初始相机位置，提高Z坐标避免贴近地面
+    : m_eye(0.0, 0.0, -5.0)  // 调整初始相机位置，提高Z坐标避免贴近地面
     , m_center(0.0, 0.0, 0.0)
     , m_up(0.0, 0.0, 1.0)
 {
@@ -300,7 +300,7 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     double aspectRatio = static_cast<double>(width) / static_cast<double>(height);
     
     // 主视图设置，调整相机位置避免贴近地面
-    osg::Vec3 eye(0.0f, -15.0f, 8.0f);   // 进一步调整相机位置，提高Z坐标避免贴近地面
+    osg::Vec3 eye(0.0f, 0.0f, -8.0f);   // 进一步调整相机位置，提高Z坐标避免贴近地面
     osg::Vec3 center(0.0f, 0.0f, 0.0f);  // 看向原点
     osg::Vec3 up(0.0f, 0.0f, 1.0f);      // Z轴向上
     camera->setViewMatrixAsLookAt(eye, center, up);
@@ -309,7 +309,7 @@ void ViewManager::setupMainView(osgViewer::Viewer* viewer, osg::Group* rootNode,
     setViewParameters(eye, center, up);
     
     // 设置透视投影，调整裁剪面以适应大气渲染场景
-    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 500000.0);
+    camera->setProjectionMatrixAsPerspective(45.0f, aspectRatio, 0.1, 50000000.0);
     
     // 确保深度测试正确配置
     osg::StateSet* stateset = camera->getOrCreateStateSet();

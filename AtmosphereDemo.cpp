@@ -235,6 +235,9 @@ osg::Texture* AtmosphereDemo::createTexture(int format, const std::string& fileN
         }
     }
 
+
+
+    
     // 如果所有格式都不匹配，返回默认纹理
     osg::Texture2D* defaultTex = new osg::Texture2D;
     defaultTex->setTextureSize(256, 256);
@@ -311,7 +314,8 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
 {
     // 加载3D基础形状纹理
     osg::ref_ptr<osg::Texture3D> shapeNoiseTexture = new osg::Texture3D;
-    osg::ref_ptr<osg::Image> shapeNoiseImage = osgDB::readImageFile("E:/cloud1/Weather_No3DTex.png");
+// osg::ref_ptr<osg::Image> shapeNoiseImage = osgDB::readImageFile("E:/cloud1/WL.png");
+    osg::ref_ptr<osg::Image> shapeNoiseImage = osgDB::readImageFile("E:/cloud1/perlin-16-8.png");
     
     if (shapeNoiseImage.valid()) {
         shapeNoiseTexture->setImage(shapeNoiseImage);

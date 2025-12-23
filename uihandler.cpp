@@ -6,10 +6,12 @@
 #include <osg/BoundingSphere>
 #include <osg/MatrixTransform>
 #include <osgDB/ReadFile>
-#include <osgGA/TrackballManipulator>
+#include <osgDB/WriteFile>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
-#include <QDebug>
+#include "SkyNode.h"
+#include "AtmosphereDemo.h"
+#include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Shape>
 #include "AtmosphereDemo.h"
@@ -284,6 +286,27 @@ void UIHandler::createAtmosphere(osgViewer::Viewer* viewer, osg::Group* rootNode
     }
 }
 
+// 新的大气渲染方法实现
+void UIHandler::createNewAtmosphere(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+    if (!viewer || !rootNode) {
+        return;
+    }
+
+    // 创建新的大气渲染实例
+    osg::ref_ptr<FullscreenAtmosphere> newAtmosphere = new FullscreenAtmosphere();
+    newAtmosphere->setCamera(viewer->getCamera());
+
+    // 将新的大气渲染节点添加到场景图的前面，确保它在所有其他对象之前渲染
+    rootNode->addChild(newAtmosphere);
+
+    qDebug() << "New fullscreen atmosphere effect created successfully";
+
+    if (viewer) {
+        viewer->requestRedraw();
+    }
+}
+
 // 添加专门用于测试MRT功能的函数
 void UIHandler::testMRT(osgViewer::Viewer* viewer, osg::Group* rootNode)
 {
@@ -291,131 +314,48 @@ void UIHandler::testMRT(osgViewer::Viewer* viewer, osg::Group* rootNode)
         return;
     }
     
-    printf("Starting MRT test...\n");
+    // 创建新的TransmiteLUT实例用于测试
+    osg::ref_ptr<TransmiteLUT> transmiteLUT = new TransmiteLUT();
+    transmiteLUT->setCamera(viewer->getCamera());
     
-    // 创建一个简单的测试场景
-    osg::ref_ptr<osg::Group> testScene = new osg::Group;
+    // 清除现有的子节点
+    rootNode->removeChildren(0, rootNode->getNumChildren());
     
-    // 创建一个立方体作为测试模型
-    osg::ref_ptr<osg::Geode> cubeGeode = new osg::Geode;
-    osg::ref_ptr<osg::ShapeDrawable> cube = new osg::ShapeDrawable(new osg::Box(osg::Vec3(0, 0, 0), 2.0f));
-    cube->setColor(osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f)); // 红色立方体
-    cubeGeode->addDrawable(cube);
+    // 将TransmiteLUT节点添加到场景图
+    rootNode->addChild(transmiteLUT);
     
-    // 为立方体创建一个简单的着色器
-    osg::ref_ptr<osg::StateSet> cubeStateSet = cubeGeode->getOrCreateStateSet();
-    cubeStateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    
-    testScene->addChild(cubeGeode);
-    
-    // 创建一个简单的地面
-    osg::ref_ptr<osg::Geode> groundGeode = new osg::Geode;
-    osg::ref_ptr<osg::Geometry> groundGeom = osg::createTexturedQuadGeometry(
-        osg::Vec3(-5, -5, -1),
-        osg::Vec3(10, 0, 0),
-        osg::Vec3(0, 10, 0)
-    );
-    
-    // 创建一个简单的绿色地面
-    osg::ref_ptr<osg::Vec4Array> groundColors = new osg::Vec4Array;
-    groundColors->push_back(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f)); // 绿色
-    groundGeom->setColorArray(groundColors);
-    groundGeom->setColorBinding(osg::Geometry::BIND_OVERALL);
-    
-    groundGeode->addDrawable(groundGeom);
-    
-    // 为地面创建一个简单的着色器
-    osg::ref_ptr<osg::StateSet> groundStateSet = groundGeode->getOrCreateStateSet();
-    groundStateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    
-    testScene->addChild(groundGeode);
-    
-    printf("Created test scene with cube and ground\n");
-    
-    // 直接调用createRTTCamera静态函数来创建MRT相机
-    osg::ref_ptr<osg::Texture2D> textures = new osg::Texture2D;
-    osg::ref_ptr<osg::Camera> mrtCam = AtmosphereDemo::createRTTCamera(textures);
-    mrtCam->addChild(testScene);
-    
-    // 创建一个四边形来显示纹理
-    osg::ref_ptr<osg::Geode> quad = new osg::Geode;
-    osg::Geometry* geom = osg::createTexturedQuadGeometry(
-        osg::Vec3(-1.0f, -1.0f, 0.0f),
-        osg::Vec3(2.0f, 0.0f, 0.0f),
-        osg::Vec3(0.0f, 2.0f, 0.0f));
-    
-    geom->setVertexAttribArray(0, geom->getVertexArray(), osg::Array::BIND_PER_VERTEX);
-    geom->setVertexAttribArray(1, geom->getTexCoordArray(0), osg::Array::BIND_PER_VERTEX);
-    
-    osg::StateSet* ss = geom->getOrCreateStateSet();
-    ss->setTextureAttributeAndModes(0, textures.get());
-    
-    // 创建简单的着色器程序
-    osg::Program* program = new osg::Program;
-    
-    // 顶点着色器
-    const char* vertexShaderSource = R"(
-        #version 330
-        layout(location = 0) in vec4 vertex;
-        layout(location = 1) in vec2 texCoord;
-        out vec2 v_texCoord;
-        void main() {
-            v_texCoord = texCoord;
-            gl_Position = vertex;
-        }
-    )";
-    
-    // 片段着色器
-    const char* fragmentShaderSource = R"(
-        #version 330
-        in vec2 v_texCoord;
-        uniform sampler2D groundTexture;
-        out vec4 color;
-        void main() {
-            // 采样RTT纹理
-            vec4 rttColor = texture(groundTexture, v_texCoord);
-            
-            // 设置背景颜色（深蓝色）
-            vec4 backgroundColor = vec4(0.0, 0.0, 0.5, 1.0);
-            
-            // 混合RTT纹理和背景颜色
-            if (rttColor.a > 0.0) {
-                // 将RTT颜色和背景颜色混合
-                color = mix(backgroundColor, rttColor, rttColor.a);
-            } else {
-                // 只显示背景颜色
-                color = backgroundColor;
-            }
-            
-            // 为了更容易看到效果，我们可以添加一个边框
-            if (v_texCoord.x < 0.05 || v_texCoord.x > 0.95 || v_texCoord.y < 0.05 || v_texCoord.y > 0.95) {
-                color = vec4(1.0, 1.0, 0.0, 1.0); // 黄色边框
-            }
-        }
-    )";
-    
-    osg::Shader* vertexShader = new osg::Shader(osg::Shader::VERTEX, vertexShaderSource);
-    osg::Shader* fragmentShader = new osg::Shader(osg::Shader::FRAGMENT, fragmentShaderSource);
-    
-    program->addShader(vertexShader);
-    program->addShader(fragmentShader);
-    
-    ss->setAttributeAndModes(program);
-    ss->addUniform(new osg::Uniform("groundTexture", 0));
-    
-    quad->addDrawable(geom);
-    
-    // 构建场景图
-    osg::ref_ptr<osg::Group> root = new osg::Group;
-    root->addChild(mrtCam.get());
-    
-    rootNode->addChild(root);
-    
-    printf("MRT test node added to scene\n");
-    
+    // 请求重绘
     if (viewer) {
         viewer->requestRedraw();
     }
 }
 
-// 获取ViewManager实
+// 创建并显示TransmiteLUT
+void UIHandler::createTransmiteLUT(osgViewer::Viewer* viewer, osg::Group* rootNode)
+{
+   osg::ref_ptr<TransmiteLUT> transmiteLUT = new TransmiteLUT();
+   
+   // 生成LUT纹理
+   transmiteLUT->generateLUT();
+   
+   // 导出LUT纹理为图像文件
+   transmiteLUT->exportLUT("LUT.png");
+}
+
+void UIHandler::exportLUT(const QString& filename)
+{
+    osg::ref_ptr<TransmiteLUT> transmiteLUT = new TransmiteLUT();
+    transmiteLUT->generateLUT();
+    
+    // 等待足够长的时间确保渲染完成
+    // osg::Timer_t startTick = osg::Timer::instance()->tick();
+    // double elapsedTime = 0.0;
+    // while (elapsedTime < 0.5) {  // 等待500毫秒确保渲染完成
+    //     elapsedTime = osg::Timer::instance()->delta_s(startTick, osg::Timer::instance()->tick());
+    // }
+    
+
+    transmiteLUT->exportLUT(filename.toStdString());
+    // 强制从GPU读取数据并保存
+    
+}

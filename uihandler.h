@@ -7,10 +7,15 @@
 #include <osgViewer/Viewer>
 #include <osg/Group>
 #include <osg/Geode>
+#include <osgDB/WriteFile>
 #include "simpleosgviewer.h"
 #include "SkyNode.h"
 #include "viewmanager.h"
 #include "AtmosphereDemo.h"
+#include "FullscreenAtmosphere.h"
+#include "TransmiteLUT.h"
+#include <QFile>
+
 
 class UIHandler : public QObject
 {
@@ -41,10 +46,17 @@ public:
     
     // 大气渲染相关方法
     void createAtmosphere(osgViewer::Viewer* viewer, osg::Group* rootNode);
+    void createNewAtmosphere(osgViewer::Viewer* viewer, osg::Group* rootNode);  // 添加新方法声明
     
     // MRT测试方法
     void testMRT(osgViewer::Viewer* viewer, osg::Group* rootNode);
     
+    
+    // 创建并显示TransmiteLUT
+    void createTransmiteLUT(osgViewer::Viewer* viewer, osg::Group* rootNode);
+    
+    void exportLUT(const QString& filename);
+
     // 获取ViewManager实例
     ViewManager* getViewManager(){ return &m_viewManager;}
 

@@ -160,11 +160,32 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                     }
                     onClicked: {
+                        // 调用SimpleOSGViewer中的大气渲染方法
                         console.log("Atmosphere rendering button clicked")
                         osgViewer.createAtmosphere()
                     }
                 }
-                
+
+                // 添加新的全屏大气渲染按钮
+                Button {
+                    text: "全屏大气渲染"
+                    background: Rectangle {
+                        color: "#e67e22"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "全屏大气渲染"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        // 调用SimpleOSGViewer中的全屏大气渲染方法
+                        console.log("Fullscreen atmosphere rendering button clicked")
+                        osgViewer.createNewAtmosphere()
+                    }
+                }
+
                 // 添加MRT测试按钮
                 Button {
                     text: "MRT测试"
@@ -181,6 +202,44 @@ ApplicationWindow {
                     onClicked: {
                         console.log("MRT test button clicked")
                         osgViewer.testMRT()
+                    }
+                }
+
+                // 添加TransmiteLUT按钮
+                Button {
+                    text: "TransmiteLUT"
+                    background: Rectangle {
+                        color: "#3498db"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "TransmiteLUT"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("TransmiteLUT button clicked")
+                        osgViewer.createTransmiteLUT()
+                    }
+                }
+                
+                // 添加导出LUT按钮
+                Button {
+                    text: "导出LUT"
+                    background: Rectangle {
+                        color: "#27ae60"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: "导出LUT"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        console.log("Export LUT button clicked")
+                        osgViewer.exportLUT("transmittance_lut.png")
                     }
                 }
             }
@@ -256,6 +315,7 @@ ApplicationWindow {
                         ListElement { name: "场景"; icon: "\u{1F310}"; action: "scene" }                         
                         ListElement { name: "视图"; icon: "\u{1F441}"; action: "view" }
                         ListElement { name: "模型"; icon: "\u{1F38F}"; action: "model" }
+                        ListElement { name: "云控制"; icon: "\u{2601}"; action: "cloud" }  // 添加云控制选项
                     }
                     
                     Rectangle {
@@ -325,51 +385,18 @@ ApplicationWindow {
             Behavior on width { NumberAnimation { duration: 200 } } // 添加动画效果
             
             // 侧边栏内容根据选中的导航项显示
-            ScrollView {
-                anchors.fill: parent
-                clip: true
-                
-                Column {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 15
-                    
-                    // 标题
-                    Text {
-                        text: {
-                          switch(currentNavSelection) {
-                            case "view": return "View Controls";
-                            case "model": return "Model Management";
-                            case "light": return "Lighting Control";
-                            default: return "Control Panel";
-                            }
-                        }
-                        font.pixelSize: 18
-                        font.bold: true
-                        color: "#2c3e50"
-                    }
-                    
-                    // 分隔线
-                    Rectangle {
-                        width: parent.width
-                        height: 1
-                        color: "#bdc3c7"
-                    }
-                    
-                    // 根据选中的导航项显示不同的内容
-                    Loader {
-                        sourceComponent: {
-                            switch(currentNavSelection) {
-                            case "view": return viewControls;
-                            case "model": return modelControls;
-                            case "light": return lightControls;
-                            case "skynode": return skyNodeAtmosphereControls;
-                            default: return defaultControls;
-                            }
-                        }
-                        width: parent.width
+            Loader {
+                sourceComponent: {
+                    switch(currentNavSelection) {
+                    case "view": return viewControls;
+                    case "model": return modelControls;
+                    case "light": return lightControls;
+                    case "skynode": return skyNodeAtmosphereControls;
+                    case "cloud": return cloudControls;  // 添加云控制组件
+                    default: return defaultControls;
                     }
                 }
+                width: parent.width
             }
         }
         
@@ -738,7 +765,357 @@ ApplicationWindow {
             }
         }
     }
-    
+
+    // 云参数控制组件
+    Component {
+        id: cloudControls
+        
+        ScrollView {
+            width: parent.width
+            height: parent.height
+            
+            Column {
+                width: parent.width
+                spacing: 15
+                
+                Text {
+                    text: "云参数控制"
+                    font.pixelSize: 16
+                    font.bold: true
+                    color: "#2c3e50"
+                }
+                
+                // 云层基本参数
+                Text {
+                    text: "云层基本参数"
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: "#34495e"
+                }
+                
+                // 云覆盖率
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云覆盖率: " + (cloudCoverageSlider.value * 100).toFixed(0) + "%"
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudCoverageSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: osgViewer.cloudCoverage
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.cloudCoverage = value
+                        }
+                    }
+                }
+                
+                // 云密度
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云密度: " + cloudDensitySlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudDensitySlider
+                        width: parent.width
+                        from: 0.0
+                        to: 2.0
+                        value: osgViewer.cloudDensity
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.cloudDensity = value
+                        }
+                    }
+                }
+                
+                // 云层厚度
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云层厚度: " + cloudThicknessSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudThicknessSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 10.0
+                        value: osgViewer.cloudThickness
+                        stepSize: 0.1
+                        onValueChanged: {
+                            osgViewer.cloudThickness = value
+                        }
+                    }
+                }
+                
+                // 云层形状参数
+                Text {
+                    text: "云层形状参数"
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: "#34495e"
+                }
+                
+                // 云形状缩放
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云形状缩放: " + cloudShapeScaleSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudShapeScaleSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 5.0
+                        value: osgViewer.cloudShapeScale
+                        stepSize: 0.1
+                        onValueChanged: {
+                            osgViewer.cloudShapeScale = value
+                        }
+                    }
+                }
+                
+                // 云侵蚀强度
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云侵蚀强度: " + cloudErosionStrengthSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudErosionStrengthSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: osgViewer.cloudErosionStrength
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.cloudErosionStrength = value
+                        }
+                    }
+                }
+                
+                // 云细节缩放
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云细节缩放: " + cloudDetailScaleSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudDetailScaleSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 10.0
+                        value: osgViewer.cloudDetailScale
+                        stepSize: 0.1
+                        onValueChanged: {
+                            osgViewer.cloudDetailScale = value
+                        }
+                    }
+                }
+                
+                // 云层光照参数
+                Text {
+                    text: "云层光照参数"
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: "#34495e"
+                }
+                
+                // 云消光系数
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云消光系数: " + cloudExtinctionSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudExtinctionSlider
+                        width: parent.width
+                        from: 0.1
+                        to: 2.0
+                        value: osgViewer.cloudExtinction
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.cloudExtinction = value
+                        }
+                    }
+                }
+                
+                // 云太阳光强度
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云太阳光强度: " + cloudSunIntensitySlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudSunIntensitySlider
+                        width: parent.width
+                        from: 0.0
+                        to: 5.0
+                        value: osgViewer.cloudSunIntensity
+                        stepSize: 0.1
+                        onValueChanged: {
+                            osgViewer.cloudSunIntensity = value
+                        }
+                    }
+                }
+                
+                // 云层阴影参数
+                Text {
+                    text: "云层阴影参数"
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: "#34495e"
+                }
+                
+                // 云阴影柔化
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云阴影柔化: " + cloudShadowSoftnessSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudShadowSoftnessSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: osgViewer.cloudShadowSoftness
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.cloudShadowSoftness = value
+                        }
+                    }
+                }
+                
+                // 云阴影步数
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云阴影步数: " + cloudShadowStepsSlider.value
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudShadowStepsSlider
+                        width: parent.width
+                        from: 1
+                        to: 64
+                        value: osgViewer.cloudShadowSteps
+                        stepSize: 1
+                        onValueChanged: {
+                            osgViewer.cloudShadowSteps = value
+                        }
+                    }
+                }
+                
+                // 云层渲染参数
+                Text {
+                    text: "云层渲染参数"
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: "#34495e"
+                }
+                
+                // 云渲染步数
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云渲染步数: " + cloudRenderStepsSlider.value
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudRenderStepsSlider
+                        width: parent.width
+                        from: 1
+                        to: 256
+                        value: osgViewer.cloudRenderSteps
+                        stepSize: 1
+                        onValueChanged: {
+                            osgViewer.cloudRenderSteps = value
+                        }
+                    }
+                }
+                
+                // 云环境光强度
+                Column {
+                    width: parent.width
+                    spacing: 5
+                    
+                    Text {
+                        text: "云环境光强度: " + cloudAmbientLightSlider.value.toFixed(2)
+                        font.pixelSize: 12
+                        color: "#2c3e50"
+                    }
+                    
+                    Slider {
+                        id: cloudAmbientLightSlider
+                        width: parent.width
+                        from: 0.0
+                        to: 1.0
+                        value: osgViewer.cloudAmbientLight
+                        stepSize: 0.01
+                        onValueChanged: {
+                            osgViewer.cloudAmbientLight = value
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 默认控制组件（占位符）
     Component {
         id: defaultControls
