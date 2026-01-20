@@ -48,8 +48,8 @@ bool CustomTrackballManipulator::performMovementRightMouseButton(const double ev
     double distance = viewDirection.length();
     
     // 根据距离调整平移速度，使其与旋转和缩放保持一致
-    // 距离越远，平移速度越快；距离越近，平移速度越慢
-    double translateScale = distance * 0.01; // 1% of the distance
+    // 距离越大，平移速度越快，以确保在大场景中也有合适的移动速度
+    double translateScale = distance * 0.05; // 5% of the distance，可根据需要调整
     
     // 计算平移向量
     osg::Vec3d translation;

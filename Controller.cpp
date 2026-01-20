@@ -1,24 +1,34 @@
 #include "Controller.h"
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QDir>
-#include <QFileInfoList>
 #include <iostream>
-#include <osg/MatrixTransform>
-#include <osg/ComputeBoundsVisitor>
-#include <osg/BoundingBox>
+#include <QMessageBox>
+#include <QDebug>
+#include "UIHandler.h"
+#include "AtmosphereDemo.h"
+#include "FullscreenAtmosphere.h"
+#include "FastAtmosphere.h"
+#include "UEatmosphere.h"
 
 Controller::Controller(GraphicsWindowQt* viewWidget, QObject *parent)
     : QObject(parent)
     , m_viewWidget(viewWidget)
+    , m_uiHandler(new UIHandler(this))
+    , m_fullscreenAtmosphereDemo(new FullscreenAtmosphere)
+    , ueAtmosphereDemo(new UEatmosphere)
 {
-    // 创建UI处理器
-    m_uiHandler = new UIHandler(this);
-    
-    // 连接GraphicsWindowQt的信号到控制器的槽
+    if (!m_viewWidget) {
+        qDebug() << "Error: viewWidget is null";
+        return;
+    }
+
+    // 连接UI组件的信号到控制器的槽
     connect(m_viewWidget, &GraphicsWindowQt::loadFileRequested, this, &Controller::onLoadFileRequested);
     connect(m_viewWidget, &GraphicsWindowQt::toggleLightingRequested, this, &Controller::onToggleLightingRequested);
-    connect(m_viewWidget, &GraphicsWindowQt::createAtmosphereRequested, this, &Controller::onCreateAtmosphereRequested);  // 添加大气效果信号连接
+    connect(m_viewWidget, &GraphicsWindowQt::createAtmosphereRequested, this, &Controller::onCreateAtmosphereRequested);
+    connect(m_viewWidget, &GraphicsWindowQt::createFullscreenAtmosphereRequested, this, &Controller::onCreateFullscreenAtmosphereRequested);
+    connect(m_viewWidget, &GraphicsWindowQt::updateCloudParametersRequested, this, &Controller::onUpdateCloudParameters);
+    connect(m_viewWidget, &GraphicsWindowQt::resetCloudParametersRequested, this, &Controller::onResetCloudParameters);
+    connect(m_viewWidget, &GraphicsWindowQt::updateMousePositionRequested, this, &Controller::onUpdateMousePosition);
+    connect(m_viewWidget, &GraphicsWindowQt::createFullscreenTriangleRequested, this, &Controller::onCreateFullscreenTriangleRequested);
     
     // 连接UIHandler的信号到控制器的槽
     connect(m_uiHandler, &UIHandler::fileLoadSuccess, this, &Controller::onFileLoadSuccess);
@@ -33,78 +43,81 @@ void Controller::onLoadFileRequested()
 {
     std::cout << "Load file requested" << std::endl;
     
-    // 询问用户是加载单个文件还是目录
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Load Option");
-    msgBox.setText("What would you like to load?");
-    msgBox.setIcon(QMessageBox::Question);
-    
-    QPushButton *fileButton = msgBox.addButton(tr("Single File"), QMessageBox::ActionRole);
-    QPushButton *dirButton = msgBox.addButton(tr("Directory"), QMessageBox::ActionRole);
-    QPushButton *cancelButton = msgBox.addButton(QMessageBox::Cancel);
-    
-    msgBox.exec();
-    
-    if (msgBox.clickedButton() == fileButton) {
-        // 打开文件对话框让用户选择OSG文件
-        QString fileName = QFileDialog::getOpenFileName(
-            nullptr, 
-            tr("Open OSG File"), 
-            "", 
-            tr("OSG Files (*.osg *.osgt *.osgb);;All Files (*)")
-        );
+    // 获取当前的视图和根节点
+    osgViewer::View* view = m_viewWidget->getView();
+    if (view) {
+        osg::Group* rootNode = m_viewWidget->getRootNode();
         
-        std::cout << "Selected file: " << fileName.toStdString() << std::endl;
-        
-        if (!fileName.isEmpty()) {
+        if (rootNode) {
             // 使用UIHandler加载文件
-            m_uiHandler->loadOSGFile(m_viewWidget->getView(), m_viewWidget->getRootNode(), fileName);
+            QString fileName = "path_to_your_model.osg"; // 这里应该是实际的文件路径
+            m_uiHandler->loadOSGFile(view, rootNode, fileName);
+        } else {
+            std::cerr << "Failed to get root node for loading file" << std::endl;
         }
+    } else {
+        std::cerr << "Failed to get view for loading file" << std::endl;
     }
-    else if (msgBox.clickedButton() == dirButton) {
-        // 打开目录对话框让用户选择目录
-        QString dirName = QFileDialog::getExistingDirectory(
-            nullptr,
-            tr("Select Directory"),
-            "",
-            QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
-        );
-        
-        std::cout << "Selected directory: " << dirName.toStdString() << std::endl;
-        
-        if (!dirName.isEmpty()) {
-            // 使用UIHandler加载目录
-            m_uiHandler->loadOSGFile(m_viewWidget->getView(), m_viewWidget->getRootNode(), dirName);
-        }
-    }
-    // 如果点击取消按钮，则不执行任何操作
 }
 
 void Controller::onToggleLightingRequested(bool enabled)
 {
-    std::cout << "Toggle lighting requested: " << (enabled ? "ON" : "OFF") << std::endl;
+    std::cout << "Toggle lighting requested, state: " << (enabled ? "ON" : "OFF") << std::endl;
     
-    // 使用UIHandler切换光照
-    m_uiHandler->toggleLighting(m_viewWidget->getView(), m_viewWidget->getRootNode(), enabled);
+    // 获取当前的视图和根节点
+    osgViewer::View* view = m_viewWidget->getView();
+    if (view) {
+        osg::Group* rootNode = m_viewWidget->getRootNode();
+        
+        if (rootNode) {
+            // 使用UIHandler切换光照
+            m_uiHandler->toggleLighting(view, rootNode, enabled);
+        } else {
+            std::cerr << "Failed to get root node for toggling lighting" << std::endl;
+        }
+    } else {
+        std::cerr << "Failed to get view for toggling lighting" << std::endl;
+    }
 }
 
 void Controller::onCreateAtmosphereRequested()
 {
     std::cout << "Create atmosphere requested" << std::endl;
     
-    // 使用UIHandler创建大气效果
+    // 获取当前的相机和根节点
     osgViewer::View* view = m_viewWidget->getView();
     if (view) {
         osg::Camera* camera = view->getCamera();
         osg::Group* rootNode = m_viewWidget->getRootNode();
         
         if (camera && rootNode) {
+            // 使用UIHandler创建大气效果
             m_uiHandler->createAtmosphere(camera, rootNode);
         } else {
             std::cerr << "Failed to get camera or root node for atmosphere effect" << std::endl;
         }
     } else {
         std::cerr << "Failed to get view for atmosphere effect" << std::endl;
+    }
+}
+
+void Controller::onCreateFullscreenAtmosphereRequested()
+{
+    std::cout << "Create fullscreen atmosphere requested" << std::endl;
+    
+    // 获取当前的相机和根节点
+    osgViewer::View* view = m_viewWidget->getView();
+    if (view) {
+        osg::Camera* camera = view->getCamera();
+        osg::Group* rootNode = m_viewWidget->getRootNode();
+        
+        if (camera && rootNode) {
+            m_uiHandler->createFullscreenAtmosphere(camera, rootNode);
+        } else {
+            std::cerr << "Failed to get camera or root node for fullscreen atmosphere effect" << std::endl;
+        }
+    } else {
+        std::cerr << "Failed to get view for fullscreen atmosphere effect" << std::endl;
     }
 }
 
@@ -130,3 +143,58 @@ void Controller::onFileLoadError(const QString& fileName, const QString& error)
 }
 
 // 注意：我们已经将moveSceneToOrigin功能移到UIHandler中，所以这里不再需要这个函数
+
+void Controller::onUpdateCloudParameters(float shapescale, float detailScale, float windSpeed,
+                                float weatherScale, float curlStrength, float curlScale,
+                                float erosionStrength, float windDirX, float windDirY, float windDirZ,
+                                float weatherWindX, float weatherWindY)
+{
+    std::cout << "Update cloud parameters requested" << std::endl;
+    
+    // 使用UIHandler更新云参数
+    m_uiHandler->updateCloudParameters(shapescale, detailScale, windSpeed,
+                                   weatherScale, curlStrength, curlScale,
+                                   erosionStrength, windDirX, windDirY, windDirZ,
+                                   weatherWindX, weatherWindY);
+}
+
+void Controller::onResetCloudParameters()
+{
+    std::cout << "Reset cloud parameters requested" << std::endl;
+    
+    // 使用UIHandler重置云参数
+    m_uiHandler->resetCloudParameters();
+}
+
+void Controller::onUpdateMousePosition(float x, float y)
+{
+
+    // 使用UIHandler更新鼠标位置
+    m_uiHandler->updateMousePosition(x, y);
+}
+
+void Controller::onCreateFullscreenTriangleRequested()
+{
+    std::cout << "Create fullscreen red triangle requested" << std::endl;
+    
+    // 使用UIHandler创建全屏红色三角形
+    osgViewer::View* view = m_viewWidget->getView();
+    if (view) {
+        osg::Camera* camera = view->getCamera();
+        osg::Group* rootNode = m_viewWidget->getRootNode();
+        
+        if (camera && rootNode) {
+            // 清空当前场景
+            rootNode->removeChildren(0, rootNode->getNumChildren());
+            
+            osg::Node* triangleNode = ueAtmosphereDemo->createAtmosphere(nullptr, camera);
+            if (triangleNode) {
+                rootNode->addChild(triangleNode);
+            }
+        } else {
+            std::cerr << "Failed to get camera or root node for fullscreen triangle" << std::endl;
+        }
+    } else {
+        std::cerr << "Failed to get view for fullscreen triangle" << std::endl;
+    }
+}

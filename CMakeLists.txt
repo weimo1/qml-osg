@@ -50,7 +50,16 @@ add_executable(${PROJECT_NAME}
     CustomTrackballManipulator.h
     AtmosphereDemo.cpp
     AtmosphereDemo.h
+    FullscreenAtmosphere.cpp
+    FullscreenAtmosphere.h
+    CloudParameterWidget.cpp
+    CloudParameterWidget.h
+    FastAtmosphere.cpp
+    FastAtmosphere.h
+    UEatmosphere.cpp
+    UEatmosphere.h
 )
+
 
 # 定义OSG库列表（不包含osgQt）
 set(OSG_LIBRARIES

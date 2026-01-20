@@ -1,5 +1,7 @@
 #include "UIHandler.h"
 #include "AtmosphereDemo.h"
+#include "FullscreenAtmosphere.h"
+#include "FastAtmosphere.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
@@ -204,10 +206,11 @@ void UIHandler::loadOSGFilesFromDirectory(osgViewer::View* view, osg::Group* roo
     // 检查是否成功加载了新模型
     if (rootNode->getNumChildren() > initialChildCount) {
         // 适应视图以显示所有加载的模型
-        fitToView(view, rootNode);
+      
         
         // 在所有文件加载完成后，将场景移动到原点
         moveSceneToOrigin(view, rootNode);
+        fitToView(view, rootNode);
     }
 }
 
@@ -288,8 +291,8 @@ void UIHandler::createAtmosphere(osg::Camera* camera, osg::Group* rootNode)
     }
 
     // 创建大气渲染实例
-    if (!m_atmosphereDemo) {
-        m_atmosphereDemo = new AtmosphereDemo();
+    if (!m_fastAtmosphereDemo) {
+        m_fastAtmosphereDemo = new FastAtmosphere();
     }
 
     osg::ref_ptr<osg::Group> pRender = new osg::Group;
@@ -303,7 +306,7 @@ void UIHandler::createAtmosphere(osg::Camera* camera, osg::Group* rootNode)
     rootNode->removeChildren(0, rootNode->getNumChildren());
 
     // 创建大气效果节点，并将RTT纹理传递给它
-    osg::ref_ptr<osg::Node> atmosphereNode = m_atmosphereDemo->createAtmosphere(pRender, camera, osg::Vec4(0.5, 0.5, 0.5, 1));
+    osg::ref_ptr<osg::Node> atmosphereNode = m_fastAtmosphereDemo->createAtmosphere(pRender, camera);
     if (atmosphereNode.valid()) {
         // 将大气效果添加到场景
         rootNode->addChild(atmosphereNode);
@@ -369,5 +372,70 @@ void UIHandler::moveSceneToOrigin(osgViewer::View* view, osg::Group* rootNode)
         }
     } else {
         std::cout << "Scene bounding box is invalid, cannot move to origin." << std::endl;
+    }
+}
+
+
+void UIHandler::createFullscreenAtmosphere(osg::Camera* camera, osg::Group* rootNode)
+{
+     if (!camera || !rootNode) {
+        return;
+    }
+
+    // 创建大气渲染实例
+    if (!m_fullscreenAtmosphereDemo) {
+        m_fullscreenAtmosphereDemo = new FullscreenAtmosphere();
+          // 设置全屏大气效果
+    }
+
+    osg::ref_ptr<osg::Group> pRender = new osg::Group;
+
+    // 将原始场景的所有子节点移动到pRender中
+    for (unsigned int i = 0; i < rootNode->getNumChildren(); ++i) {
+        pRender->addChild(rootNode->getChild(i));
+    }
+
+    // 清空根节点
+    rootNode->removeChildren(0, rootNode->getNumChildren());
+
+
+    osg::ref_ptr<osg::Node> atmosphereNode = m_fullscreenAtmosphereDemo->createAtmosphere(pRender,camera);
+    if (atmosphereNode.valid()) {
+        // 将大气效果添加到场景
+        rootNode->addChild(atmosphereNode);
+        std::cout << "Atmosphere effect with RTT created successfully" << std::endl;
+    }
+    
+    std::cout << "Fullscreen atmosphere effect created successfully" << std::endl;
+    
+    // 请求重绘
+   
+}
+
+void UIHandler::updateCloudParameters(float shapescale, float detailScale, float windSpeed,
+                              float weatherScale, float curlStrength, float curlScale,
+                              float erosionStrength, float windDirX, float windDirY, float windDirZ,
+                              float weatherWindX, float weatherWindY)
+{
+    if (m_fullscreenAtmosphereDemo) {
+        m_fullscreenAtmosphereDemo->updateCloudParameters(shapescale, detailScale, windSpeed,
+                                                         weatherScale, curlStrength, curlScale,
+                                                         erosionStrength, windDirX, windDirY, windDirZ,
+                                                         weatherWindX, weatherWindY);
+    }
+}
+
+void UIHandler::resetCloudParameters()
+{
+    if (m_fullscreenAtmosphereDemo) {
+        m_fullscreenAtmosphereDemo->resetCloudParameters();
+    }
+}
+
+void UIHandler::updateMousePosition(float x, float y)
+{
+    // 如果有FastAtmosphere实例，也更新其鼠标位置
+    if (m_fastAtmosphereDemo) {
+        m_fastAtmosphereDemo->updateMousePosition(x, y);
     }
 }

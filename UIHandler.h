@@ -11,6 +11,12 @@
 // 前向声明
 class AtmosphereDemo;
 
+class FastAtmosphere;
+
+class FullscreenAtmosphere;
+
+class UEatmosphere;
+
 class UIHandler : public QObject
 {
     Q_OBJECT
@@ -30,6 +36,21 @@ public:
     
     // 在所有文件加载完成后将场景移动到原点
     void moveSceneToOrigin(osgViewer::View* view, osg::Group* rootNode);
+    
+    // 创建全屏大气效果
+    void createFullscreenAtmosphere(osg::Camera* camera, osg::Group* rootNode);
+    
+    // 更新云参数
+    void updateCloudParameters(float shapescale, float detailScale, float windSpeed,
+                              float weatherScale, float curlStrength, float curlScale,
+                              float erosionStrength, float windDirX, float windDirY, float windDirZ,
+                              float weatherWindX, float weatherWindY);
+    
+    // 重置云参数为默认值
+    void resetCloudParameters();
+    
+    // 更新鼠标位置
+    void updateMousePosition(float x, float y);
 
 signals:
     void fileLoadSuccess(const QString& fileName);
@@ -47,6 +68,12 @@ private:
     
     // 大气效果实例
     osg::ref_ptr<AtmosphereDemo> m_atmosphereDemo;
+
+
+    osg::ref_ptr<FullscreenAtmosphere> m_fullscreenAtmosphereDemo;
+
+    osg::ref_ptr<FastAtmosphere> m_fastAtmosphereDemo;
+    
 };
 
 #endif // UIHANDLER_H

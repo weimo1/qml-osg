@@ -14,6 +14,7 @@
 #include <osg/Referenced>
 #include <osg/ref_ptr>
 #include <osg/Texture2D>
+#include <osg/StateAttributeCallback>
 #include <string>
 
 // AtmoCallBackX回调类声明
@@ -58,6 +59,21 @@ public:
     osg::Camera* pView=nullptr;
 };
 
+// 纹理回调类声明 - 用于等待一段时间后保存纹理
+class ObjStatusTextureX : public osg::StateAttributeCallback
+{
+public:
+    ObjStatusTextureX(int waitFrames = 60, const std::string& filename = "output_texture.png");
+    
+    virtual void operator()(osg::StateAttribute* attr, osg::NodeVisitor* nv) override;
+
+private:
+    int m_waitFrames;
+    int m_currentFrame;
+    std::string m_filename;
+    bool m_saved;
+};
+
 class AtmosphereDemo : public osg::Referenced
 {
 public:
@@ -74,18 +90,18 @@ public:
     void setCameraParameters(double viewDistance, double viewZenithAngle, double viewAzimuthAngle);
     
     // 设置曝光值
-    void setExposure(float exposure);
-    static osg::Camera* createRTTCamera(osg::ref_ptr<osg::Texture2D>& tex);
+    void setExposure(float exposure);   
 
     // 添加云纹理初始化函数声明
     void initializeCloudTextures(osg::StateSet* ss);
 
-private:
-    // 创建纹理
+
+    static osg::Camera* createRTTCamera(osg::Texture2D*& tex, osg::Texture2D*& depthTexture, osg::Vec4 backColor);
+
+        // 创建纹理
     osg::Texture* createTexture(int format, const std::string& fileName, int nW, int nH, int nT);
     
     // 创建RTT相机
-    
     
     // 创建HUD相机
     osg::Camera* createHUDCamera(double left, double right, double bottom, double top);

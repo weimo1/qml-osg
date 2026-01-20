@@ -1,5 +1,6 @@
 #include "osgWindow.h"
 #include "CustomTrackballManipulator.h"
+#include "CloudParameterWidget.h"
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QWheelEvent>
@@ -20,6 +21,10 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+
+#include <osgGA/GUIEventAdapter>
+#include <osgViewer/ViewerEventHandlers>
+
 
 GraphicsWindowQt::GraphicsWindowQt(QWidget* parent)
     : QOpenGLWidget(parent)
@@ -52,7 +57,7 @@ void GraphicsWindowQt::initializeGL()
 {
     // Initialize OSG graphics context
     setupOSG(width(), height());
-    createSimpleScene();
+   createSimpleScene();
 }
 
 void GraphicsWindowQt::paintGL()
@@ -93,7 +98,7 @@ void GraphicsWindowQt::resizeGL(int width, int height)
     
     // 重新调整按钮容器的位置
     if (m_buttonContainer) {
-        m_buttonContainer->setGeometry(10, 10, 200, 40);
+        m_buttonContainer->setGeometry(10, 50, 300, 50);
         m_buttonContainer->raise(); // 确保按钮容器在最上层
     }
 }
@@ -102,12 +107,109 @@ void GraphicsWindowQt::keyPressEvent(QKeyEvent* event)
 {
     if (m_graphicsWindow.valid())
     {
-        QString keyString = event->text();
-        if (!keyString.isEmpty())
-        {
-            m_graphicsWindow->getEventQueue()->keyPress(osgGA::GUIEventAdapter::KeySymbol(keyString.toStdString()[0]));
+        osgGA::EventQueue* queue = m_graphicsWindow->getEventQueue();
+        if (!queue) return;
+        
+        int key = event->key();
+        QString text = event->text();
+        
+        // 将Qt键值转换为OSG键值
+        osgGA::GUIEventAdapter::KeySymbol osgKey = (osgGA::GUIEventAdapter::KeySymbol)0;
+        switch (key) {
+        case Qt::Key_Space:
+            osgKey = osgGA::GUIEventAdapter::KEY_Space;
+            break;
+        case Qt::Key_Escape:
+            osgKey = osgGA::GUIEventAdapter::KEY_Escape;
+            break;
+        case Qt::Key_Return:
+            osgKey = osgGA::GUIEventAdapter::KEY_Return;
+            break;
+        case Qt::Key_Tab:
+            osgKey = osgGA::GUIEventAdapter::KEY_Tab;
+            break;
+        case Qt::Key_Backspace:
+            osgKey = osgGA::GUIEventAdapter::KEY_BackSpace;
+            break;
+        case Qt::Key_Left:
+            osgKey = osgGA::GUIEventAdapter::KEY_Left;
+            break;
+        case Qt::Key_Right:
+            osgKey = osgGA::GUIEventAdapter::KEY_Right;
+            break;
+        case Qt::Key_Up:
+            osgKey = osgGA::GUIEventAdapter::KEY_Up;
+            break;
+        case Qt::Key_Down:
+            osgKey = osgGA::GUIEventAdapter::KEY_Down;
+            break;
+        case Qt::Key_PageUp:
+            osgKey = osgGA::GUIEventAdapter::KEY_Page_Up;
+            break;
+        case Qt::Key_PageDown:
+            osgKey = osgGA::GUIEventAdapter::KEY_Page_Down;
+            break;
+        case Qt::Key_Home:
+            osgKey = osgGA::GUIEventAdapter::KEY_Home;
+            break;
+        case Qt::Key_End:
+            osgKey = osgGA::GUIEventAdapter::KEY_End;
+            break;
+        case Qt::Key_Delete:
+            osgKey = osgGA::GUIEventAdapter::KEY_Delete;
+            break;
+        case Qt::Key_F1:
+            osgKey = osgGA::GUIEventAdapter::KEY_F1;
+            break;
+        case Qt::Key_F2:
+            osgKey = osgGA::GUIEventAdapter::KEY_F2;
+            break;
+        case Qt::Key_F3:
+            osgKey = osgGA::GUIEventAdapter::KEY_F3;
+            break;
+        case Qt::Key_F4:
+            osgKey = osgGA::GUIEventAdapter::KEY_F4;
+            break;
+        case Qt::Key_F5:
+            osgKey = osgGA::GUIEventAdapter::KEY_F5;
+            break;
+        case Qt::Key_F6:
+            osgKey = osgGA::GUIEventAdapter::KEY_F6;
+            break;
+        case Qt::Key_F7:
+            osgKey = osgGA::GUIEventAdapter::KEY_F7;
+            break;
+        case Qt::Key_F8:
+            osgKey = osgGA::GUIEventAdapter::KEY_F8;
+            break;
+        case Qt::Key_F9:
+            osgKey = osgGA::GUIEventAdapter::KEY_F9;
+            break;
+        case Qt::Key_F10:
+            osgKey = osgGA::GUIEventAdapter::KEY_F10;
+            break;
+        case Qt::Key_F11:
+            osgKey = osgGA::GUIEventAdapter::KEY_F11;
+            break;
+        case Qt::Key_F12:
+            osgKey = osgGA::GUIEventAdapter::KEY_F12;
+            break;
+        default:   
+            if (!text.isEmpty())
+            {
+                char code = text[0].toLatin1();
+                if ((code >= 'a' && code <= 'z') || (code >= 'A' && code <= 'Z') || (code >= '0' && code <= '9'))
+                    osgKey = (osgGA::GUIEventAdapter::KeySymbol)code;
+            }
+            break;
+        }
+        
+        // 如果有有效的OSG键值，则使用它
+        if (osgKey != 0) {
+            queue->keyPress(osgKey);
         }
     }
+    
     QOpenGLWidget::keyPressEvent(event);
 }
 
@@ -115,14 +217,111 @@ void GraphicsWindowQt::keyReleaseEvent(QKeyEvent* event)
 {
     if (m_graphicsWindow.valid())
     {
-        QString keyString = event->text();
-        if (!keyString.isEmpty())
-        {
-            m_graphicsWindow->getEventQueue()->keyRelease(osgGA::GUIEventAdapter::KeySymbol(keyString.toStdString()[0]));
+        osgGA::EventQueue* queue = m_graphicsWindow->getEventQueue();
+        if (!queue) return;
+
+        int key = event->key();
+        QString text = event->text();
+
+        // 将Qt键值转换为OSG键值
+        osgGA::GUIEventAdapter::KeySymbol osgKey = (osgGA::GUIEventAdapter::KeySymbol)0;
+        switch (key) {
+        case Qt::Key_Space:
+            osgKey = osgGA::GUIEventAdapter::KEY_Space;
+            break;
+        case Qt::Key_Escape:
+            osgKey = osgGA::GUIEventAdapter::KEY_Escape;
+            break;
+        case Qt::Key_Return:
+            osgKey = osgGA::GUIEventAdapter::KEY_Return;
+            break;
+        case Qt::Key_Tab:
+            osgKey = osgGA::GUIEventAdapter::KEY_Tab;
+            break;
+        case Qt::Key_Backspace:
+            osgKey = osgGA::GUIEventAdapter::KEY_BackSpace;
+            break;
+        case Qt::Key_Left:
+            osgKey = osgGA::GUIEventAdapter::KEY_Left;
+            break;
+        case Qt::Key_Right:
+            osgKey = osgGA::GUIEventAdapter::KEY_Right;
+            break;
+        case Qt::Key_Up:
+            osgKey = osgGA::GUIEventAdapter::KEY_Up;
+            break;
+        case Qt::Key_Down:
+            osgKey = osgGA::GUIEventAdapter::KEY_Down;
+            break;
+        case Qt::Key_PageUp:
+            osgKey = osgGA::GUIEventAdapter::KEY_Page_Up;
+            break;
+        case Qt::Key_PageDown:
+            osgKey = osgGA::GUIEventAdapter::KEY_Page_Down;
+            break;
+        case Qt::Key_Home:
+            osgKey = osgGA::GUIEventAdapter::KEY_Home;
+            break;
+        case Qt::Key_End:
+            osgKey = osgGA::GUIEventAdapter::KEY_End;
+            break;
+        case Qt::Key_Delete:
+            osgKey = osgGA::GUIEventAdapter::KEY_Delete;
+            break;
+        case Qt::Key_F1:
+            osgKey = osgGA::GUIEventAdapter::KEY_F1;
+            break;
+        case Qt::Key_F2:
+            osgKey = osgGA::GUIEventAdapter::KEY_F2;
+            break;
+        case Qt::Key_F3:
+            osgKey = osgGA::GUIEventAdapter::KEY_F3;
+            break;
+        case Qt::Key_F4:
+            osgKey = osgGA::GUIEventAdapter::KEY_F4;
+            break;
+        case Qt::Key_F5:
+            osgKey = osgGA::GUIEventAdapter::KEY_F5;
+            break;
+        case Qt::Key_F6:
+            osgKey = osgGA::GUIEventAdapter::KEY_F6;
+            break;
+        case Qt::Key_F7:
+            osgKey = osgGA::GUIEventAdapter::KEY_F7;
+            break;
+        case Qt::Key_F8:
+            osgKey = osgGA::GUIEventAdapter::KEY_F8;
+            break;
+        case Qt::Key_F9:
+            osgKey = osgGA::GUIEventAdapter::KEY_F9;
+            break;
+        case Qt::Key_F10:
+            osgKey = osgGA::GUIEventAdapter::KEY_F10;
+            break;
+        case Qt::Key_F11:
+            osgKey = osgGA::GUIEventAdapter::KEY_F11;
+            break;
+        case Qt::Key_F12:
+            osgKey = osgGA::GUIEventAdapter::KEY_F12;
+            break;
+        default:
+            if (!text.isEmpty())
+            {
+                char code = text[0].toLatin1();
+                if ((code >= 'a' && code <= 'z') || (code >= 'A' && code <= 'Z') || (code >= '0' && code <= '9'))
+                    osgKey = (osgGA::GUIEventAdapter::KeySymbol)code;
+            }
+            break;
         }
+
+        // 如果有有效的OSG键值，则使用它
+        if (osgKey != 0) {
+            queue->keyRelease(osgKey);
+        }
+        QOpenGLWidget::keyReleaseEvent(event);
     }
-    QOpenGLWidget::keyReleaseEvent(event);
 }
+
 
 void GraphicsWindowQt::mousePressEvent(QMouseEvent* event)
 {
@@ -202,6 +401,11 @@ void GraphicsWindowQt::mouseMoveEvent(QMouseEvent* event)
         QString mousePosStr = QString("Mouse: X:%1 Y:%2").arg(m_mousePos.x()).arg(m_mousePos.y());
         emit mousePositionChanged(mousePosStr);
         
+        // 发出鼠标位置更新信号，用于更新着色器中的iMouse uniform
+        // Qt的Y轴从上往下，OpenGL的Y轴从下往上，需要转换
+        float convertedY = static_cast<float>(this->height() - m_mousePos.y());
+        emit updateMousePositionRequested(static_cast<float>(m_mousePos.x()), convertedY);
+        
         if (m_graphicsWindow.valid())
         {
             m_graphicsWindow->getEventQueue()->mouseMotion(event->x(), event->y());
@@ -271,7 +475,7 @@ void GraphicsWindowQt::setupOSG(int width, int height)
     osg::ref_ptr<CustomTrackballManipulator> manipulator = new CustomTrackballManipulator;
     
     view->setCameraManipulator(manipulator.get());
-    
+    view->addEventHandler(new osgViewer::StatsHandler);
     // Add view to viewer
     m_viewer->addView(view);
 }
@@ -282,10 +486,10 @@ void GraphicsWindowQt::createSimpleScene()
     m_root = new osg::Group;
     
     osg::ref_ptr<osg::Node> model = osgDB::readNodeFile("D:\\modlefile\\modefile1\\Data\\Tile_-486_-169\\Tile_-486_-169.osgb");
-    m_root->addChild(model);
+   m_root->addChild(model);
     
-    // 将场景移动到原点
-    moveSceneToOrigin();
+   // 将场景移动到原点
+  moveSceneToOrigin();
     
     // Set the scene data for all views
     for (unsigned int i = 0; i < m_viewer->getNumViews(); ++i)
@@ -380,45 +584,70 @@ void GraphicsWindowQt::createUI()
 {
     // Create button container
     m_buttonContainer = new QWidget(this);
-    m_buttonContainer->setStyleSheet("background-color: rgba(200, 200, 200, 150); border-radius: 5px;");
+    m_buttonContainer->setStyleSheet("background-color: rgba(200, 200, 200, 180); border-radius: 8px; padding: 5px;");
     m_buttonContainer->setAutoFillBackground(true);
     
     // Create layout for buttons
     QHBoxLayout* buttonLayout = new QHBoxLayout(m_buttonContainer);
-    buttonLayout->setContentsMargins(5, 5, 5, 5);
+    buttonLayout->setContentsMargins(10, 10, 10, 10);
     buttonLayout->setSpacing(5);
     
     // Create load file button
     m_loadFileButton = new QPushButton("Load File", m_buttonContainer);
-    m_loadFileButton->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; border: none; padding: 5px; border-radius: 3px; }"
+    m_loadFileButton->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-size: 12px; min-width: 150px; text-align: center; }"
                                    "QPushButton:hover { background-color: #45a049; }"
-                                   "QPushButton:pressed { background-color: #3d8b40; }");
+                                   "QPushButton:pressed { background-color: #3d8b40; };");
     connect(m_loadFileButton, &QPushButton::clicked, this, &GraphicsWindowQt::onLoadFileButtonClicked);
     
     // Create toggle lighting button
     m_toggleLightingButton = new QPushButton("Lighting", m_buttonContainer);
     m_toggleLightingButton->setCheckable(true);
-    m_toggleLightingButton->setStyleSheet("QPushButton { background-color: #2196F3; color: white; border: none; padding: 5px; border-radius: 3px; }"
+    m_toggleLightingButton->setStyleSheet("QPushButton { background-color: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-size: 12px; min-width: 150px; text-align: center; }"
                                          "QPushButton:checked { background-color: #0b7dda; }"
                                          "QPushButton:hover { background-color: #1976D2; }"
-                                         "QPushButton:pressed { background-color: #0d47a1; }");
+                                         "QPushButton:pressed { background-color: #0d47a1; };");
     connect(m_toggleLightingButton, &QPushButton::clicked, this, &GraphicsWindowQt::onToggleLightingButtonClicked);
     
     // Create atmosphere button
     m_createAtmosphereButton = new QPushButton("Atmosphere", m_buttonContainer);
-    m_createAtmosphereButton->setStyleSheet("QPushButton { background-color: #FF9800; color: white; border: none; padding: 5px; border-radius: 3px; }"
+    m_createAtmosphereButton->setStyleSheet("QPushButton { background-color: #FF9800; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-size: 12px; min-width: 150px; text-align: center; }"
                                            "QPushButton:hover { background-color: #F57C00; }"
-                                           "QPushButton:pressed { background-color: #EF6C00; }");
+                                           "QPushButton:pressed { background-color: #EF6C00; };");
     connect(m_createAtmosphereButton, &QPushButton::clicked, this, &GraphicsWindowQt::onCreateAtmosphereButtonClicked);
     
+    // Create fullscreen atmosphere button
+    m_createFullscreenAtmosphereButton = new QPushButton("Fullscreen Atmosphere", m_buttonContainer);
+    m_createFullscreenAtmosphereButton->setStyleSheet("QPushButton { background-color: #9C27B0; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-size: 12px; min-width: 150px; text-align: center; }"
+                                           "QPushButton:hover { background-color: #7B1FA2; }"
+                                           "QPushButton:pressed { background-color: #4A148C; };");
+    connect(m_createFullscreenAtmosphereButton, &QPushButton::clicked, this, &GraphicsWindowQt::onCreateFullscreenAtmosphereButtonClicked);
+        
+    // Create cloud parameter button
+    m_cloudParameterButton = new QPushButton("Cloud Params", m_buttonContainer);
+    m_cloudParameterButton->setStyleSheet("QPushButton { background-color: #FF5722; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-size: 12px; min-width: 150px; text-align: center; }"
+                                           "QPushButton:hover { background-color: #E64A19; }"
+                                           "QPushButton:pressed { background-color: #D84315; };");
+    connect(m_cloudParameterButton, &QPushButton::clicked, this, &GraphicsWindowQt::onCloudParameterButtonClicked);
+        
+    // Create fullscreen triangle button
+    m_createFullscreenTriangleButton = new QPushButton("Fullscreen Red Triangle", m_buttonContainer);
+    m_createFullscreenTriangleButton->setStyleSheet("QPushButton { background-color: #f44336; color: white; border: none; padding: 6px 8px; border-radius: 5px; font-size: 10px; min-width: 160px; text-align: center; }"
+                                           "QPushButton:hover { background-color: #d32f2f; }"
+                                           "QPushButton:pressed { background-color: #b71c1c; };\n");
+
+    connect(m_createFullscreenTriangleButton, &QPushButton::clicked, this, &GraphicsWindowQt::onCreateFullscreenTriangleButtonClicked);
+             
     // Add buttons to layout
     buttonLayout->addWidget(m_loadFileButton);
     buttonLayout->addWidget(m_toggleLightingButton);
     buttonLayout->addWidget(m_createAtmosphereButton);
+    buttonLayout->addWidget(m_createFullscreenAtmosphereButton);
+    buttonLayout->addWidget(m_cloudParameterButton);
+    buttonLayout->addWidget(m_createFullscreenTriangleButton);
     buttonLayout->addStretch();
     
     // Position the button container at the top
-    m_buttonContainer->setGeometry(10, 10, 220, 30);
+    m_buttonContainer->setGeometry(10, 50, 120, 60);
     m_buttonContainer->show();
     m_buttonContainer->raise(); // 确保按钮容器在最上层
 }
@@ -442,6 +671,18 @@ void GraphicsWindowQt::onCreateAtmosphereButtonClicked()
     emit createAtmosphereRequested();
 }
 
+void GraphicsWindowQt::onCreateFullscreenAtmosphereButtonClicked()
+{
+    std::cout << "Create fullscreen atmosphere button clicked" << std::endl;
+    emit createFullscreenAtmosphereRequested();
+}
+
+void GraphicsWindowQt::onCreateFullscreenTriangleButtonClicked()
+{
+    std::cout << "Create fullscreen red triangle button clicked" << std::endl;
+    emit createFullscreenTriangleRequested();
+}
+
 // Public methods to access OSG components
 osgViewer::View* GraphicsWindowQt::getView() const
 {
@@ -454,4 +695,47 @@ osgViewer::View* GraphicsWindowQt::getView() const
 osg::Group* GraphicsWindowQt::getRootNode() const
 {
     return m_root.get();
+}
+
+void GraphicsWindowQt::onCloudParameterButtonClicked()
+{
+    std::cout << "Cloud parameter button clicked" << std::endl;
+    
+    // 创建或显示云参数控制窗口
+    static CloudParameterWidget* cloudParamWidget = nullptr;
+    if (!cloudParamWidget) {
+        cloudParamWidget = new CloudParameterWidget();
+        cloudParamWidget->setWindowTitle("云参数控制面板");
+        cloudParamWidget->resize(450, 650);
+        
+        // 连接信号，当参数改变时更新云效果
+        connect(cloudParamWidget, &CloudParameterWidget::cloudParametersChanged,
+                this, &GraphicsWindowQt::updateCloudParameters);
+    }
+    
+    cloudParamWidget->show();
+    cloudParamWidget->raise();
+    cloudParamWidget->activateWindow();
+}
+
+void GraphicsWindowQt::updateCloudParameters(float shapescale, float detailScale, float windSpeed,
+                                          float weatherScale, float curlStrength, float curlScale,
+                                          float erosionStrength, float windDirX, float windDirY, float windDirZ,
+                                          float weatherWindX, float weatherWindY)
+{
+    std::cout << "Update cloud parameters called" << std::endl;
+    
+    // 发射信号，让Controller处理
+    emit updateCloudParametersRequested(shapescale, detailScale, windSpeed,
+                                    weatherScale, curlStrength, curlScale,
+                                    erosionStrength, windDirX, windDirY, windDirZ,
+                                    weatherWindX, weatherWindY);
+}
+
+void GraphicsWindowQt::resetCloudParameters()
+{
+    std::cout << "Reset cloud parameters called" << std::endl;
+    
+    // 发射信号，让Controller处理
+    emit resetCloudParametersRequested();
 }

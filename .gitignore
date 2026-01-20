@@ -1,0 +1,31 @@
+# Build directories
+build/
+build_*
+*-build
+
+# Compiled binaries and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Object files
+*.o
+*.obj
+
+# Debug files
+*.pdb
+*.ilk
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE files
+*.user
+*.pro.user
+*.sln
+*.vcxproj*
+*.vcproj*

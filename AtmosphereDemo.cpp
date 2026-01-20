@@ -6,6 +6,7 @@
 #include <osg/Texture3D>
 #include <osg/Image>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osg/StateSet>
 #include <osg/Geode>
 #include <osg/Camera>
@@ -60,12 +61,14 @@ AtmosphereDemo::~AtmosphereDemo()
     // 析构函数可以为空，因为所有OSG对象都使用ref_ptr管理
 }
 
+
 osg::Node* AtmosphereDemo::createAtmosphere(osg::Node* subgraph, osg::Camera* camera, const osg::Vec4& clearColour)
-{
-  
+{ 
  
-    osg::ref_ptr<osg::Texture2D> textures = new osg::Texture2D;
-    osg::ref_ptr<osg::Camera> mrtCam = createRTTCamera(textures);
+    osg::Texture2D* textures =   new osg::Texture2D;
+    osg::Texture2D* depthTexture = new osg::Texture2D;
+
+    osg::ref_ptr<osg::Camera> mrtCam = createRTTCamera(textures, depthTexture, clearColour);
     mrtCam->addChild(subgraph);
 
     osg::ref_ptr<osg::Geode> quad = new osg::Geode;
@@ -78,7 +81,9 @@ osg::Node* AtmosphereDemo::createAtmosphere(osg::Node* subgraph, osg::Camera* ca
     geom->setVertexAttribArray(1, geom->getTexCoordArray(0), osg::Array::BIND_PER_VERTEX);
 
     osg::StateSet* ss = geom->getOrCreateStateSet();
-    ss->setTextureAttributeAndModes(3, textures.get());
+    ss->setTextureAttributeAndModes(3, textures);
+     ss->addUniform(new osg::Uniform("groundTexture", 3));
+
 
     // 加载预计算的纹理 - 使用正确的路径
     osg::Texture* pT1 = createTexture(4, "shader/transmittance.dat", 256, 64, 0);
@@ -115,9 +120,10 @@ osg::Node* AtmosphereDemo::createAtmosphere(osg::Node* subgraph, osg::Camera* ca
     }
     
     // 添加MRT相机来渲染场景到纹理
-    root->addChild(mrtCam.get());
+   
     // 添加HUD相机来显示纹理
     root->addChild(hudCam);
+    root->addChild(mrtCam.get());
 
     return root.release();
 }
@@ -268,25 +274,47 @@ osg::Texture* AtmosphereDemo::createTexture(int format, const std::string& fileN
     return defaultTex;
 }
 
-osg::Camera* AtmosphereDemo::createRTTCamera(osg::ref_ptr<osg::Texture2D>& tex)
+
+osg::Camera* AtmosphereDemo::createRTTCamera(osg::Texture2D*& tex, osg::Texture2D*& depthTexture, osg::Vec4 backColor)
 {
+    int width = 1024;
+    int height = 1024;
+
     osg::ref_ptr<osg::Camera> camera = new osg::Camera;
-    camera->setClearColor(osg::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    camera->setClearColor(backColor);
     camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     camera->setRenderOrder(osg::Camera::PRE_RENDER);
 
-    
+    camera->setViewport(0, 0, width, height);
+
     tex = new osg::Texture2D;
-    tex->setTextureSize(1024, 1024);
+    tex->setTextureSize(width, height);
     tex->setInternalFormat(GL_RGBA);
     tex->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
     tex->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
- 
-    camera->setViewport(0, 0, tex->getTextureWidth(), tex->getTextureHeight());
-    camera->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0 + 0), tex);
 
-     return camera.release();
+    camera->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0 + 0), tex);
+   
+
+    // osg::Image* pImage = new osg::Image;
+    // pImage->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    // camera->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0 + 0), pImage);
+    // tex->setImage(pImage);
+    // tex->setUpdateCallback(new ObjStatusTextureX(60, "output_texture.png"));
+
+    depthTexture = new osg::Texture2D;
+    depthTexture->setTextureSize(width, height);
+    depthTexture->setInternalFormat(GL_DEPTH_COMPONENT32F);
+    depthTexture->setSourceFormat(GL_DEPTH_COMPONENT);
+    depthTexture->setSourceType(GL_FLOAT);
+    depthTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+    depthTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+    depthTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    depthTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    camera->attach(osg::Camera::DEPTH_BUFFER, depthTexture);
+    return camera.release();
 }
 
 osg::Camera* AtmosphereDemo::createHUDCamera(double left, double right, double bottom, double top)
@@ -328,7 +356,8 @@ void AtmosphereDemo::createAtmosphereEffect(osg::StateSet* ss, osg::Camera* came
  
     // 设置纹理单元 - groundTexture使用纹理单元3
     ss->setUpdateCallback(new AtmoCallBackX(camera));
-    ss->addUniform(new osg::Uniform("groundTexture", 3));
+   
+    //ss->addUniform(new osg::Uniform("depthTexture", 1));
 
     printf("Simple atmosphere shaders loaded and configured successfully\n");
 }
@@ -435,15 +464,52 @@ void AtmosphereDemo::initializeCloudTextures(osg::StateSet* ss)
     } else {
         printf("Failed to load blue noise texture\n");
     }
+}
 
+// ObjStatusTextureX类实现
+ObjStatusTextureX::ObjStatusTextureX(int waitFrames, const std::string& filename)
+    : m_waitFrames(waitFrames)
+    , m_currentFrame(0)
+    , m_filename(filename)
+    , m_saved(false)
+{
+}
+
+void ObjStatusTextureX::operator()(osg::StateAttribute* attr, osg::NodeVisitor* nv)
+{
+    // 如果已经保存过，则不再处理
+    if (m_saved) return;
+    
+    // 增加帧计数
+    m_currentFrame++;
+    
+    // 等待指定的帧数
+    if (m_currentFrame >= m_waitFrames) {
+        // 获取纹理图像数据
+        osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(attr);
+        if (texture) {
+            osg::Image* image = texture->getImage();
+            if (image) {
+                // 保存图像到文件
+                std::string fullPath = "E:/" + m_filename;
+                if (osgDB::writeImageFile(*image, fullPath)) {
+                    printf("Texture saved successfully to %s\n", fullPath.c_str());
+                } else {
+                    printf("Failed to save texture to %s\n", fullPath.c_str());
+                }
+                m_saved = true;
+            } else {
+                printf("Failed to get texture image data\n");
+            }
+        }
+    }
 }
 
 // AtmoCallBackX类的实现
 void AtmoCallBackX::process(osg::StateSet* ss)
 {
     nFrame++;
-    if (nFrame > 6000)
-        nFrame = 10;
+   
 
     // 每60帧更新一次分辨率uniform
     if (nFrame ==1 )
@@ -453,7 +519,7 @@ void AtmoCallBackX::process(osg::StateSet* ss)
             iResolution->setUpdateCallback(new ResolutionCallback(m_camera));
             ss->addUniform(iResolution);
         }
-     
+    
         // 更新时间uniform变量
         float currentTime = nFrame * 0.016f; // 假设60FPS
         ss->getOrCreateUniform("time", osg::Uniform::FLOAT)->set(currentTime);
@@ -469,10 +535,15 @@ void AtmoCallBackX::process(osg::StateSet* ss)
         osg::Matrixf viewInverse    = vieMat.inverse(vieMat);
         osg::Matrixf projectInverse = projectMat.inverse(projectMat);
 
-        ss->getOrCreateUniform("model_from_view", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
+
+      ss->getOrCreateUniform("model_from_view", osg::Uniform::FLOAT_MAT4)->set(viewInverse);
         ss->getOrCreateUniform("view_from_clip",  osg::Uniform::FLOAT_MAT4)->set(projectInverse);
 
-        ss->getOrCreateUniform("camera",      osg::Uniform::FLOAT_VEC3)->set(eye*0.01);
+        // ss->getOrCreateUniform("cameraPosition", osg::Uniform::FLOAT_VEC3)->set(eye);      
+        // ss->getOrCreateUniform("earth_center", osg::Uniform::FLOAT_VEC3)->set(osg::Vec3(0, 0, -6360000));
+
+
+       ss->getOrCreateUniform("camera",      osg::Uniform::FLOAT_VEC3)->set(eye*0.01);
 
       
         ss->getOrCreateUniform("earth_center", osg::Uniform::FLOAT_VEC3)->set((eye - osg::Vec3(0, 0, 6360000))*0.001);
@@ -481,7 +552,7 @@ void AtmoCallBackX::process(osg::StateSet* ss)
     float acos, asin, zcos, zsin;
     const double PI = 3.14159265358979323846;
     double AO = 0.5 * PI;
-    double ZO = 0.5*(1.0 - sin(1200 * 0.0001)) * PI;
+    double ZO = 0.2 * PI;
      
     asin = sin(AO);
     acos = cos(AO);
@@ -500,8 +571,8 @@ void AtmoCallBackX::process(osg::StateSet* ss)
         ss->getOrCreateUniform("scattering_texture", osg::Uniform::INT)->set(1);
         ss->getOrCreateUniform("single_mie_scattering_texture", osg::Uniform::INT)->set(1);
         ss->getOrCreateUniform("irradiance_texture", osg::Uniform::INT)->set(2);
-        ss->getOrCreateUniform("groundTexture", osg::Uniform::INT)->set(3);
-
+        // ss->getOrCreateUniform("groundTexture", osg::Uniform::INT)->set(3);
+        // ss->getOrCreateUniform("depthTexture", osg::Uniform::INT)->set(1);
         osg::Vec3 white_point(1.0, 1.0, 1.0);
         ss->getOrCreateUniform("white_point", osg::Uniform::FLOAT_VEC3)->set(white_point);
         ss->getOrCreateUniform("exposure", osg::Uniform::FLOAT)->set(10.0f);
